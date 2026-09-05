@@ -54,6 +54,35 @@ class Renderer:
         self._draw_labels(painter, document, visible, viewport, palette)
         painter.restore()
 
+    def render_preview(
+        self,
+        painter: QPainter,
+        document: Document,
+        viewport: Viewport,
+        palette: QPalette,
+        geometries: Iterable[Point2D | Vector2D | Line2D | Ray2D | Segment2D | Circle2D | Polygon2D],
+    ) -> None:
+        """Draw transient construction geometry without inserting it into the document."""
+        painter.save()
+        color = palette.highlight().color()
+        preview_style = Style(color=color.name(), width=1.5, line_style="dash", fill_opacity=0.06)
+        kind_by_type = {
+            Point2D: "point",
+            Line2D: "line",
+            Ray2D: "ray",
+            Segment2D: "segment",
+            Circle2D: "circle",
+            Polygon2D: "polygon",
+        }
+        for index, geometry in enumerate(geometries):
+            kind = kind_by_type.get(type(geometry))
+            if kind is None:
+                continue
+            obj = GeoObject(kind, f"preview{index}", style=preview_style, geometry=geometry)
+            painter.setPen(self._pen(preview_style))
+            self._draw_geometry(painter, document, obj, viewport, fill=True)
+        painter.restore()
+
     def invalidate_cache(self) -> None:
         """Drop renderer-owned cached layout data."""
         self._grid_cache.clear()
