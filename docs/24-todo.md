@@ -41,29 +41,29 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## GEOMETRY
 
-- [ ] GEO-001 — Point2D.
-- [ ] GEO-002 — Vector2D.
-- [ ] GEO-003 — Line2D.
-- [ ] GEO-004 — Segment2D.
-- [ ] GEO-005 — Ray2D.
-- [ ] GEO-006 — Circle2D.
-- [ ] GEO-007 — Polygon2D.
-- [ ] GEO-008 — Distance point-point.
-- [ ] GEO-009 — Distance point-line.
-- [ ] GEO-010 — Projection.
-- [ ] GEO-011 — Intersection line-line.
-- [ ] GEO-012 — Intersection line-circle.
-- [ ] GEO-013 — Intersection circle-circle.
-- [ ] GEO-014 — Parallel line.
-- [ ] GEO-015 — Perpendicular line.
-- [ ] GEO-016 — Midpoint.
-- [ ] GEO-017 — Perpendicular bisector.
-- [ ] GEO-018 — Angle bisector.
-- [ ] GEO-019 — Polygon area.
-- [ ] GEO-020 — Polygon perimeter.
-- [ ] GEO-021 — Reflection.
-- [ ] GEO-022 — Rotation.
-- [ ] GEO-023 — Translation.
+- [x] GEO-001 — Point2D.
+- [x] GEO-002 — Vector2D.
+- [x] GEO-003 — Line2D.
+- [x] GEO-004 — Segment2D.
+- [x] GEO-005 — Ray2D.
+- [x] GEO-006 — Circle2D.
+- [x] GEO-007 — Polygon2D.
+- [x] GEO-008 — Distance point-point.
+- [x] GEO-009 — Distance point-line.
+- [x] GEO-010 — Projection.
+- [x] GEO-011 — Intersection line-line.
+- [x] GEO-012 — Intersection line-circle.
+- [x] GEO-013 — Intersection circle-circle.
+- [x] GEO-014 — Parallel line.
+- [x] GEO-015 — Perpendicular line.
+- [x] GEO-016 — Midpoint.
+- [x] GEO-017 — Perpendicular bisector.
+- [x] GEO-018 — Angle bisector.
+- [x] GEO-019 — Polygon area.
+- [x] GEO-020 — Polygon perimeter.
+- [x] GEO-021 — Reflection.
+- [x] GEO-022 — Rotation.
+- [x] GEO-023 — Translation.
 
 ## MODEL
 
@@ -221,7 +221,7 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## TEST
 
-- [ ] TEST-001 — Geometry unit suite.
+- [x] TEST-001 — Geometry unit suite.
 - [ ] TEST-002 — Dependency suite.
 - [ ] TEST-003 — Math parser suite.
 - [ ] TEST-004 — Persistence suite.

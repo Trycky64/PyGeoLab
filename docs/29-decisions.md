@@ -97,3 +97,15 @@ Un objet géométriquement impossible peut rester dans le document en état inva
 ### Raisons
 
 La géométrie dynamique implique que certaines constructions puissent devenir temporairement impossibles puis redevenir valides.
+
+## ADR-009 — Primitives immuables et normales unitaires
+
+Les primitives scalaires sont regroupées dans `geometry/primitives.py` et exposées
+par `geometry`. Les intersections et transformations restent des modules séparés.
+Cette organisation limite les imports circulaires entre petits types fortement liés.
+Les droites normalisent leurs coefficients pour que les distances et tolérances
+ne dépendent pas du facteur utilisé dans leur équation. Les fabriques renvoient
+`None` pour une construction sans direction ; les intersections distinguent zéro,
+un, deux points et les objets confondus. NaN, infini et rayons négatifs sont refusés.
+Les calculs scalaires ne requièrent pas NumPy ; son ajout reste possible si des
+mesures de performance justifient une vectorisation.
