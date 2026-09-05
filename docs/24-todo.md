@@ -108,39 +108,39 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## INTERACTION
 
-- [ ] INT-001 — Interaction controller.
-- [ ] INT-002 — Tool base class.
-- [ ] INT-003 — Selection tool.
-- [ ] INT-004 — Point tool.
-- [ ] INT-005 — Segment tool.
-- [ ] INT-006 — Line tool.
-- [ ] INT-007 — Circle tool.
-- [ ] INT-008 — Polygon tool.
-- [ ] INT-009 — Midpoint tool.
-- [ ] INT-010 — Intersection tool.
-- [ ] INT-011 — Parallel tool.
-- [ ] INT-012 — Perpendicular tool.
-- [ ] INT-013 — Hit-testing.
-- [ ] INT-014 — Drag.
-- [ ] INT-015 — Preview geometry.
-- [ ] INT-016 — Escape cancel.
-- [ ] INT-017 — Multi-selection.
+- [x] INT-001 — Interaction controller.
+- [x] INT-002 — Tool base class.
+- [x] INT-003 — Selection tool.
+- [x] INT-004 — Point tool.
+- [x] INT-005 — Segment tool.
+- [x] INT-006 — Line tool.
+- [x] INT-007 — Circle tool.
+- [x] INT-008 — Polygon tool.
+- [x] INT-009 — Midpoint tool.
+- [x] INT-010 — Intersection tool.
+- [x] INT-011 — Parallel tool.
+- [x] INT-012 — Perpendicular tool.
+- [x] INT-013 — Hit-testing.
+- [x] INT-014 — Drag.
+- [x] INT-015 — Preview geometry.
+- [x] INT-016 — Escape cancel.
+- [x] INT-017 — Multi-selection.
 - [ ] INT-018 — Snapping.
 
 ## COMMANDS
 
-- [ ] CMD-001 — Command interface.
-- [ ] CMD-002 — History manager.
-- [ ] CMD-003 — Create command.
-- [ ] CMD-004 — Delete command.
-- [ ] CMD-005 — Move command.
-- [ ] CMD-006 — Rename command.
-- [ ] CMD-007 — Style command.
-- [ ] CMD-008 — Visibility command.
-- [ ] CMD-009 — Undo.
-- [ ] CMD-010 — Redo.
-- [ ] CMD-011 — Composite command.
-- [ ] CMD-012 — Drag coalescing.
+- [x] CMD-001 — Command interface.
+- [x] CMD-002 — History manager.
+- [x] CMD-003 — Create command.
+- [x] CMD-004 — Delete command.
+- [x] CMD-005 — Move command.
+- [x] CMD-006 — Rename command.
+- [x] CMD-007 — Style command.
+- [x] CMD-008 — Visibility command.
+- [x] CMD-009 — Undo.
+- [x] CMD-010 — Redo.
+- [x] CMD-011 — Composite command.
+- [x] CMD-012 — Drag coalescing.
 
 ## MATH
 

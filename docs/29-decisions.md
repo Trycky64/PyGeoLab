@@ -123,3 +123,39 @@ La revue du modèle a également révélé un cas numérique : une intersection 
 éloignée peut avoir un résidu supérieur à la tolérance absolue malgré une solution
 analytique correcte. Le filtrage après résolution vérifie les bornes des segments
 et demi-droites, sans rejeter une droite infinie à cause de ce résidu.
+
+## ADR-011 — Graphe et résolution séparés du Document
+
+Le graphe orienté, sa validation structurelle et le recalcul incrémental vivent
+dans `dependency/`. `Document` reste propriétaire de l'état et des transactions,
+mais délègue les parcours, cycles, ordres topologiques et dirty recomputations.
+Les dirty flags distinguent géométrie, style et visibilité afin que les couches
+de rendu puissent invalider uniquement ce qui est nécessaire.
+
+## ADR-012 — Viewport pur et renderer Qt sans propriété métier
+
+Les transformations monde/écran et le calcul de grille restent indépendants de Qt.
+Le renderer reçoit un `QPainter`, lit le document sans le modifier et utilise la
+palette du widget pour les éléments d'interface (fond, grille, axes, sélection).
+Les droites et demi-droites infinies sont clippées dans l'espace monde avant dessin.
+`GeometryView` possède uniquement l'état de caméra et les caches visuels ; les outils
+de création, sélection et hit-testing restent réservés à la couche interaction.
+
+
+## ADR-013 — Outils d'interaction purs et constructions transitoires
+
+Le contrôleur d'interaction et les outils restent indépendants de Qt. Les événements
+d'écran sont convertis en coordonnées monde par `GeometryView`, puis transmis sous
+forme de contexte de pointeur. Une construction incomplète conserve ses points et sa
+géométrie en état transitoire : aucun objet n'est ajouté au `Document` avant validation.
+`Escape` peut ainsi annuler sans laisser de définitions orphelines. Le hit-testing est
+exprimé en distance écran afin de garder une tolérance stable quel que soit le zoom.
+
+## ADR-014 — Historique par commandes et drag coalescé
+
+Les mutations utilisateur importantes passent par `commands/` et `CommandHistory`.
+Une commande nouvelle vide la pile redo ; les commandes composées regroupent une
+opération logique et annulent les membres déjà exécutés en cas d'échec. Pendant un
+drag, le point libre est déplacé directement pour conserver un retour dynamique et
+recalculer ses descendants. Au relâchement, une seule `MovePointCommand` déjà appliquée
+est enregistrée dans l'historique, ce qui évite une entrée Undo par mouvement de souris.
