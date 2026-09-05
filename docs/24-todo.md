@@ -4,27 +4,27 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## PROJECT
 
-- [ ] PROJ-001 — Initialiser le repository.
-- [ ] PROJ-002 — Créer `pyproject.toml`.
-- [ ] PROJ-003 — Configurer src layout.
-- [ ] PROJ-004 — Ajouter licence.
-- [ ] PROJ-005 — Ajouter README racine.
-- [ ] PROJ-006 — Configurer Ruff.
-- [ ] PROJ-007 — Configurer type checker.
-- [ ] PROJ-008 — Configurer pytest.
-- [ ] PROJ-009 — Ajouter pre-commit.
-- [ ] PROJ-010 — Ajouter CI.
+- [x] PROJ-001 — Initialiser le repository.
+- [x] PROJ-002 — Créer `pyproject.toml`.
+- [x] PROJ-003 — Configurer src layout.
+- [x] PROJ-004 — Ajouter licence.
+- [x] PROJ-005 — Ajouter README racine.
+- [x] PROJ-006 — Configurer Ruff.
+- [x] PROJ-007 — Configurer type checker.
+- [x] PROJ-008 — Configurer pytest.
+- [x] PROJ-009 — Ajouter pre-commit.
+- [x] PROJ-010 — Ajouter CI.
 
 ## APP
 
-- [ ] APP-001 — Créer l'entrypoint.
-- [ ] APP-002 — Créer QApplication.
-- [ ] APP-003 — Créer MainWindow.
-- [ ] APP-004 — Créer menu principal.
-- [ ] APP-005 — Créer toolbar.
-- [ ] APP-006 — Créer status bar.
-- [ ] APP-007 — Créer docks.
-- [ ] APP-008 — Gérer fermeture propre.
+- [x] APP-001 — Créer l'entrypoint.
+- [x] APP-002 — Créer QApplication.
+- [x] APP-003 — Créer MainWindow.
+- [x] APP-004 — Créer menu principal.
+- [x] APP-005 — Créer toolbar.
+- [x] APP-006 — Créer status bar.
+- [x] APP-007 — Créer docks.
+- [x] APP-008 — Gérer fermeture propre.
 
 ## VIEWPORT
 
@@ -227,7 +227,7 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [ ] TEST-004 — Persistence suite.
 - [ ] TEST-005 — Command suite.
 - [ ] TEST-006 — Integration constructions.
-- [ ] TEST-007 — UI smoke tests.
+- [x] TEST-007 — UI smoke tests.
 - [ ] TEST-008 — Save/load round-trip.
 - [ ] TEST-009 — Regression fixtures.
 - [ ] TEST-010 — Performance benchmark set.
