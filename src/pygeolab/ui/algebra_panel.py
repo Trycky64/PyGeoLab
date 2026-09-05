@@ -58,9 +58,7 @@ class AlgebraPanel(QWidget):
 
     def refresh(self) -> None:
         """Rebuild categories and human-readable values from current document objects."""
-        selected = {
-            item.data(0, Qt.ItemDataRole.UserRole) for item in self._tree.selectedItems()
-        }
+        selected = {item.data(0, Qt.ItemDataRole.UserRole) for item in self._tree.selectedItems()}
         self._tree.blockSignals(True)
         try:
             self._tree.clear()

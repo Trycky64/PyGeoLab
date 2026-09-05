@@ -122,9 +122,7 @@ class MainWindow(QMainWindow):
             action.setData(name)
             if name in shortcuts:
                 action.setShortcut(shortcuts[name])
-            action.triggered.connect(
-                lambda checked=False, tool=name: self._activate_tool(tool)
-            )
+            action.triggered.connect(lambda checked=False, tool=name: self._activate_tool(tool))
             self.tool_action_group.addAction(action)
             self.toolbar.addAction(action)
             self.tool_actions[name] = action
