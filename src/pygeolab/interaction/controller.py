@@ -13,8 +13,8 @@ from pygeolab.interaction.tools import (
     MidpointTool,
     ParallelTool,
     PerpendicularTool,
-    PointTool,
     PointerContext,
+    PointTool,
     PolygonTool,
     SegmentTool,
     Tool,
@@ -135,7 +135,7 @@ class InteractionController:
         return changed
 
     def _context(self, x: float, y: float, shift: bool) -> PointerContext:
-        return PointerContext(x, y, self.viewport.screen_to_world(x, y), shift)
+        return PointerContext(self.viewport.screen_to_world(x, y), x, y, shift)
 
     def _prune_selection(self) -> None:
         for object_id in tuple(self.selection.ids):

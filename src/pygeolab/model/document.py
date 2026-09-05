@@ -111,9 +111,7 @@ class Document:
         current_graph = self._graph
         removed_ids = current_graph.descendants({object_id})
         removed = tuple(
-            self._objects[key]
-            for key in current_graph.topological_order()
-            if key in removed_ids
+            self._objects[key] for key in current_graph.topological_order() if key in removed_ids
         )
         draft = {key: obj for key, obj in self._objects.items() if key not in removed_ids}
         graph = validate_object_graph(draft)

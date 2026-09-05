@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pygeolab.commands import CommandHistory, CreateObjectsCommand
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D
+from pygeolab.geometry import Circle2D, Line2D, Point2D, Ray2D, Segment2D
+from pygeolab.interaction.tools.base import GeometryPreview, PointerContext, Tool
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject, number
 from pygeolab.rendering.hit_test import first_hit
 from pygeolab.rendering.viewport import Viewport
-from pygeolab.interaction.tools.base import GeometryPreview, PointerContext, Tool
 
 
 @dataclass(slots=True)
@@ -30,13 +30,29 @@ class _DocumentTool(Tool):
         """Update the camera used for hit-testing after pan, zoom or resize."""
         self.viewport = viewport
 
-    def _hit(self, context: PointerContext, kinds: frozenset[str] | None = None) -> GeoObject | None:
+    def _hit(
+        self, context: PointerContext, kinds: frozenset[str] | None = None
+    ) -> GeoObject | None:
         return first_hit(
             self.document, self.viewport, context.screen_x, context.screen_y, kinds=kinds
         )
 
     def _point_choice(self, context: PointerContext) -> _PointChoice:
-        existing = self._hit(context, frozenset({"point", "midpoint", "intersection", "projection", "point_on", "translate", "rotate", "reflect_point", "reflect_line", "scale"}))
+        point_kinds = frozenset(
+            {
+                "point",
+                "midpoint",
+                "intersection",
+                "projection",
+                "point_on",
+                "translate",
+                "rotate",
+                "reflect_point",
+                "reflect_line",
+                "scale",
+            }
+        )
+        existing = self._hit(context, point_kinds)
         if existing is not None and isinstance(existing.geometry, Point2D):
             return _PointChoice(existing, False)
         existing_names = {obj.name for obj in self.document.objects.values()}
@@ -61,6 +77,7 @@ class PointTool(_DocumentTool):
     name = "point"
 
     def press(self, context: PointerContext) -> None:
+        """Create a free point at the pressed location when needed."""
         choice = self._point_choice(context)
         if choice.pending:
             self._execute((choice.obj,))
@@ -76,6 +93,7 @@ class _TwoPointTool(_DocumentTool):
         self._cursor: Point2D | None = None
 
     def press(self, context: PointerContext) -> None:
+        """Record a defining point or commit the completed construction."""
         choice = self._point_choice(context)
         if self._first is None:
             self._first = choice
@@ -89,25 +107,32 @@ class _TwoPointTool(_DocumentTool):
             self.document.unique_name(self.prefix),
             dependencies=(first.obj.id, choice.obj.id),
         )
-        objects = tuple(obj for obj, pending in ((first.obj, first.pending), (choice.obj, choice.pending)) if pending) + (result,)
+        candidates = ((first.obj, first.pending), (choice.obj, choice.pending))
+        objects = tuple(obj for obj, pending in candidates if pending) + (result,)
         self._execute(objects)
         self.cancel()
 
     def move(self, context: PointerContext) -> None:
+        """Update the current two-point construction preview."""
         if self._first is not None:
             self._cursor = context.world
 
     def cancel(self) -> None:
+        """Discard the partially defined construction."""
         self._first = None
         self._cursor = None
 
     @property
     def preview(self) -> tuple[GeometryPreview, ...]:
+        """Return transient geometry for the current second point."""
         if self._first is None or self._cursor is None:
             return ()
         start = self._first.obj.geometry
         if not isinstance(start, Point2D):
-            start = Point2D(number(self._first.obj.params, "x"), number(self._first.obj.params, "y"))
+            start = Point2D(
+                number(self._first.obj.params, "x"),
+                number(self._first.obj.params, "y"),
+            )
         if self.kind == "line":
             line = Line2D.from_points(start, self._cursor)
             return () if line is None else (line,)
@@ -151,6 +176,7 @@ class PolygonTool(_DocumentTool):
         self._cursor: Point2D | None = None
 
     def press(self, context: PointerContext) -> None:
+        """Add a polygon vertex or close the polygon near its first vertex."""
         if len(self._vertices) >= 3:
             first_point = self._point_value(self._vertices[0])
             if first_point.distance_to(context.world) * self.viewport.scale <= 8.0:
@@ -166,21 +192,24 @@ class PolygonTool(_DocumentTool):
         self._cursor = context.world
 
     def move(self, context: PointerContext) -> None:
+        """Update the transient edge preview while constructing a polygon."""
         if self._vertices:
             self._cursor = context.world
 
     def cancel(self) -> None:
+        """Discard all transient polygon vertices."""
         self._vertices.clear()
         self._cursor = None
 
     @property
     def preview(self) -> tuple[GeometryPreview, ...]:
+        """Return transient polygon boundary segments."""
         points = [self._point_value(choice) for choice in self._vertices]
         if not points:
             return ()
         if self._cursor is not None:
             points.append(self._cursor)
-        return tuple(Segment2D(a, b) for a, b in zip(points, points[1:]))
+        return tuple(Segment2D(a, b) for a, b in zip(points, points[1:], strict=False))
 
     def _finish(self) -> None:
         polygon = GeoObject(
@@ -209,9 +238,11 @@ class MidpointTool(_DocumentTool):
         self._first: GeoObject | None = None
 
     def press(self, context: PointerContext) -> None:
+        """Create a midpoint from one segment or two selected points."""
         segment = self._hit(context, frozenset({"segment"}))
         if segment is not None:
-            self._execute((GeoObject("midpoint", self.document.unique_name("M"), (segment.id,)),))
+            midpoint = GeoObject("midpoint", self.document.unique_name("M"), (segment.id,))
+            self._execute((midpoint,))
             self._first = None
             return
         point = self._hit(context)
@@ -220,10 +251,14 @@ class MidpointTool(_DocumentTool):
         if self._first is None:
             self._first = point
         elif self._first.id != point.id:
-            self._execute((GeoObject("midpoint", self.document.unique_name("M"), (self._first.id, point.id)),))
+            midpoint = GeoObject(
+                "midpoint", self.document.unique_name("M"), (self._first.id, point.id)
+            )
+            self._execute((midpoint,))
             self._first = None
 
     def cancel(self) -> None:
+        """Discard a partially selected midpoint construction."""
         self._first = None
 
 
@@ -237,6 +272,7 @@ class IntersectionTool(_DocumentTool):
         self._first: GeoObject | None = None
 
     def press(self, context: PointerContext) -> None:
+        """Select two supported loci and create their first intersection."""
         obj = self._hit(context)
         if obj is None or not isinstance(obj.geometry, (Line2D, Segment2D, Ray2D, Circle2D)):
             return
@@ -244,12 +280,16 @@ class IntersectionTool(_DocumentTool):
             self._first = obj
         elif self._first.id != obj.id:
             intersection = GeoObject(
-                "intersection", self.document.unique_name("I"), (self._first.id, obj.id), params={"index": 0}
+                "intersection",
+                self.document.unique_name("I"),
+                (self._first.id, obj.id),
+                params={"index": 0},
             )
             self._execute((intersection,))
             self._first = None
 
     def cancel(self) -> None:
+        """Discard the first selected locus."""
         self._first = None
 
 
@@ -262,6 +302,7 @@ class _PointLineTool(_DocumentTool):
         self._point: GeoObject | None = None
 
     def press(self, context: PointerContext) -> None:
+        """Select a point then a linear support and commit the construction."""
         if self._point is None:
             obj = self._hit(context)
             if obj is not None and isinstance(obj.geometry, Point2D):
@@ -269,10 +310,16 @@ class _PointLineTool(_DocumentTool):
             return
         line = self._hit(context, frozenset({"line", "segment", "ray"}))
         if line is not None:
-            self._execute((GeoObject(self.kind, self.document.unique_name(self.prefix), (self._point.id, line.id)),))
+            result = GeoObject(
+                self.kind,
+                self.document.unique_name(self.prefix),
+                (self._point.id, line.id),
+            )
+            self._execute((result,))
             self._point = None
 
     def cancel(self) -> None:
+        """Discard the selected point for this construction."""
         self._point = None
 
 

@@ -20,10 +20,10 @@ class Parser:
 
     def parse(self) -> Expr:
         """Parse one complete expression and reject trailing input."""
-        if self.current.kind is TokenKind.EOF:
+        if self._at(TokenKind.EOF):
             raise ParseError("L'expression est vide")
         expression = self._expression()
-        if self.current.kind is not TokenKind.EOF:
+        if not self._at(TokenKind.EOF):
             raise self._error("Élément inattendu")
         return expression
 
@@ -31,6 +31,9 @@ class Parser:
     def current(self) -> Token:
         """Return the token currently being consumed."""
         return self.tokens[self.index]
+
+    def _at(self, kind: TokenKind) -> bool:
+        return self.current.kind == kind
 
     def _advance(self) -> Token:
         token = self.current
@@ -84,7 +87,7 @@ class Parser:
             name = self._advance().text
             if self._accept(TokenKind.LPAREN):
                 arguments: list[Expr] = []
-                if self.current.kind is not TokenKind.RPAREN:
+                if not self._at(TokenKind.RPAREN):
                     arguments.append(self._expression())
                     while self._accept(TokenKind.COMMA):
                         arguments.append(self._expression())

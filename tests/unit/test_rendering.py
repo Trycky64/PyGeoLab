@@ -39,9 +39,7 @@ def test_grid_uses_documented_1_2_5_decimal_steps_and_adapts_to_zoom() -> None:
         step = adaptive_step(scale)
         exponent = math.floor(math.log10(step))
         normalized = step / (10**exponent)
-        assert any(
-            normalized == pytest.approx(candidate) for candidate in (1.0, 2.0, 5.0)
-        )
+        assert any(normalized == pytest.approx(candidate) for candidate in (1.0, 2.0, 5.0))
 
     wide = adaptive_grid(Viewport(scale=20, width=800, height=600))
     close = adaptive_grid(Viewport(scale=200, width=800, height=600))
@@ -60,4 +58,3 @@ def test_infinite_and_bounded_linear_primitives_clip_to_viewport() -> None:
 
     segment = clip_segment(Point2D(-5, 0.5), Point2D(5, 0.5), bounds)
     assert segment == (Point2D(-2, 0.5), Point2D(2, 0.5))
-

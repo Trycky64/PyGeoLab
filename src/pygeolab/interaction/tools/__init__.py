@@ -12,7 +12,6 @@ from pygeolab.interaction.tools.construction import (
     PolygonTool,
     SegmentTool,
 )
-
 from pygeolab.interaction.tools.selection import SelectionTool
 
 __all__ = [

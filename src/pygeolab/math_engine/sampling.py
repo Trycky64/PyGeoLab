@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from pygeolab.geometry import Point2D
 from pygeolab.math_engine.evaluator import EvaluationError

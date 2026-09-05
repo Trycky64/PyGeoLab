@@ -60,7 +60,9 @@ class Renderer:
         document: Document,
         viewport: Viewport,
         palette: QPalette,
-        geometries: Iterable[Point2D | Vector2D | Line2D | Ray2D | Segment2D | Circle2D | Polygon2D],
+        geometries: Iterable[
+            Point2D | Vector2D | Line2D | Ray2D | Segment2D | Circle2D | Polygon2D
+        ],
     ) -> None:
         """Draw transient construction geometry without inserting it into the document."""
         painter.save()
@@ -87,9 +89,7 @@ class Renderer:
         """Drop renderer-owned cached layout data."""
         self._grid_cache.clear()
 
-    def _draw_grid_and_axes(
-        self, painter: QPainter, viewport: Viewport, palette: QPalette
-    ) -> None:
+    def _draw_grid_and_axes(self, painter: QPainter, viewport: Viewport, palette: QPalette) -> None:
         layout = self._grid_cache.get(viewport)
         grid_color = QColor(palette.mid().color())
         grid_color.setAlpha(90)
@@ -250,9 +250,7 @@ class Renderer:
     ) -> None:
         screen_points = [viewport.world_to_screen(point) for point in polygon.vertices]
         if not all(
-            math.isfinite(value) and abs(value) <= 1e9
-            for point in screen_points
-            for value in point
+            math.isfinite(value) and abs(value) <= 1e9 for point in screen_points for value in point
         ):
             for edge in polygon.edges:
                 Renderer._draw_clipped_line(

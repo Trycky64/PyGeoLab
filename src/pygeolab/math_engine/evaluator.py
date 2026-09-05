@@ -8,11 +8,21 @@ from collections.abc import Callable, Mapping
 from pygeolab.math_engine.ast_nodes import Binary, Call, Expr, Number, Unary, Variable
 
 _ALLOWED_FUNCTIONS: Mapping[str, Callable[..., float]] = {
-    "sin": math.sin, "cos": math.cos, "tan": math.tan,
-    "asin": math.asin, "acos": math.acos, "atan": math.atan,
-    "sqrt": math.sqrt, "abs": abs, "exp": math.exp,
-    "ln": math.log, "log10": math.log10, "floor": math.floor,
-    "ceil": math.ceil, "min": min, "max": max,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "asin": math.asin,
+    "acos": math.acos,
+    "atan": math.atan,
+    "sqrt": math.sqrt,
+    "abs": abs,
+    "exp": math.exp,
+    "ln": math.log,
+    "log10": math.log10,
+    "floor": math.floor,
+    "ceil": math.ceil,
+    "min": min,
+    "max": max,
 }
 CONSTANTS: Mapping[str, float] = {"pi": math.pi, "e": math.e}
 
@@ -45,7 +55,11 @@ def _evaluate(expression: Expr, variables: Mapping[str, float]) -> float:
             value = CONSTANTS[expression.name]
         else:
             raise EvaluationError(f"Variable inconnue : {expression.name}")
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
             raise EvaluationError(f"Valeur invalide pour {expression.name}")
         return float(value)
     if isinstance(expression, Unary):
@@ -54,11 +68,16 @@ def _evaluate(expression: Expr, variables: Mapping[str, float]) -> float:
     if isinstance(expression, Binary):
         left = _evaluate(expression.left, variables)
         right = _evaluate(expression.right, variables)
-        if expression.operator == "+": return left + right
-        if expression.operator == "-": return left - right
-        if expression.operator == "*": return left * right
-        if expression.operator == "/": return left / right
-        if expression.operator == "^": return left**right
+        if expression.operator == "+":
+            return left + right
+        if expression.operator == "-":
+            return left - right
+        if expression.operator == "*":
+            return left * right
+        if expression.operator == "/":
+            return left / right
+        if expression.operator == "^":
+            return float(left**right)
         raise EvaluationError(f"Opérateur inconnu : {expression.operator}")
     if isinstance(expression, Call):
         function = _ALLOWED_FUNCTIONS.get(expression.name)

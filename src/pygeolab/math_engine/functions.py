@@ -28,7 +28,9 @@ class FunctionObject:
         """Parse source and derive external variable dependencies."""
         if not name.strip() or not variable.isidentifier():
             raise ValueError("Nom de fonction ou variable invalide")
-        if domain is not None and (not all(math.isfinite(v) for v in domain) or domain[0] >= domain[1]):
+        if domain is not None and (
+            not all(math.isfinite(value) for value in domain) or domain[0] >= domain[1]
+        ):
             raise ValueError("Domaine invalide")
         expression = parse(source)
         return cls(name, variable, expression, dependencies(expression) - {variable}, domain)

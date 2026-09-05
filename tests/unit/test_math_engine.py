@@ -4,7 +4,15 @@ import math
 
 import pytest
 
-from pygeolab.math_engine import EvaluationError, FunctionObject, ParseError, evaluate, parse, sample_function, tokenize
+from pygeolab.math_engine import (
+    EvaluationError,
+    FunctionObject,
+    ParseError,
+    evaluate,
+    parse,
+    sample_function,
+    tokenize,
+)
 
 
 def test_tokenizer_and_precedence() -> None:
@@ -52,5 +60,9 @@ def test_sampling_splits_asymptote_and_domain() -> None:
     assert len(sampled.segments) >= 2
     assert all(len(segment) >= 2 for segment in sampled.segments)
     bounded = FunctionObject.from_source("g", "x", "x^2", (-1, 1))
-    points = [point for segment in sample_function(bounded, -5, 5, samples=21).segments for point in segment]
+    points = [
+        point
+        for segment in sample_function(bounded, -5, 5, samples=21).segments
+        for point in segment
+    ]
     assert points and min(p.x for p in points) >= -1 and max(p.x for p in points) <= 1

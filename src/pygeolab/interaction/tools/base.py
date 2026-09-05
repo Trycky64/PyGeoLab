@@ -1,38 +1,35 @@
-"""Pure interaction tool protocol and pointer context values."""
+"""Shared pointer context, previews, and base interaction tool behavior."""
 
-from __future__ import annotations
-
-from abc import ABC
 from dataclasses import dataclass
 
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D
 
-GeometryPreview = Point2D | Vector2D | Line2D | Segment2D | Ray2D | Circle2D | Polygon2D
+GeometryPreview = Point2D | Line2D | Segment2D | Ray2D | Circle2D | Polygon2D
 
 
 @dataclass(frozen=True, slots=True)
 class PointerContext:
-    """Pointer coordinates expressed in both screen and mathematical world space."""
+    """Pointer coordinates and modifier state for a single interaction event."""
 
+    world: Point2D
     screen_x: float
     screen_y: float
-    world: Point2D
     shift: bool = False
 
 
-class Tool(ABC):
-    """Base class for one active interaction mode."""
+class Tool:
+    """Base class for one active interaction mode with optional event handlers."""
 
     name = "tool"
 
     def press(self, context: PointerContext) -> None:
-        """Handle a primary-button press."""
+        """Handle a primary-button press when the tool needs one."""
 
     def move(self, context: PointerContext) -> None:
-        """Handle pointer movement for previews or drags."""
+        """Handle pointer movement for previews or drags when needed."""
 
     def release(self, context: PointerContext) -> None:
-        """Handle a primary-button release."""
+        """Handle a primary-button release when the tool needs one."""
 
     def cancel(self) -> None:
         """Cancel transient state without mutating committed document state."""

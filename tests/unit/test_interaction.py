@@ -1,6 +1,6 @@
 """Test hit-testing, tool state machines, previews, selection and coalesced dragging."""
 
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Segment2D
+from pygeolab.geometry import Line2D, Point2D, Polygon2D
 from pygeolab.interaction import InteractionController
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
