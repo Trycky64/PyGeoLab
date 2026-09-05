@@ -28,16 +28,16 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## VIEWPORT
 
-- [ ] VIEW-001 — Créer Viewport.
-- [ ] VIEW-002 — Monde vers écran.
-- [ ] VIEW-003 — Écran vers monde.
-- [ ] VIEW-004 — Pan.
-- [ ] VIEW-005 — Zoom.
-- [ ] VIEW-006 — Zoom sous curseur.
-- [ ] VIEW-007 — Reset view.
-- [ ] VIEW-008 — Grille adaptive.
-- [ ] VIEW-009 — Axes.
-- [ ] VIEW-010 — Graduations.
+- [x] VIEW-001 — Créer Viewport.
+- [x] VIEW-002 — Monde vers écran.
+- [x] VIEW-003 — Écran vers monde.
+- [x] VIEW-004 — Pan.
+- [x] VIEW-005 — Zoom.
+- [x] VIEW-006 — Zoom sous curseur.
+- [x] VIEW-007 — Reset view.
+- [x] VIEW-008 — Grille adaptive.
+- [x] VIEW-009 — Axes.
+- [x] VIEW-010 — Graduations.
 
 ## GEOMETRY
 
@@ -80,31 +80,31 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## DEPENDENCY
 
-- [ ] DEP-001 — Graph structure.
-- [ ] DEP-002 — Add dependency.
-- [ ] DEP-003 — Remove dependency.
-- [ ] DEP-004 — Cycle detection.
-- [ ] DEP-005 — Topological ordering.
-- [ ] DEP-006 — Dirty propagation.
-- [ ] DEP-007 — Incremental recompute.
-- [ ] DEP-008 — Invalidity propagation.
-- [ ] DEP-009 — Cascade deletion.
-- [ ] DEP-010 — Dependency tests.
+- [x] DEP-001 — Graph structure.
+- [x] DEP-002 — Add dependency.
+- [x] DEP-003 — Remove dependency.
+- [x] DEP-004 — Cycle detection.
+- [x] DEP-005 — Topological ordering.
+- [x] DEP-006 — Dirty propagation.
+- [x] DEP-007 — Incremental recompute.
+- [x] DEP-008 — Invalidity propagation.
+- [x] DEP-009 — Cascade deletion.
+- [x] DEP-010 — Dependency tests.
 
 ## RENDERING
 
-- [ ] RENDER-001 — Renderer abstraction.
-- [ ] RENDER-002 — Draw points.
-- [ ] RENDER-003 — Draw segments.
-- [ ] RENDER-004 — Draw lines.
-- [ ] RENDER-005 — Draw circles.
-- [ ] RENDER-006 — Draw polygons.
-- [ ] RENDER-007 — Draw vectors.
-- [ ] RENDER-008 — Draw labels.
-- [ ] RENDER-009 — Draw selections.
-- [ ] RENDER-010 — Clip infinite lines.
-- [ ] RENDER-011 — Style system.
-- [ ] RENDER-012 — Rendering cache.
+- [x] RENDER-001 — Renderer abstraction.
+- [x] RENDER-002 — Draw points.
+- [x] RENDER-003 — Draw segments.
+- [x] RENDER-004 — Draw lines.
+- [x] RENDER-005 — Draw circles.
+- [x] RENDER-006 — Draw polygons.
+- [x] RENDER-007 — Draw vectors.
+- [x] RENDER-008 — Draw labels.
+- [x] RENDER-009 — Draw selections.
+- [x] RENDER-010 — Clip infinite lines.
+- [x] RENDER-011 — Style system.
+- [x] RENDER-012 — Rendering cache.
 
 ## INTERACTION
 

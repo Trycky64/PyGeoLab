@@ -2,16 +2,18 @@
 
 The registry is read-only to callers. Geometry failures remain recoverable object
 states, while structural errors reject the entire edit before any notification.
+Dependency traversal and dirty recomputation are delegated to the dependency layer.
 """
 
 import logging
-from collections import deque
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import replace
-from math import isfinite
 from types import MappingProxyType
 from typing import TypedDict, Unpack
 
+from pygeolab.dependency.graph import DependencyGraph
+from pygeolab.dependency.resolver import DirtyFlags, recompute_objects
+from pygeolab.dependency.validation import validate_object_graph
 from pygeolab.geometry import Point2D
 from pygeolab.model.constructions import evaluate
 from pygeolab.model.objects import GeoObject, JsonValue
@@ -31,7 +33,7 @@ class ObjectChanges(TypedDict, total=False):
 
 
 class Document:
-    """Manage stable identities, unique names, construction state and observers."""
+    """Manage stable identities, unique names, dependency state and observers."""
 
     def __init__(self, name: str = "Sans titre") -> None:
         self.name = name
@@ -39,7 +41,9 @@ class Document:
         self.scene: dict[str, JsonValue] = {}
         self.revision = 0
         self.last_recomputed: tuple[str, ...] = ()
+        self.last_dirty: Mapping[str, DirtyFlags] = MappingProxyType({})
         self._objects: dict[str, GeoObject] = {}
+        self._graph = DependencyGraph()
         self._observers: list[Callable[[], None]] = []
 
     @property
@@ -57,25 +61,41 @@ class Document:
         return self.get(obj.id)
 
     def update(self, object_id: str, **changes: Unpack[ObjectChanges]) -> GeoObject:
-        """Replace editable definition fields and recompute affected descendants.
-
-        Identity and evaluated caches are controlled by the document. Presentation
-        edits notify observers but do not recalculate geometric dependents.
-        """
+        """Replace editable fields and recompute only geometrically affected descendants."""
         current = self.get(object_id)
         reserved = {"id", "geometry", "valid", "error_state", "revision"}
         if reserved.intersection(changes):
             raise ValueError("L'identité et l'état calculé ne sont pas modifiables")
         if not changes:
             return current
+
         updated = replace(current, **changes)
         draft = dict(self._objects)
         draft[object_id] = updated
-        geometric = bool({"kind", "params", "dependencies"}.intersection(changes))
-        dirty = self._descendants(draft, {object_id}) if geometric else set()
-        if not geometric:
+        graph = validate_object_graph(draft)
+
+        geometry_changed = bool({"kind", "params", "dependencies"}.intersection(changes))
+        flags = DirtyFlags(
+            geometry_dirty=geometry_changed,
+            style_dirty="style" in changes,
+            visibility_dirty="visible" in changes,
+        )
+        dirty_flags: dict[str, DirtyFlags] = {object_id: flags}
+        geometry_dirty = graph.descendants({object_id}) if geometry_changed else set()
+        if geometry_changed:
+            for descendant in geometry_dirty:
+                if descendant == object_id:
+                    dirty_flags[descendant] = DirtyFlags(
+                        geometry_dirty=True,
+                        style_dirty=flags.style_dirty,
+                        visibility_dirty=flags.visibility_dirty,
+                    )
+                else:
+                    dirty_flags[descendant] = DirtyFlags(geometry_dirty=True)
+        else:
             draft[object_id] = replace(updated, revision=current.revision + 1)
-        self._apply(draft, dirty)
+
+        self._commit(draft, graph, geometry_dirty, dirty_flags)
         return self.get(object_id)
 
     def move_point(self, object_id: str, point: Point2D) -> GeoObject:
@@ -86,14 +106,19 @@ class Document:
         return self.update(object_id, params={**obj.params, "x": point.x, "y": point.y})
 
     def remove(self, object_id: str) -> tuple[GeoObject, ...]:
-        """Remove an object and its descendants, returning definitions for undo."""
+        """Remove an object and all descendants, returning definitions suitable for undo."""
         self.get(object_id)
-        removed_ids = self._descendants(self._objects, {object_id})
+        current_graph = self._graph
+        removed_ids = current_graph.descendants({object_id})
         removed = tuple(
-            self._objects[key] for key in self._validate(self._objects) if key in removed_ids
+            self._objects[key]
+            for key in current_graph.topological_order()
+            if key in removed_ids
         )
         draft = {key: obj for key, obj in self._objects.items() if key not in removed_ids}
-        self._apply(draft, set())
+        graph = validate_object_graph(draft)
+        dirty = {key: DirtyFlags(geometry_dirty=True) for key in removed_ids}
+        self._commit(draft, graph, set(), dirty)
         return removed
 
     def restore(self, objects: Iterable[GeoObject]) -> None:
@@ -106,7 +131,11 @@ class Document:
             if obj.id in draft:
                 raise ValueError(f"Identifiant déjà présent : {obj.id}")
             draft[obj.id] = obj
-        self._apply(draft, {obj.id for obj in additions})
+        graph = validate_object_graph(draft)
+        roots = {obj.id for obj in additions}
+        geometry_dirty = graph.descendants(roots)
+        dirty = {key: DirtyFlags(geometry_dirty=True) for key in geometry_dirty}
+        self._commit(draft, graph, geometry_dirty, dirty)
 
     def unique_name(self, prefix: str) -> str:
         """Use the requested name when available, otherwise append a numeric suffix."""
@@ -133,82 +162,19 @@ class Document:
 
         return unsubscribe
 
-    @staticmethod
-    def _descendants(objects: Mapping[str, GeoObject], roots: set[str]) -> set[str]:
-        children: dict[str, set[str]] = {key: set() for key in objects}
-        for obj in objects.values():
-            for parent in obj.dependencies:
-                children.setdefault(parent, set()).add(obj.id)
-        result = set(roots)
-        pending = list(roots)
-        while pending:
-            for child in children.get(pending.pop(), set()):
-                if child not in result:
-                    result.add(child)
-                    pending.append(child)
-        return result
-
-    @staticmethod
-    def _validate(objects: Mapping[str, GeoObject]) -> tuple[str, ...]:
-        names: set[str] = set()
-        children: dict[str, list[str]] = {key: [] for key in objects}
-        indegree: dict[str, int] = {}
-        for key, obj in objects.items():
-            if key != obj.id:
-                raise ValueError("L'identité d'un objet ne peut pas changer")
-            if not obj.name.strip() or obj.name in names:
-                raise ValueError(f"Nom vide ou déjà utilisé : {obj.name}")
-            names.add(obj.name)
-            indegree[key] = len(obj.dependencies)
-            for parent in obj.dependencies:
-                if parent not in objects:
-                    raise ValueError(f"Dépendance introuvable : {parent}")
-                children[parent].append(key)
-        pending = deque(key for key, degree in indegree.items() if degree == 0)
-        ordered: list[str] = []
-        while pending:
-            key = pending.popleft()
-            ordered.append(key)
-            for child in children[key]:
-                indegree[child] -= 1
-                if indegree[child] == 0:
-                    pending.append(child)
-        if len(ordered) != len(objects):
-            raise ValueError("Une dépendance cyclique est interdite")
-        return tuple(ordered)
-
-    def _apply(self, draft: dict[str, GeoObject], dirty: set[str]) -> None:
-        ordered = self._validate(draft)
-        recomputed: list[str] = []
-        for key in ordered:
-            if key not in dirty:
-                continue
-            obj = draft[key]
-            parents = tuple(draft[parent] for parent in obj.dependencies)
-            geometry = None
-            error: str | None = None
-            if any(not parent.valid for parent in parents):
-                error = "Une dépendance est invalide"
-            else:
-                try:
-                    geometry = evaluate(obj, parents)
-                    if isinstance(geometry, float) and not isfinite(geometry):
-                        geometry = None
-                        raise ValueError("Le résultat numérique n'est pas fini")
-                    if geometry is None:
-                        error = "Cette construction est actuellement impossible"
-                except (ValueError, ArithmeticError, IndexError) as exception:
-                    error = str(exception) or "Définition de construction invalide"
-            draft[key] = replace(
-                obj,
-                geometry=geometry,
-                valid=error is None,
-                error_state=error,
-                revision=obj.revision + 1,
-            )
-            recomputed.append(key)
-        self._objects = draft
-        self.last_recomputed = tuple(recomputed)
+    def _commit(
+        self,
+        draft: dict[str, GeoObject],
+        graph: DependencyGraph,
+        geometry_dirty: set[str],
+        dirty_flags: Mapping[str, DirtyFlags],
+    ) -> None:
+        """Recompute dirty geometry and atomically publish one validated document state."""
+        result = recompute_objects(draft, graph, geometry_dirty, evaluate)
+        self._objects = result.objects
+        self._graph = graph
+        self.last_recomputed = result.recomputed
+        self.last_dirty = MappingProxyType(dict(dirty_flags))
         self.revision += 1
         for callback in tuple(self._observers):
             try:
