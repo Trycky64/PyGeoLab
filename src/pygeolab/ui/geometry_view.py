@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import (
     QKeyEvent,
     QMouseEvent,
@@ -25,6 +25,9 @@ from pygeolab.rendering.viewport import Viewport
 class GeometryView(QWidget):
     """Display and edit one document with camera navigation and construction tools."""
 
+    selectionChanged = Signal(object)
+    cursorWorldChanged = Signal(float, float)
+
     def __init__(self, document: Document | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("geometryView")
@@ -34,6 +37,7 @@ class GeometryView(QWidget):
         self._viewport = Viewport(width=max(1, self.width()), height=max(1, self.height()))
         self._renderer = Renderer()
         self._pan_anchor: QPointF | None = None
+        self._last_selection: frozenset[str] = frozenset()
         self._unsubscribe: Callable[[], None] = self._document.subscribe(self._on_document_changed)
         self._interaction = InteractionController(
             self._document, self._viewport, on_changed=self._on_interaction_changed
@@ -77,12 +81,13 @@ class GeometryView(QWidget):
         self._renderer.invalidate_cache()
         self.update()
 
-    def set_selected_ids(self, object_ids: set[str]) -> None:
+    def set_selected_ids(self, object_ids: set[str] | frozenset[str]) -> None:
         """Replace selection for external panels while preserving controller ownership."""
         self._interaction.selection.clear()
         for object_id in object_ids:
             if object_id in self._document.objects:
                 self._interaction.selection.toggle(object_id)
+        self._emit_selection_if_changed()
         self.update()
 
     def activate_tool(self, name: str) -> None:
@@ -169,6 +174,8 @@ class GeometryView(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Pan with middle drag or forward movement for previews and point dragging."""
+        world = self._viewport.screen_to_world(event.position().x(), event.position().y())
+        self.cursorWorldChanged.emit(world.x, world.y)
         if self._pan_anchor is not None and event.buttons() & Qt.MouseButton.MiddleButton:
             position = event.position()
             delta = position - self._pan_anchor
@@ -218,4 +225,11 @@ class GeometryView(QWidget):
 
     def _on_interaction_changed(self) -> None:
         """Repaint transient selection, preview and cursor-driven state."""
+        self._emit_selection_if_changed()
         self.update()
+
+    def _emit_selection_if_changed(self) -> None:
+        current = self._interaction.selected_ids
+        if current != self._last_selection:
+            self._last_selection = current
+            self.selectionChanged.emit(current)

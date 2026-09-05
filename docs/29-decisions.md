@@ -159,3 +159,18 @@ opération logique et annulent les membres déjà exécutés en cas d'échec. Pe
 drag, le point libre est déplacé directement pour conserver un retour dynamique et
 recalculer ses descendants. Au relâchement, une seule `MovePointCommand` déjà appliquée
 est enregistrée dans l'historique, ce qui évite une entrée Undo par mouvement de souris.
+
+## ADR-015 — Panneaux pilotés par les commandes et thème au niveau application
+
+Les panneaux Algèbre et Propriétés observent le `Document`, mais toute édition utilisateur
+passe par le même `CommandHistory` que le canvas. La sélection est synchronisée par signaux
+Qt sans devenir un état métier persistant. Les palettes clair/sombre sont appliquées au
+niveau de `QApplication` ; le renderer continue uniquement à consommer la palette reçue.
+
+## ADR-016 — Parser mathématique dédié et AST fermé
+
+Les expressions utilisateur sont tokenisées puis analysées par un parser descendant récursif
+dédié. L'AST interne n'expose que nombres, variables, opérateurs documentés et appels de
+fonctions autorisées. Aucun `eval`, `exec`, attribut Python, indexation ou construction de code
+n'est accepté. L'évaluateur reçoit explicitement les variables et le sampling sépare ses
+polylines lorsqu'une évaluation échoue ou lorsqu'un saut numérique indique une discontinuité.

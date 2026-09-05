@@ -144,21 +144,21 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## MATH
 
-- [ ] MATH-001 — Tokenizer.
-- [ ] MATH-002 — Parser.
-- [ ] MATH-003 — AST nodes.
-- [ ] MATH-004 — Number node.
-- [ ] MATH-005 — Variable node.
-- [ ] MATH-006 — Binary operators.
-- [ ] MATH-007 — Unary operators.
-- [ ] MATH-008 — Function calls.
-- [ ] MATH-009 — Constants.
-- [ ] MATH-010 — Evaluator.
-- [ ] MATH-011 — Error reporting.
-- [ ] MATH-012 — Dependency extraction.
-- [ ] MATH-013 — Function object.
-- [ ] MATH-014 — Sampling.
-- [ ] MATH-015 — Discontinuity detection.
+- [x] MATH-001 — Tokenizer.
+- [x] MATH-002 — Parser.
+- [x] MATH-003 — AST nodes.
+- [x] MATH-004 — Number node.
+- [x] MATH-005 — Variable node.
+- [x] MATH-006 — Binary operators.
+- [x] MATH-007 — Unary operators.
+- [x] MATH-008 — Function calls.
+- [x] MATH-009 — Constants.
+- [x] MATH-010 — Evaluator.
+- [x] MATH-011 — Error reporting.
+- [x] MATH-012 — Dependency extraction.
+- [x] MATH-013 — Function object.
+- [x] MATH-014 — Sampling.
+- [x] MATH-015 — Discontinuity detection.
 - [ ] MATH-016 — Numerical derivative.
 - [ ] MATH-017 — Numerical integration.
 - [ ] MATH-018 — Root finder.
@@ -176,20 +176,20 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## UI
 
-- [ ] UI-001 — Algebra panel.
-- [ ] UI-002 — Properties panel.
-- [ ] UI-003 — Object tree/list.
-- [ ] UI-004 — Context menu.
-- [ ] UI-005 — Rename.
-- [ ] UI-006 — Visibility toggle.
-- [ ] UI-007 — Style editor.
+- [x] UI-001 — Algebra panel.
+- [x] UI-002 — Properties panel.
+- [x] UI-003 — Object tree/list.
+- [x] UI-004 — Context menu.
+- [x] UI-005 — Rename.
+- [x] UI-006 — Visibility toggle.
+- [x] UI-007 — Style editor.
 - [ ] UI-008 — Coordinates editor.
 - [ ] UI-009 — Function input.
 - [ ] UI-010 — Slider dialog.
 - [ ] UI-011 — Settings dialog.
 - [ ] UI-012 — About dialog.
-- [ ] UI-013 — Theme support.
-- [ ] UI-014 — Keyboard navigation.
+- [x] UI-013 — Theme support.
+- [x] UI-014 — Keyboard navigation.
 
 ## PERSISTENCE
 
