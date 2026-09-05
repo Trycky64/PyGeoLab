@@ -59,3 +59,24 @@ class ChangeVisibilityCommand(Command):
     def undo(self) -> None:
         """Restore the previous visibility state."""
         self.document.update(self.object_id, visible=self.before)
+
+
+class ChangeNumberValueCommand(Command):
+    """Change a numeric variable value reversibly while preserving slider metadata."""
+
+    def __init__(self, document: Document, object_id: str, value: float) -> None:
+        from pygeolab.model.variables import slider_params
+
+        self.document = document
+        self.object_id = object_id
+        current = document.get(object_id)
+        self.before = dict(current.params)
+        self.after = slider_params(current, value)
+
+    def execute(self) -> None:
+        """Apply the snapped numeric value and trigger dependency recomputation."""
+        self.document.update(self.object_id, params=self.after)
+
+    def undo(self) -> None:
+        """Restore the previous numeric parameters."""
+        self.document.update(self.object_id, params=self.before)

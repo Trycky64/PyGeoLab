@@ -159,20 +159,20 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [x] MATH-013 — Function object.
 - [x] MATH-014 — Sampling.
 - [x] MATH-015 — Discontinuity detection.
-- [ ] MATH-016 — Numerical derivative.
-- [ ] MATH-017 — Numerical integration.
-- [ ] MATH-018 — Root finder.
-- [ ] MATH-019 — Extrema.
-- [ ] MATH-020 — Function intersections.
+- [x] MATH-016 — Numerical derivative.
+- [x] MATH-017 — Numerical integration.
+- [x] MATH-018 — Root finder.
+- [x] MATH-019 — Extrema.
+- [x] MATH-020 — Function intersections.
 
 ## VARIABLES
 
-- [ ] VAR-001 — Numeric variable.
-- [ ] VAR-002 — Slider model.
-- [ ] VAR-003 — Slider UI.
-- [ ] VAR-004 — Min/max.
-- [ ] VAR-005 — Step.
-- [ ] VAR-006 — Dependency updates.
+- [x] VAR-001 — Numeric variable.
+- [x] VAR-002 — Slider model.
+- [x] VAR-003 — Slider UI.
+- [x] VAR-004 — Min/max.
+- [x] VAR-005 — Step.
+- [x] VAR-006 — Dependency updates.
 
 ## UI
 
@@ -185,7 +185,7 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [x] UI-007 — Style editor.
 - [ ] UI-008 — Coordinates editor.
 - [ ] UI-009 — Function input.
-- [ ] UI-010 — Slider dialog.
+- [x] UI-010 — Slider dialog.
 - [ ] UI-011 — Settings dialog.
 - [ ] UI-012 — About dialog.
 - [x] UI-013 — Theme support.
@@ -193,19 +193,19 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## PERSISTENCE
 
-- [ ] SAVE-001 — Define `.pgl` format.
-- [ ] SAVE-002 — Serializer.
-- [ ] SAVE-003 — Deserializer.
-- [ ] SAVE-004 — Schema validation.
-- [ ] SAVE-005 — Object factories.
-- [ ] SAVE-006 — Dependency restoration.
-- [ ] SAVE-007 — Save.
-- [ ] SAVE-008 — Save As.
-- [ ] SAVE-009 — Open.
-- [ ] SAVE-010 — New.
-- [ ] SAVE-011 — Dirty document flag.
-- [ ] SAVE-012 — Unsaved changes dialog.
-- [ ] SAVE-013 — Version migration.
+- [x] SAVE-001 — Define `.pgl` format.
+- [x] SAVE-002 — Serializer.
+- [x] SAVE-003 — Deserializer.
+- [x] SAVE-004 — Schema validation.
+- [x] SAVE-005 — Object factories.
+- [x] SAVE-006 — Dependency restoration.
+- [x] SAVE-007 — Save.
+- [x] SAVE-008 — Save As.
+- [x] SAVE-009 — Open.
+- [x] SAVE-010 — New.
+- [x] SAVE-011 — Dirty document flag.
+- [x] SAVE-012 — Unsaved changes dialog.
+- [x] SAVE-013 — Version migration.
 - [ ] SAVE-014 — Recent files.
 - [ ] SAVE-015 — Autosave future.
 

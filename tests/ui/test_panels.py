@@ -1,5 +1,7 @@
 """Exercise algebra/properties synchronization through real Qt widgets."""
 
+from PySide6.QtWidgets import QLabel
+
 from pygeolab.commands import CommandHistory
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
@@ -22,3 +24,15 @@ def test_panels_follow_document_and_property_history(qtbot) -> None:
     assert history.can_undo
     history.undo()
     assert document.get(point.id).name == "A"
+
+
+def test_slider_panel_lists_numeric_variables(qtbot) -> None:
+    """Numeric document objects appear as live controls in the slider dock."""
+    from pygeolab.model.variables import numeric_variable
+    from pygeolab.ui.main_window import MainWindow
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.document.add(numeric_variable("a", 2, 0, 10, 1))
+    window.slider_panel.refresh()
+    assert any("a = 2" in label.text() for label in window.slider_panel.findChildren(QLabel))

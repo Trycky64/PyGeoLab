@@ -174,3 +174,25 @@ dédié. L'AST interne n'expose que nombres, variables, opérateurs documentés 
 fonctions autorisées. Aucun `eval`, `exec`, attribut Python, indexation ou construction de code
 n'est accepté. L'évaluateur reçoit explicitement les variables et le sampling sépare ses
 polylines lorsqu'une évaluation échoue ou lorsqu'un saut numérique indique une discontinuité.
+
+## ADR-013 — Curseurs comme objets numériques du document
+
+Les curseurs utilisent le type sérialisable `number` du modèle métier avec les paramètres
+`value`, `minimum`, `maximum` et `step`. Une variation passe par `Document.update`, ce qui
+réutilise le graphe de dépendances, les dirty flags et le recalcul incrémental existants au lieu
+d'introduire un second système de variables réactives.
+
+## ADR-014 — Analyse numérique déterministe sans dépendance scientifique obligatoire
+
+La dérivée utilise une différence centrée, l'intégration la méthode de Simpson composite,
+les racines un balayage suivi de dichotomie, les extrema un voisinage échantillonné avec
+raffinement parabolique et les intersections la recherche de racines de `f-g`. Ces algorithmes
+restent indépendants de Qt et de NumPy/SciPy afin de conserver un socle léger et testable.
+
+## ADR-015 — Persistance `.pgl` validée avant adoption par l'UI
+
+Le format courant est le JSON versionné v1 documenté dans `docs/12-persistence.md`. Les
+fichiers sont migrés puis validés comme données non fiables avant reconstruction. Les caches
+dérivés ne sont pas sérialisés. `ProjectSession` compare le contenu sérialisable courant à la
+dernière sauvegarde afin que l'indicateur de modifications non enregistrées reflète le contenu
+et pas seulement un compteur de révision.

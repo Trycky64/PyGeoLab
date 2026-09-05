@@ -6,12 +6,14 @@ from pygeolab.commands.create import CreateObjectCommand, CreateObjectsCommand
 from pygeolab.commands.delete import DeleteObjectCommand
 from pygeolab.commands.move import MovePointCommand
 from pygeolab.commands.properties import (
+    ChangeNumberValueCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     RenameObjectCommand,
 )
 
 __all__ = [
+    "ChangeNumberValueCommand",
     "ChangeStyleCommand",
     "ChangeVisibilityCommand",
     "Command",
