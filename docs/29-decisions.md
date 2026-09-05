@@ -109,3 +109,17 @@ ne dépendent pas du facteur utilisé dans leur équation. Les fabriques renvoie
 un, deux points et les objets confondus. NaN, infini et rayons négatifs sont refusés.
 Les calculs scalaires ne requièrent pas NumPy ; son ajout reste possible si des
 mesures de performance justifient une vectorisation.
+
+## ADR-010 — Définitions d'objets immuables
+
+`GeoObject` est une valeur figée portant UUID, type, paramètres, parents et style.
+Les paramètres sont copiés et figés récursivement ; le registre expose une vue
+en lecture seule. Le document remplace l'objet lors d'une mutation et notifie
+ses abonnés sans dépendre de Qt. Les recettes sont évaluées dans
+`model/constructions.py`. Les caches de géométrie et d'invalidité sont reconstruits
+à partir des recettes, et ne constituent pas l'identité de l'objet.
+
+La revue du modèle a également révélé un cas numérique : une intersection très
+éloignée peut avoir un résidu supérieur à la tolérance absolue malgré une solution
+analytique correcte. Le filtrage après résolution vérifie les bornes des segments
+et demi-droites, sans rejeter une droite infinie à cause de ce résidu.

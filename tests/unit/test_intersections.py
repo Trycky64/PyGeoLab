@@ -58,6 +58,15 @@ def test_line_line_classifies_and_locates_intersections(
     _assert_result(line_line(second, first), kind, expected)
 
 
+def test_dispatch_preserves_line_solution_despite_floating_point_residual() -> None:
+    """Rechecking a distant line solution must not discard it due to cancellation."""
+    first = Line2D(1, 1, -1_000_000)
+    second = Line2D(1, 1.1, 1_000_000)
+
+    _assert_result(intersections(first, second), IntersectionKind.ONE, ((21_000_000, -20_000_000),))
+    _assert_result(intersections(second, first), IntersectionKind.ONE, ((21_000_000, -20_000_000),))
+
+
 @pytest.mark.parametrize(
     ("line", "circle", "kind", "expected"),
     [

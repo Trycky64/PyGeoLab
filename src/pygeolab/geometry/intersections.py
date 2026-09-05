@@ -140,6 +140,23 @@ def _interval(value: LinearObject, anchor: Point2D, direction: Vector2D) -> tupl
     return (start, inf) if end > start else (-inf, start)
 
 
+def _within_bounds(value: LinearObject, point: Point2D) -> bool:
+    """Filter a solved supporting-line point without rechecking its residual.
+
+    Re-evaluating an implicit equation at a distant intersection can introduce
+    cancellation larger than EPSILON even for a valid analytical solution.
+    """
+    if isinstance(value, Line2D):
+        return True
+    end = value.end if isinstance(value, Segment2D) else value.through
+    direction = Vector2D.between(value.start, end)
+    length = direction.norm
+    along = Vector2D.between(value.start, point).dot(
+        Vector2D(direction.x / length, direction.y / length)
+    )
+    return along >= -EPSILON and (isinstance(value, Ray2D) or along <= length + EPSILON)
+
+
 def _collinear_overlap(
     first: LinearObject, second: LinearObject, line: Line2D
 ) -> IntersectionResult:
@@ -181,8 +198,8 @@ def intersections(first: Intersectable, second: Intersectable) -> IntersectionRe
         result = line_line(first_line, second_line)
         if result.kind is IntersectionKind.COINCIDENT:
             return _collinear_overlap(first, second, first_line)
-    points = tuple(point for point in result.points if _contains(first, point))
+    points = tuple(point for point in result.points if _within_bounds(first, point))
     if not isinstance(second, Circle2D):
-        points = tuple(point for point in points if _contains(second, point))
+        points = tuple(point for point in points if _within_bounds(second, point))
     kinds = (IntersectionKind.NONE, IntersectionKind.ONE, IntersectionKind.TWO)
     return IntersectionResult(kinds[len(points)], points)

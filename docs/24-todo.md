@@ -67,16 +67,16 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## MODEL
 
-- [ ] MODEL-001 — Base GeoObject.
-- [ ] MODEL-002 — UUID stable.
-- [ ] MODEL-003 — Object naming.
-- [ ] MODEL-004 — Object styles.
-- [ ] MODEL-005 — Document.
-- [ ] MODEL-006 — Object registry.
-- [ ] MODEL-007 — Valid/invalid state.
-- [ ] MODEL-008 — Visibility.
-- [ ] MODEL-009 — Locking.
-- [ ] MODEL-010 — Metadata.
+- [x] MODEL-001 — Base GeoObject.
+- [x] MODEL-002 — UUID stable.
+- [x] MODEL-003 — Object naming.
+- [x] MODEL-004 — Object styles.
+- [x] MODEL-005 — Document.
+- [x] MODEL-006 — Object registry.
+- [x] MODEL-007 — Valid/invalid state.
+- [x] MODEL-008 — Visibility.
+- [x] MODEL-009 — Locking.
+- [x] MODEL-010 — Metadata.
 
 ## DEPENDENCY
 
