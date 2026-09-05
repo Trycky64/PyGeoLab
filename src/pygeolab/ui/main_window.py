@@ -4,6 +4,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QDockWidget, QLabel, QMainWindow, QToolBar, QTreeWidget
 
+from pygeolab.model.document import Document
+from pygeolab.ui.geometry_view import GeometryView
+
 
 class MainWindow(QMainWindow):
     """Own the window layout and route user actions to application services."""
@@ -12,10 +15,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("PyGeoLab")
         self.resize(1280, 800)
-        canvas = QLabel(self.tr("PyGeoLab · Géométrie dynamique"))
-        canvas.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        canvas.setObjectName("geometryView")
-        self.setCentralWidget(canvas)
+        self.document = Document()
+        self.geometry_view = GeometryView(self.document, self)
+        self.setCentralWidget(self.geometry_view)
         algebra = QTreeWidget()
         algebra.setHeaderLabels([self.tr("Objet"), self.tr("Valeur")])
         self.algebra_dock = QDockWidget(self.tr("Algèbre"), self)
