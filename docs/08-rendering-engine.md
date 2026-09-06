@@ -103,3 +103,10 @@ Le rendu peut mettre en cache :
 - paths de fonctions.
 
 Le cache doit être invalidé proprement lors du zoom ou d'une modification.
+
+## Courbes de fonctions en 1.0
+
+Le renderer échantillonne les `FunctionObject` sur l'intervalle X visible, sépare les
+discontinuités et clippe chaque segment au viewport. Les chemins échantillonnés sont mis en
+cache pour une même révision du document et un même viewport ; le cache est borné afin de ne
+pas croître indéfiniment. Le même chemin de rendu est utilisé pour l'écran, le PNG et le SVG.

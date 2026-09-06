@@ -88,3 +88,16 @@ def test_definition_parameters_are_copied_and_recursively_frozen() -> None:
     assert obj.params["extra"]["values"] == (1, 2)
     with pytest.raises(TypeError):
         obj.params["x"] = 4
+
+
+def test_function_recipe_tracks_numeric_dependencies() -> None:
+    parameter = GeoObject("number", "a", params={"value": 2.0}, geometry=2.0)
+    function = GeoObject(
+        "function",
+        "f",
+        dependencies=(parameter.id,),
+        params={"variable": "x", "source": "sin(x) + a"},
+    )
+    geometry = evaluate(function, (parameter,))
+    assert geometry is not None
+    assert geometry.evaluate(0.0, {"a": 2.0}) == pytest.approx(2.0)

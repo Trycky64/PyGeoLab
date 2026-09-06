@@ -119,11 +119,19 @@ Critères possibles :
 
 ## Calcul numérique
 
-Fonctions futures :
+La 1.0 implémente dans `math_engine/numerical.py` :
 
-- dérivée ;
-- intégration ;
-- racines ;
-- extrema.
+- dérivée numérique ;
+- intégration numérique ;
+- recherche de racines ;
+- extrema ;
+- intersections de fonctions.
 
-Les méthodes numériques doivent être documentées individuellement.
+Ces méthodes restent indépendantes de Qt et sont couvertes par des tests unitaires.
+
+## Intégration au document en 1.0
+
+Une fonction persistante est représentée par un `GeoObject(kind="function")`. Ses paramètres
+conservent l'expression source, la variable principale et le domaine optionnel ; ses dépendances
+UUID pointent vers les objets numériques utilisés comme variables externes. L'évaluation produit
+un `FunctionObject` sûr, ce qui raccorde directement les sliders au recalcul des courbes.

@@ -1,44 +1,12 @@
 # 20 — Logging et debug
 
-## Logging
+PyGeoLab utilise le module standard `logging` avec un `RotatingFileHandler` UTF-8 de 1 Mo et
+trois sauvegardes. Les logs sont écrits dans `%LOCALAPPDATA%/PyGeoLab/logs` sous Windows et
+`$XDG_STATE_HOME/pygeolab/logs` (ou `~/.local/state/pygeolab/logs`) sous Linux.
 
-Utiliser le module standard `logging`.
+Sont journalisés : démarrage/version, ouvertures et sauvegardes, exports, erreurs de fichiers et
+erreurs internes. Les événements souris et le contenu complet des documents ne sont jamais
+journalisés à haute fréquence. `--debug` active le niveau DEBUG.
 
-## Niveaux
-
-- DEBUG ;
-- INFO ;
-- WARNING ;
-- ERROR ;
-- CRITICAL.
-
-## Contenu
-
-Les logs peuvent contenir :
-
-- démarrage ;
-- version ;
-- ouverture/sauvegarde ;
-- erreurs de parsing ;
-- erreurs internes ;
-- migrations ;
-- statistiques de performance en debug.
-
-## Ne pas logger
-
-Éviter :
-
-- données inutiles à haute fréquence ;
-- chaque événement souris ;
-- contenu complet d'un document à chaque frame.
-
-## Mode développeur
-
-Une option de debug pourra afficher :
-
-- FPS ;
-- objets rendus ;
-- objets recalculés ;
-- temps de frame ;
-- bounding boxes ;
-- graphe de dépendances.
+Les exceptions non gérées sont enregistrées avec traceback dans le log ; l'utilisateur reçoit
+un message contextualisé indiquant le chemin du fichier, jamais un traceback brut.

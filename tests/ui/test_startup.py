@@ -63,3 +63,14 @@ def test_main_window_provides_desktop_layout(qtbot: QtBot) -> None:
 
     assert window.close()
     assert not window.isVisible()
+
+
+def test_main_window_exposes_accessible_workspace_names(qtbot: QtBot) -> None:
+    """Core interactive regions expose textual names to assistive technologies."""
+    window = MainWindow()
+    qtbot.addWidget(window)
+    assert window.accessibleName()
+    assert window.geometry_view.accessibleName()
+    assert window.toolbar.accessibleName()
+    assert window.statusBar().accessibleName()
+    assert all(dock.accessibleName() for dock in window.findChildren(QDockWidget))

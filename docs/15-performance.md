@@ -1,51 +1,23 @@
 # 15 — Performance
 
-## Objectifs
+## Objectif
 
-Le MVP doit rester fluide avec plusieurs centaines d'objets simples.
+L'application vise une interaction fluide avec plusieurs centaines d'objets simples.
 
-## Budget
+## Optimisations présentes en 1.0
 
-Cible :
+- recalcul incrémental par graphe de dépendances ;
+- drag regroupé en une commande d'historique ;
+- cache de grille dépendant du viewport ;
+- cache de la liste des objets visibles ordonnés par `Document.revision` ;
+- clipping des lignes, demi-droites et segments avant dessin ;
+- sampling borné des fonctions et séparation des discontinuités.
 
-- interaction visuelle proche de 60 FPS sur une machine desktop classique.
+Un index spatial (quadtree/R-tree) n'est pas justifié par les tailles ciblées en 1.0.
 
-Cette valeur est un objectif, pas une garantie contractuelle.
+## Benchmarks
 
-## Optimisations prioritaires
-
-1. recalcul incrémental ;
-2. limitation des allocations pendant le drag ;
-3. hit-testing spatial ;
-4. caching des fonctions ;
-5. batching du rendu ;
-6. invalidation partielle.
-
-## Spatial index
-
-Pour les gros documents, utiliser potentiellement :
-
-- quadtree ;
-- grille spatiale ;
-- R-tree.
-
-Pas nécessaire dans la première implémentation.
-
-## Fonctions
-
-Éviter un sampling excessif.
-
-Le nombre de points dépend :
-
-- de la largeur écran ;
-- du zoom ;
-- de la courbure.
-
-## Profiling
-
-Outils possibles :
-
-- `cProfile` ;
-- `py-spy` ;
-- profiling Qt ;
-- benchmarks pytest.
+`benchmarks/benchmark_core.py` mesure l'insertion de 500 points et une mise à jour
+incrémentale sans dépendance Qt. Il peut être exécuté avec `PYTHONPATH=src python
+benchmarks/benchmark_core.py`. Les tests de régression vérifient en parallèle le périmètre de
+recalcul plutôt qu'un seuil temporel fragile en CI.

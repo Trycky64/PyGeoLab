@@ -1,87 +1,15 @@
 # 16 — Stratégie de tests
 
-## Priorités
+La logique mathématique et métier est testée plus intensivement que l'UI.
 
-La logique mathématique doit être beaucoup plus testée que l'interface graphique.
+Les suites couvrent : géométrie, intersections, transformations, dépendances, commandes,
+parser/evaluator mathématique, analyse numérique, persistance, interaction et rendu. Les tests
+d'intégration exercent création/déplacement/historique ; les tests UI utilisent pytest-qt pour
+le démarrage, le viewport, les panneaux, le renderer et les exports.
 
-## Tests unitaires
+`tests/unit/test_release_assets.py` charge le projet de démonstration comme fixture de
+régression et vérifie les artefacts de release. `benchmarks/benchmark_core.py` fournit le jeu de
+benchmarks essentiel sans ajouter une dépendance runtime.
 
-### Géométrie
-
-Tester :
-
-- distances ;
-- intersections ;
-- projections ;
-- angles ;
-- transformations ;
-- polygones.
-
-### Dépendances
-
-Tester :
-
-- ordre de recalcul ;
-- propagation ;
-- suppression ;
-- invalidation ;
-- cycles.
-
-### Math
-
-Tester :
-
-- parsing ;
-- priorité des opérateurs ;
-- fonctions ;
-- erreurs ;
-- variables.
-
-### Persistance
-
-Tester :
-
-- round-trip ;
-- versions ;
-- migrations ;
-- fichiers invalides.
-
-## Tests d'intégration
-
-Scénarios complets.
-
-Exemple :
-
-1. créer A ;
-2. créer B ;
-3. créer AB ;
-4. créer M milieu de AB ;
-5. déplacer A ;
-6. vérifier M.
-
-## Tests UI
-
-Limiter aux parcours essentiels :
-
-- création document ;
-- sélection ;
-- action toolbar ;
-- sauvegarde.
-
-## Property-based testing
-
-Hypothesis pourra vérifier des invariants.
-
-Exemple :
-
-```text
-distance(A, B) == distance(B, A)
-```
-
-ou :
-
-```text
-projection(P, line) appartient à line
-```
-
-à tolérance numérique près.
+La CI exécute `pytest`, Ruff et mypy sur Python 3.13. Les tests Qt utilisent
+`QT_QPA_PLATFORM=offscreen`.

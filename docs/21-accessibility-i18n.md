@@ -1,39 +1,18 @@
 # 21 — Accessibilité et internationalisation
 
-## Accessibilité
+## Accessibilité 1.0
 
-Objectifs :
+- navigation clavier via les widgets Qt natifs ;
+- raccourcis cohérents pour fichier, historique et outils principaux ;
+- noms accessibles explicites pour viewport, docks, toolbar, status bar et actions ;
+- thèmes clair/sombre avec palettes à contraste élevé ;
+- sélection signalée par une surépaisseur en plus de la couleur ;
+- tailles de contrôles standard Qt et labels associés dans les formulaires.
 
-- navigation clavier ;
-- raccourcis cohérents ;
-- contraste suffisant ;
-- labels accessibles ;
-- tailles d'UI raisonnables.
-
-## Daltonisme
-
-Les informations importantes ne doivent pas dépendre uniquement de la couleur.
+Les informations importantes ne dépendent donc pas uniquement de la couleur.
 
 ## Internationalisation
 
-L'architecture doit permettre l'i18n.
-
-Langues initiales potentielles :
-
-- français ;
-- anglais.
-
-Les chaînes visibles ne doivent pas être dispersées arbitrairement dans le code métier.
-
-## Nombres
-
-Attention aux différences :
-
-```text
-1.5
-1,5
-```
-
-Le format interne doit rester invariant.
-
-L'UI peut localiser l'affichage.
+Les chaînes UI passent par `tr()` dans les widgets principaux. Le format de stockage reste
+invariant (`.` pour les nombres JSON) indépendamment de la locale. Une traduction anglaise
+complète reste une extension future.

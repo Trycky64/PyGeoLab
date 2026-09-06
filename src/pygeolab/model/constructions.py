@@ -20,6 +20,7 @@ from pygeolab.geometry.transforms import (
     scale,
     translate,
 )
+from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.objects import Geometry, GeoObject, number
 
 
@@ -48,6 +49,36 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         return Point2D(number(params, "x"), number(params, "y"))
     if kind == "number":
         return number(params, "value")
+    if kind == "function":
+        source = params.get("source")
+        variable = params.get("variable", "x")
+        domain_value = params.get("domain")
+        if not isinstance(source, str) or not isinstance(variable, str):
+            raise ValueError("Une fonction nécessite une expression et une variable")
+        domain: tuple[float, float] | None = None
+        if domain_value is not None:
+            if not isinstance(domain_value, tuple) or len(domain_value) != 2:
+                raise ValueError("Domaine de fonction invalide")
+            domain_start, domain_end = domain_value
+            if (
+                isinstance(domain_start, bool)
+                or isinstance(domain_end, bool)
+                or not isinstance(domain_start, (int, float))
+                or not isinstance(domain_end, (int, float))
+            ):
+                raise ValueError("Domaine de fonction invalide")
+            domain = (float(domain_start), float(domain_end))
+        function = FunctionObject.from_source(obj.name, variable, source, domain)
+        numeric_parents = {
+            parent.name
+            for parent in parents
+            if isinstance(parent.geometry, float)
+        }
+        if len(numeric_parents) != len(parents):
+            raise ValueError("Les dépendances d'une fonction doivent être numériques")
+        if function.external_dependencies != numeric_parents:
+            raise ValueError("Les dépendances de la fonction ne correspondent pas à l'expression")
+        return function
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

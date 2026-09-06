@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QMenu, QTreeWidget, QTreeWidgetItem, QVBoxLayout, 
 
 from pygeolab.commands import ChangeVisibilityCommand, Command, DeleteObjectCommand
 from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.document import Document
 
 
@@ -130,6 +131,8 @@ class AlgebraPanel(QWidget):
             return "Polygones"
         if isinstance(geometry, float):
             return "Nombres"
+        if isinstance(geometry, FunctionObject):
+            return "Fonctions"
         return "Objets"
 
     @staticmethod
@@ -146,4 +149,6 @@ class AlgebraPanel(QWidget):
             return f"aire = {geometry.area:.3g}"
         if isinstance(geometry, float):
             return f"{geometry:.6g}"
+        if isinstance(geometry, FunctionObject):
+            return f"{geometry.name}({geometry.variable})"
         return type(geometry).__name__.removesuffix("2D")

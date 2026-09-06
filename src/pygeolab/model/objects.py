@@ -10,6 +10,7 @@ from types import MappingProxyType
 from uuid import UUID, uuid4
 
 from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.styles import Style
 
 type JsonValue = (
@@ -22,7 +23,17 @@ type JsonValue = (
     | tuple[JsonValue, ...]
     | Mapping[str, JsonValue]
 )
-type Geometry = Point2D | Vector2D | Line2D | Segment2D | Ray2D | Circle2D | Polygon2D | float
+type Geometry = (
+    Point2D
+    | Vector2D
+    | Line2D
+    | Segment2D
+    | Ray2D
+    | Circle2D
+    | Polygon2D
+    | FunctionObject
+    | float
+)
 
 KINDS = frozenset(
     {
@@ -51,6 +62,7 @@ KINDS = frozenset(
         "scale",
         "point_on",
         "number",
+        "function",
     }
 )
 

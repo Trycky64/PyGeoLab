@@ -17,6 +17,8 @@ from pygeolab.geometry import (
     Segment2D,
     Vector2D,
 )
+from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.sampling import sample_function
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -30,6 +32,9 @@ class Renderer:
 
     def __init__(self) -> None:
         self._grid_cache = GridCache()
+        self._visible_revision = -1
+        self._visible_objects: tuple[GeoObject, ...] = ()
+        self._function_cache: dict[tuple[object, ...], tuple[tuple[Point2D, ...], ...]] = {}
 
     def render(
         self,
@@ -38,15 +43,32 @@ class Renderer:
         viewport: Viewport,
         palette: QPalette,
         selected_ids: Iterable[str] = (),
+        *,
+        draw_background: bool = True,
     ) -> None:
         """Draw grid, axes, valid visible objects, labels and selection overlays."""
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.fillRect(QRectF(0, 0, viewport.width, viewport.height), palette.window())
+        if draw_background:
+            painter.fillRect(QRectF(0, 0, viewport.width, viewport.height), palette.window())
         self._draw_grid_and_axes(painter, viewport, palette)
         selected = set(selected_ids)
-        visible = [obj for obj in document.objects.values() if obj.visible and obj.valid]
-        order = (Polygon2D, Line2D, Ray2D, Segment2D, Circle2D, Vector2D, Point2D)
+        if document.revision != self._visible_revision:
+            self._visible_objects = tuple(
+                obj for obj in document.objects.values() if obj.visible and obj.valid
+            )
+            self._visible_revision = document.revision
+        visible = self._visible_objects
+        order = (
+            Polygon2D,
+            Line2D,
+            Ray2D,
+            Segment2D,
+            Circle2D,
+            Vector2D,
+            FunctionObject,
+            Point2D,
+        )
         for geometry_type in order:
             for obj in visible:
                 if isinstance(obj.geometry, geometry_type):
@@ -88,6 +110,9 @@ class Renderer:
     def invalidate_cache(self) -> None:
         """Drop renderer-owned cached layout data."""
         self._grid_cache.clear()
+        self._visible_revision = -1
+        self._visible_objects = ()
+        self._function_cache.clear()
 
     def _draw_grid_and_axes(self, painter: QPainter, viewport: Viewport, palette: QPalette) -> None:
         layout = self._grid_cache.get(viewport)
@@ -206,6 +231,9 @@ class Renderer:
             return
         if isinstance(geometry, Vector2D):
             self._draw_vector(painter, document, obj, geometry, viewport)
+            return
+        if isinstance(geometry, FunctionObject):
+            self._draw_function(painter, document, obj, geometry, viewport)
 
     @staticmethod
     def _draw_clipped_line(
@@ -298,11 +326,52 @@ class Renderer:
         painter.drawLine(QPointF(ex, ey), left)
         painter.drawLine(QPointF(ex, ey), right)
 
+    def _draw_function(
+        self,
+        painter: QPainter,
+        document: Document,
+        obj: GeoObject,
+        function: FunctionObject,
+        viewport: Viewport,
+    ) -> None:
+        """Sample and draw a safe mathematical function inside the visible world bounds."""
+        variables: dict[str, float] = {}
+        for dependency_id in obj.dependencies:
+            parent = document.get(dependency_id)
+            if isinstance(parent.geometry, float):
+                variables[parent.name] = parent.geometry
+        left, _, right, _ = viewport.world_bounds
+        cache_key = (
+            document.revision,
+            obj.id,
+            viewport.center.x,
+            viewport.scale,
+            viewport.width,
+            tuple(sorted(variables.items())),
+        )
+        pieces = self._function_cache.get(cache_key)
+        if pieces is None:
+            sampled = sample_function(
+                function,
+                left,
+                right,
+                samples=min(2000, max(200, viewport.width * 2)),
+                variables=variables,
+            )
+            pieces = sampled.segments
+            if len(self._function_cache) >= 16:
+                self._function_cache.clear()
+            self._function_cache[cache_key] = pieces
+        for piece in pieces:
+            for start, end in zip(piece, piece[1:], strict=False):
+                clipped = clip_segment(start, end, viewport.world_bounds)
+                Renderer._draw_clipped_line(painter, clipped, viewport)
+
     def _draw_labels(
         self,
         painter: QPainter,
         document: Document,
-        objects: list[GeoObject],
+        objects: Iterable[GeoObject],
         viewport: Viewport,
         palette: QPalette,
     ) -> None:
@@ -335,6 +404,16 @@ class Renderer:
             return Point2D(geometry.center.x + geometry.radius, geometry.center.y)
         if isinstance(geometry, Polygon2D):
             return geometry.centroid or geometry.vertices[0]
+        if isinstance(geometry, FunctionObject):
+            variables: dict[str, float] = {}
+            for dependency_id in obj.dependencies:
+                parent = document.get(dependency_id)
+                if isinstance(parent.geometry, float):
+                    variables[parent.name] = parent.geometry
+            try:
+                return Point2D(viewport.center.x, geometry.evaluate(viewport.center.x, variables))
+            except (ValueError, ArithmeticError):
+                return None
         if isinstance(geometry, Vector2D) and obj.dependencies:
             parent = document.get(obj.dependencies[0]).geometry
             if isinstance(parent, Point2D):
