@@ -38,6 +38,14 @@ python -m pip install -e '.[dev]'
 python -m pygeolab
 ```
 
+## Smoke tests automatisés
+
+Le parcours critique de la version 1.0 est couvert par des tests Qt offscreen dans
+`tests/system/test_release_smoke.py`. Les dialogues natifs et services de bureau sont mockés,
+tandis que le document, l’historique, la persistance et les exports restent réellement exécutés.
+Cela permet à `pytest` et à la CI de valider création, Undo/Redo, sauvegarde/chargement, exports,
+préférences, logs et gestion des modifications non enregistrées sans intervention manuelle.
+
 ## Vérifications
 
 ```powershell
