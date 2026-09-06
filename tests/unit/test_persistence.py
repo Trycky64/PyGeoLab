@@ -18,9 +18,7 @@ def populated_document() -> Document:
     document = Document("Triangle")
     document.metadata["author"] = "test"
     document.scene["grid"] = True
-    a = document.add(
-        GeoObject("point", "A", params={"x": 1, "y": 2}, style=Style(color="#112233"))
-    )
+    a = document.add(GeoObject("point", "A", params={"x": 1, "y": 2}, style=Style(color="#112233")))
     b = document.add(GeoObject("point", "B", params={"x": 5, "y": 2}))
     document.add(GeoObject("segment", "AB", (a.id, b.id)))
     return document

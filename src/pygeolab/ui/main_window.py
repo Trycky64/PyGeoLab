@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
     QMainWindow,
-    QMessageBox,
     QMenu,
+    QMessageBox,
     QToolBar,
 )
 
@@ -22,7 +22,6 @@ from pygeolab import __version__
 from pygeolab.commands import Command, CreateObjectCommand, DeleteObjectCommand
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
-from pygeolab.model.document import Document
 from pygeolab.persistence import ProjectSession
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
@@ -168,7 +167,7 @@ class MainWindow(QMainWindow):
         shortcut: QKeySequence.StandardKey | str | None = None,
     ) -> QAction:
         action = QAction(self.tr(text), self)
-        action.setAccessibleName(self.tr(text.replace("&", "")))
+        action.setStatusTip(self.tr(text.replace("&", "")))
         if shortcut is not None:
             action.setShortcut(shortcut)
         action.triggered.connect(callback)
@@ -205,7 +204,7 @@ class MainWindow(QMainWindow):
         for name in self.geometry_view.interaction.tool_names:
             label = self.tr(self.TOOL_LABELS[name])
             action = QAction(label, self)
-            action.setAccessibleName(label)
+            action.setStatusTip(label)
             action.setCheckable(True)
             action.setData(name)
             if name in shortcuts:

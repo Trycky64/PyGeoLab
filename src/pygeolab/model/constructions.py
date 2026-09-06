@@ -69,11 +69,7 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
                 raise ValueError("Domaine de fonction invalide")
             domain = (float(domain_start), float(domain_end))
         function = FunctionObject.from_source(obj.name, variable, source, domain)
-        numeric_parents = {
-            parent.name
-            for parent in parents
-            if isinstance(parent.geometry, float)
-        }
+        numeric_parents = {parent.name for parent in parents if isinstance(parent.geometry, float)}
         if len(numeric_parents) != len(parents):
             raise ValueError("Les dépendances d'une fonction doivent être numériques")
         if function.external_dependencies != numeric_parents:

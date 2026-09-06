@@ -415,9 +415,12 @@ class Renderer:
             except (ValueError, ArithmeticError):
                 return None
         if isinstance(geometry, Vector2D) and obj.dependencies:
-            parent = document.get(obj.dependencies[0]).geometry
-            if isinstance(parent, Point2D):
-                return Point2D(parent.x + geometry.x, parent.y + geometry.y)
+            parent_geometry = document.get(obj.dependencies[0]).geometry
+            if isinstance(parent_geometry, Point2D):
+                return Point2D(
+                    parent_geometry.x + geometry.x,
+                    parent_geometry.y + geometry.y,
+                )
         return None
 
     @staticmethod

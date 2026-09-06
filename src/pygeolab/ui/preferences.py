@@ -19,11 +19,18 @@ class Preferences:
     def load(cls) -> Preferences:
         """Read preferences and safely coerce values from QSettings."""
         settings = QSettings()
-        scale = float(settings.value("export/scale", 1.0))
+        scale_value = settings.value("export/scale", 1.0)
+        if isinstance(scale_value, bool) or not isinstance(scale_value, (int, float, str)):
+            scale = 1.0
+        else:
+            try:
+                scale = float(scale_value)
+            except ValueError:
+                scale = 1.0
         return cls(
-            dark_theme=settings.value("appearance/dark_theme", False, type=bool),
+            dark_theme=_read_bool(settings, "appearance/dark_theme", False),
             export_scale=min(8.0, max(0.25, scale)),
-            transparent_export=settings.value("export/transparent", False, type=bool),
+            transparent_export=_read_bool(settings, "export/transparent", False),
         )
 
     def save(self) -> None:
@@ -33,3 +40,17 @@ class Preferences:
         settings.setValue("export/scale", self.export_scale)
         settings.setValue("export/transparent", self.transparent_export)
         settings.sync()
+
+
+def _read_bool(settings: QSettings, key: str, default: bool) -> bool:
+    """Read a boolean QSettings value without relying on loosely typed Qt stubs."""
+    value = settings.value(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default

@@ -39,6 +39,8 @@ class SliderPanel(QWidget):
         """Rebuild sliders from immutable number definitions."""
         while self._layout.count():
             item = self._layout.takeAt(0)
+            if item is None:
+                break
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()

@@ -24,15 +24,7 @@ type JsonValue = (
     | Mapping[str, JsonValue]
 )
 type Geometry = (
-    Point2D
-    | Vector2D
-    | Line2D
-    | Segment2D
-    | Ray2D
-    | Circle2D
-    | Polygon2D
-    | FunctionObject
-    | float
+    Point2D | Vector2D | Line2D | Segment2D | Ray2D | Circle2D | Polygon2D | FunctionObject | float
 )
 
 KINDS = frozenset(

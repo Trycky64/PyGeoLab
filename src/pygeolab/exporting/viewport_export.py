@@ -56,7 +56,7 @@ def export_png(
     finally:
         painter.end()
     target.parent.mkdir(parents=True, exist_ok=True)
-    if not image.save(str(target), "PNG"):
+    if not image.save(str(target), b"PNG"):
         raise ValueError(f"Impossible d'exporter l'image PNG : {target}")
     return target
 
