@@ -26,6 +26,8 @@ def test_png_and_svg_export(tmp_path) -> None:
     assert not image.isNull()
     assert image.width() == 640
     assert image.height() == 400
+    assert png.suffix == ".png"
+    assert png.stat().st_size > 100
     text = svg.read_text(encoding="utf-8")
     assert "<svg" in text
     assert svg.stat().st_size > 100
