@@ -25,6 +25,7 @@ def test_canvas_creation_undo_redo_is_fully_automated(qtbot: QtBot, monkeypatch)
     _deterministic_preferences(monkeypatch)
     window = MainWindow()
     qtbot.addWidget(window)
+    monkeypatch.setattr(window, "_confirm_discard_changes", lambda: True)
     window.resize(1000, 700)
     window.show()
     qtbot.waitUntil(window.isVisible)
@@ -49,7 +50,6 @@ def test_canvas_creation_undo_redo_is_fully_automated(qtbot: QtBot, monkeypatch)
     window._redo()
     assert created_id in window.document.objects
 
-    monkeypatch.setattr(window, "_confirm_discard_changes", lambda: True)
     window.close()
 
 

@@ -27,6 +27,7 @@ class GeometryView(QWidget):
 
     selectionChanged = Signal(object)
     cursorWorldChanged = Signal(float, float)
+    interactionChanged = Signal()
 
     def __init__(self, document: Document | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -224,8 +225,9 @@ class GeometryView(QWidget):
         self.update()
 
     def _on_interaction_changed(self) -> None:
-        """Repaint transient selection, preview and cursor-driven state."""
+        """Repaint transient state and notify shells about history/selection changes."""
         self._emit_selection_if_changed()
+        self.interactionChanged.emit()
         self.update()
 
     def _emit_selection_if_changed(self) -> None:

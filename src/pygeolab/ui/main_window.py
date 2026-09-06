@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         self._build_toolbar()
         self.geometry_view.selectionChanged.connect(self._selection_from_canvas)
         self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
+        self.geometry_view.interactionChanged.connect(self._update_history_actions)
         self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
         self.statusBar().setAccessibleName(self.tr("Barre d'état"))
         self.statusBar().showMessage(self.tr("Prêt"))
