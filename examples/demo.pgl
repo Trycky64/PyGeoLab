@@ -1,0 +1,176 @@
+{
+  "document": {
+    "metadata": {},
+    "name": "Démo PyGeoLab 1.0",
+    "objects": [
+      {
+        "dependencies": [],
+        "id": "90726a89-0928-4ae3-9a52-4b1e0954f532",
+        "kind": "point",
+        "locked": false,
+        "name": "A",
+        "params": {
+          "x": -3.0,
+          "y": -1.5
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "96294a78-913b-486b-a058-5ed61db2dd4e",
+        "kind": "point",
+        "locked": false,
+        "name": "B",
+        "params": {
+          "x": 3.0,
+          "y": -1.0
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "06a416b9-3cf9-47fc-be9c-f11552ceba5f",
+        "kind": "point",
+        "locked": false,
+        "name": "C",
+        "params": {
+          "x": 0.5,
+          "y": 3.0
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "8aa0aa50-0ea0-4b28-b066-a7815205a13d",
+        "kind": "number",
+        "locked": false,
+        "name": "a",
+        "params": {
+          "maximum": 2.0,
+          "minimum": -2.0,
+          "step": 0.1,
+          "value": 0.5
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "90726a89-0928-4ae3-9a52-4b1e0954f532",
+          "96294a78-913b-486b-a058-5ed61db2dd4e",
+          "06a416b9-3cf9-47fc-be9c-f11552ceba5f"
+        ],
+        "id": "77dbd485-079d-4d1c-964c-84768343aa26",
+        "kind": "polygon",
+        "locked": false,
+        "name": "Triangle",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "90726a89-0928-4ae3-9a52-4b1e0954f532",
+          "96294a78-913b-486b-a058-5ed61db2dd4e"
+        ],
+        "id": "0332a92b-7768-4afa-b2be-3559971cc894",
+        "kind": "midpoint",
+        "locked": false,
+        "name": "M",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "0332a92b-7768-4afa-b2be-3559971cc894",
+          "06a416b9-3cf9-47fc-be9c-f11552ceba5f"
+        ],
+        "id": "fdfaf2ab-81af-4071-aff8-61400770d6db",
+        "kind": "circle",
+        "locked": false,
+        "name": "c",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "8aa0aa50-0ea0-4b28-b066-a7815205a13d"
+        ],
+        "id": "b12ba19c-13be-444d-932e-b71a0b7e8a82",
+        "kind": "function",
+        "locked": false,
+        "name": "f",
+        "params": {
+          "source": "sin(x) + a",
+          "variable": "x"
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      }
+    ],
+    "scene": {}
+  },
+  "format": "pygeolab",
+  "version": 1
+}

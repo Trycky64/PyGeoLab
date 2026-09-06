@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PyGeoLab
+Comment=Dynamic geometry and mathematical visualization
+Exec=PyGeoLab
+Icon=pygeolab
+Terminal=false
+Categories=Education;Science;Math;
+MimeType=application/x-pygeolab;

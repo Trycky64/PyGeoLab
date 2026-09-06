@@ -2,77 +2,32 @@
 
 ## Développement
 
-Installation editable :
-
-```bash
-pip install -e .
-```
-
-## Entrée
-
-Commande cible :
-
-```bash
-pygeolab
-```
-
-ou :
-
-```bash
-python -m pygeolab
-```
-
-## Builds
-
-Produire des exécutables desktop.
-
-Priorité :
-
-1. Windows ;
-2. Linux ;
-3. macOS.
+Installation editable : `python -m pip install -e ".[dev]"` puis `python -m pygeolab`.
 
 ## Versioning
 
-Semantic Versioning :
+PyGeoLab suit Semantic Versioning. La version courante est **1.0.0**.
 
-```text
-MAJOR.MINOR.PATCH
-```
+## Packaging 1.0
 
-Exemples :
+La stratégie retenue pour 1.0 est une application portable PyInstaller en mode dossier :
 
-```text
-0.1.0
-0.2.0
-1.0.0
-```
+- Windows : `scripts/build-windows.ps1` produit `dist/PyGeoLab-Windows-x64.zip` ;
+- Linux : `scripts/build-linux.sh` produit `dist/PyGeoLab-Linux-x64.tar.gz`.
 
-## Releases
+Le fichier `packaging/pygeolab.spec` constitue la source de vérité du packaging. Il embarque
+les ressources applicatives et masque la console pour l'application desktop.
 
-Chaque release doit inclure :
+Un installateur MSI/NSIS/AppImage n'est pas requis pour 1.0 et pourra être ajouté ultérieurement.
 
-- changelog ;
-- notes de version ;
-- artefact exécutable ;
-- checksum éventuellement ;
-- captures d'écran.
+## CI et releases GitHub
 
-## CI
+`.github/workflows/ci.yml` valide lint, formatage, typage et tests sous Windows/Linux.
+`.github/workflows/release.yml` se déclenche sur les tags `v*`, construit les deux plateformes,
+upload les artefacts puis crée la GitHub Release avec des notes générées automatiquement.
 
-Pipeline cible :
+## Checklist release
 
-1. lint ;
-2. type checking ;
-3. tests ;
-4. build ;
-5. package.
-
-## GitHub
-
-Prévoir :
-
-- issue templates ;
-- pull request template ;
-- workflows CI ;
-- releases automatiques ou semi-automatiques.
+Une release doit inclure : changelog, notes, artefacts exécutables, icône, captures et projet de
+démonstration. `CHANGELOG.md`, `assets/`, `docs/screenshots/` et `examples/demo.pgl` fournissent
+ces éléments pour 1.0.0.

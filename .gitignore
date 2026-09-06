@@ -132,3 +132,5 @@ preferences.json
 
 # Keep actual .pgl files versionable so demo/example projects can be committed.
 # Keep exported PNG/SVG files versionable if they are deliberately used in docs.
+# PyGeoLab's release specification is source-controlled.
+!packaging/pygeolab.spec

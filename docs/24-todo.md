@@ -186,8 +186,8 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [ ] UI-008 — Coordinates editor.
 - [ ] UI-009 — Function input.
 - [x] UI-010 — Slider dialog.
-- [ ] UI-011 — Settings dialog.
-- [ ] UI-012 — About dialog.
+- [x] UI-011 — Settings dialog.
+- [x] UI-012 — About dialog.
 - [x] UI-013 — Theme support.
 - [x] UI-014 — Keyboard navigation.
 
@@ -211,36 +211,36 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 
 ## EXPORT
 
-- [ ] EXP-001 — PNG export.
-- [ ] EXP-002 — Export resolution.
-- [ ] EXP-003 — Transparent background.
-- [ ] EXP-004 — SVG export.
-- [ ] EXP-005 — Vector objects.
-- [ ] EXP-006 — Function paths.
-- [ ] EXP-007 — Labels.
+- [x] EXP-001 — PNG export.
+- [x] EXP-002 — Export resolution.
+- [x] EXP-003 — Transparent background.
+- [x] EXP-004 — SVG export.
+- [x] EXP-005 — Vector objects.
+- [x] EXP-006 — Function paths.
+- [x] EXP-007 — Labels.
 
 ## TEST
 
 - [x] TEST-001 — Geometry unit suite.
-- [ ] TEST-002 — Dependency suite.
-- [ ] TEST-003 — Math parser suite.
-- [ ] TEST-004 — Persistence suite.
-- [ ] TEST-005 — Command suite.
-- [ ] TEST-006 — Integration constructions.
+- [x] TEST-002 — Dependency suite.
+- [x] TEST-003 — Math parser suite.
+- [x] TEST-004 — Persistence suite.
+- [x] TEST-005 — Command suite.
+- [x] TEST-006 — Integration constructions.
 - [x] TEST-007 — UI smoke tests.
-- [ ] TEST-008 — Save/load round-trip.
-- [ ] TEST-009 — Regression fixtures.
-- [ ] TEST-010 — Performance benchmark set.
+- [x] TEST-008 — Save/load round-trip.
+- [x] TEST-009 — Regression fixtures.
+- [x] TEST-010 — Performance benchmark set.
 
 ## RELEASE
 
-- [ ] REL-001 — Windows build.
-- [ ] REL-002 — Linux build.
-- [ ] REL-003 — Installer strategy.
-- [ ] REL-004 — App icon.
-- [ ] REL-005 — Version metadata.
-- [ ] REL-006 — Changelog.
-- [ ] REL-007 — Screenshots.
-- [ ] REL-008 — Demo project.
+- [x] REL-001 — Windows build.
+- [x] REL-002 — Linux build.
+- [x] REL-003 — Installer strategy.
+- [x] REL-004 — App icon.
+- [x] REL-005 — Version metadata.
+- [x] REL-006 — Changelog.
+- [x] REL-007 — Screenshots.
+- [x] REL-008 — Demo project.
 - [ ] REL-009 — Portfolio video.
-- [ ] REL-010 — Release 1.0.
+- [x] REL-010 — Release 1.0.

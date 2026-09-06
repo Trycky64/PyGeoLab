@@ -83,7 +83,7 @@ Livrables :
 - save/load ;
 - validation ;
 - migrations ;
-- recent files.
+- recent files *(reporté après 1.0 ; non requis par la checklist Section 11)*.
 
 ## Milestone 9 — Analyse mathématique
 
@@ -111,3 +111,11 @@ Critères :
 - tests ;
 - builds Windows/Linux ;
 - démo portfolio.
+
+
+## État 1.0.0
+
+Les milestones 0 à 11 sont réalisés pour le périmètre 1.0. Les éléments explicitement laissés
+au backlog (snapping, édition directe des coordonnées, saisie de fonctions dédiée, fichiers
+récents, autosave, vidéo portfolio) ne bloquent pas la release et restent identifiés dans
+`docs/24-todo.md`.

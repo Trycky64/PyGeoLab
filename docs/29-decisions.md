@@ -196,3 +196,18 @@ fichiers sont migrés puis validés comme données non fiables avant reconstruct
 dérivés ne sont pas sérialisés. `ProjectSession` compare le contenu sérialisable courant à la
 dernière sauvegarde afin que l'indicateur de modifications non enregistrées reflète le contenu
 et pas seulement un compteur de révision.
+
+## ADR-015 — Export piloté par le renderer et builds desktop reproductibles
+
+Les exports PNG et SVG réutilisent le même `Renderer` et le même `Viewport` que l'affichage,
+avec un facteur de résolution indépendant et un fond optionnellement transparent. Cela évite
+une seconde implémentation géométrique dédiée à l'export et garantit que lignes clippées,
+objets vectoriels et labels suivent les mêmes règles que le canvas.
+
+Les préférences utilisateur sont stockées avec `QSettings`; elles ne font pas partie du fichier
+`.pgl`. Les erreurs internes non gérées sont journalisées dans un fichier rotatif puis présentées
+avec un message contextualisé, sans traceback brut dans l'interface standard.
+
+La release 1.0 adopte PyInstaller en mode dossier portable. Les builds Windows et Linux sont
+produits nativement par GitHub Actions à partir d'un même fichier `packaging/pygeolab.spec`.
+Un installateur système reste une évolution future : la 1.0 distribue des archives portables.
