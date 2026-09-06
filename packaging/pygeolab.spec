@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PyInstaller.compat import is_win
 
-root = Path(SPECPATH).parent.parent
+root = Path(SPECPATH).parent
 icon = root / "assets" / ("pygeolab.ico" if is_win else "pygeolab.png")
 version_file = root / "packaging" / "version_info.txt"
 
