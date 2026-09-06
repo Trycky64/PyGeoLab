@@ -27,12 +27,14 @@ def test_panels_follow_document_and_property_history(qtbot) -> None:
 
 
 def test_slider_panel_lists_numeric_variables(qtbot) -> None:
-    """Numeric document objects appear as live controls in the slider dock."""
+    """Numeric document objects appear as live controls without a modal window teardown."""
     from pygeolab.model.variables import numeric_variable
-    from pygeolab.ui.main_window import MainWindow
+    from pygeolab.ui.slider_panel import SliderPanel
 
-    window = MainWindow()
-    qtbot.addWidget(window)
-    window.document.add(numeric_variable("a", 2, 0, 10, 1))
-    window.slider_panel.refresh()
-    assert any("a = 2" in label.text() for label in window.slider_panel.findChildren(QLabel))
+    document = Document()
+    history = CommandHistory()
+    panel = SliderPanel(document, history.execute)
+    qtbot.addWidget(panel)
+    document.add(numeric_variable("a", 2, 0, 10, 1))
+    panel.refresh()
+    assert any("a = 2" in label.text() for label in panel.findChildren(QLabel))
