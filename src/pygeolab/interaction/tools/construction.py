@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from pygeolab.commands import CommandHistory, CreateObjectsCommand
 from pygeolab.geometry import Circle2D, Line2D, Point2D, Ray2D, Segment2D
+from pygeolab.interaction.snapping import SnapKind
 from pygeolab.interaction.tools.base import GeometryPreview, PointerContext, Tool
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject, number
@@ -52,7 +53,13 @@ class _DocumentTool(Tool):
                 "scale",
             }
         )
-        existing = self._hit(context, point_kinds)
+        existing = None
+        if context.snap is not None and context.snap.kind is SnapKind.POINT:
+            candidate = self.document.objects.get(context.snap.source_ids[0])
+            if candidate is not None and candidate.kind in point_kinds:
+                existing = candidate
+        if existing is None:
+            existing = self._hit(context, point_kinds)
         if existing is not None and isinstance(existing.geometry, Point2D):
             return _PointChoice(existing, False)
         existing_names = {obj.name for obj in self.document.objects.values()}

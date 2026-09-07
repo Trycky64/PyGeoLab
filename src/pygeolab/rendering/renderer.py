@@ -107,6 +107,25 @@ class Renderer:
             self._draw_geometry(painter, document, obj, viewport, fill=True)
         painter.restore()
 
+    @staticmethod
+    def render_snap_indicator(
+        painter: QPainter,
+        viewport: Viewport,
+        palette: QPalette,
+        point: Point2D,
+    ) -> None:
+        """Draw a compact crosshair and ring around the active snap position."""
+        x, y = viewport.world_to_screen(point)
+        color = QColor(palette.highlight().color())
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(QPen(color, 2.0))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(QPointF(x, y), 7.0, 7.0)
+        painter.drawLine(QPointF(x - 10.0, y), QPointF(x + 10.0, y))
+        painter.drawLine(QPointF(x, y - 10.0), QPointF(x, y + 10.0))
+        painter.restore()
+
     def invalidate_cache(self) -> None:
         """Drop renderer-owned cached layout data."""
         self._grid_cache.clear()

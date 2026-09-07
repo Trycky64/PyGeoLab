@@ -19,9 +19,17 @@ def test_geometry_view_tracks_size_pan_zoom_and_document_updates(qtbot: QtBot) -
 
     assert view.viewport.width == 800
     assert view.viewport.height == 600
+    point_screen = view.viewport.world_to_screen(Point2D(0, 0))
+    view.interaction.pointer_move(*point_screen)
+    assert view.interaction.snap_result is not None
     old_center = view.viewport.center
     view.pan_by_pixels(80, 40)
     assert view.viewport.center != old_center
+    assert view.interaction.snap_result is None
+
+    moved_point_screen = view.viewport.world_to_screen(Point2D(0, 0))
+    view.interaction.pointer_move(*moved_point_screen)
+    assert view.interaction.snap_result is not None
 
     cursor = (300.0, 250.0)
     anchor = view.viewport.screen_to_world(*cursor)
@@ -29,6 +37,7 @@ def test_geometry_view_tracks_size_pan_zoom_and_document_updates(qtbot: QtBot) -
     view.zoom_at(1.5, *cursor)
     assert view.viewport.scale == old_scale * 1.5
     assert view.viewport.screen_to_world(*cursor).almost_equals(anchor)
+    assert view.interaction.snap_result is None
 
     view.reset_view()
     assert view.viewport.center == Point2D(0, 0)

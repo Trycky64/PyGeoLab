@@ -65,6 +65,18 @@ def test_main_window_provides_desktop_layout(qtbot: QtBot) -> None:
     assert not window.isVisible()
 
 
+def test_main_window_exposes_global_snapping_toggle(qtbot: QtBot) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    assert window.snapping_action.isCheckable()
+    assert window.snapping_action.isChecked()
+    window.snapping_action.trigger()
+    assert not window.geometry_view.interaction.snapping_options.enabled
+    window.snapping_action.trigger()
+    assert window.geometry_view.interaction.snapping_options.enabled
+
+
 def test_main_window_exposes_accessible_workspace_names(qtbot: QtBot) -> None:
     """Core interactive regions expose textual names to assistive technologies."""
     window = MainWindow()

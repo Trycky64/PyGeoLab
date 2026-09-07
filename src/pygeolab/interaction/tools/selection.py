@@ -73,3 +73,8 @@ class SelectionTool(Tool):
             self.document.move_point(self._drag_id, self._drag_start)
         self._drag_id = None
         self._drag_start = None
+
+    @property
+    def snap_excluded_ids(self) -> frozenset[str]:
+        """Exclude the moving point so it can leave its previous position."""
+        return frozenset() if self._drag_id is None else frozenset({self._drag_id})

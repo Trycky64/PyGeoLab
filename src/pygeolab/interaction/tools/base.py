@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D
+from pygeolab.interaction.snapping import SnapResult
 
 GeometryPreview = Point2D | Line2D | Segment2D | Ray2D | Circle2D | Polygon2D
 
@@ -15,6 +16,7 @@ class PointerContext:
     screen_x: float
     screen_y: float
     shift: bool = False
+    snap: SnapResult | None = None
 
 
 class Tool:
@@ -33,6 +35,11 @@ class Tool:
 
     def cancel(self) -> None:
         """Cancel transient state without mutating committed document state."""
+
+    @property
+    def snap_excluded_ids(self) -> frozenset[str]:
+        """Return object identities excluded from snapping during this gesture."""
+        return frozenset()
 
     @property
     def preview(self) -> tuple[GeometryPreview, ...]:

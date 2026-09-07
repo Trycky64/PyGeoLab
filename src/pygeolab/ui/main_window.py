@@ -152,6 +152,14 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.properties_dock.toggleViewAction())
         view_menu.addAction(self.slider_dock.toggleViewAction())
         self._add_action(view_menu, "Réinitialiser la vue", self.geometry_view.reset_view, "Home")
+        self.snapping_action = self._add_action(
+            view_menu,
+            "&Magnétisme (maintenir Alt pour suspendre)",
+            self.geometry_view.set_snapping_enabled,
+            "M",
+        )
+        self.snapping_action.setCheckable(True)
+        self.snapping_action.setChecked(True)
         theme_menu = view_menu.addMenu(self.tr("Thème"))
         self._add_action(theme_menu, "Clair", lambda: self._apply_theme(False))
         self._add_action(theme_menu, "Sombre", lambda: self._apply_theme(True))

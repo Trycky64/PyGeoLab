@@ -52,9 +52,16 @@ Permet d'éditer :
 Peut afficher :
 
 - coordonnées du curseur ;
+- coordonnées aimantées lorsqu'une cible de snapping est active ;
 - outil actif ;
 - aide contextuelle ;
 - zoom.
+
+## Précision de construction
+
+Un viseur entouré d'un cercle matérialise la cible de snapping. Le magnétisme est activé par
+défaut, basculable avec `M`, et suspendu tant que `Alt` est maintenu. Le seuil reste exprimé en
+pixels pour fournir le même geste au clavier et à la souris, quel que soit le zoom.
 
 ## UX
 

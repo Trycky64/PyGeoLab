@@ -76,9 +76,12 @@ class GeometryView(QWidget):
         self._unsubscribe()
         self._document = document
         self._unsubscribe = document.subscribe(self._on_document_changed)
+        snapping = self._interaction.snapping_options
         self._interaction = InteractionController(
             document, self._viewport, on_changed=self._on_interaction_changed
         )
+        self._interaction.set_snapping_enabled(snapping.enabled)
+        self._interaction.set_snapping_threshold(snapping.threshold_px)
         self._renderer.invalidate_cache()
         self.update()
 
@@ -96,8 +99,14 @@ class GeometryView(QWidget):
         self._interaction.activate(name)
         self.update()
 
+    def set_snapping_enabled(self, enabled: bool) -> None:
+        """Enable snapping for every tool and free-point drag in this view."""
+        self._interaction.set_snapping_enabled(enabled)
+        self.update()
+
     def reset_view(self) -> None:
         """Restore the default origin-centered camera while preserving widget size."""
+        self._interaction.clear_snap()
         self._viewport = Viewport(width=max(1, self.width()), height=max(1, self.height()))
         self._sync_interaction_viewport()
         self._renderer.invalidate_cache()
@@ -105,12 +114,14 @@ class GeometryView(QWidget):
 
     def pan_by_pixels(self, dx: float, dy: float) -> None:
         """Pan the camera by a screen displacement and request repaint."""
+        self._interaction.clear_snap()
         self._viewport = self._viewport.panned_pixels(dx, dy)
         self._sync_interaction_viewport()
         self.update()
 
     def zoom_at(self, factor: float, x: float, y: float) -> None:
         """Zoom around a screen position and request repaint."""
+        self._interaction.clear_snap()
         self._viewport = self._viewport.zoomed_at(factor, x, y)
         self._sync_interaction_viewport()
         self._renderer.invalidate_cache()
@@ -135,6 +146,11 @@ class GeometryView(QWidget):
                 self.palette(),
                 self._interaction.preview,
             )
+            snap = self._interaction.snap_result
+            if snap is not None:
+                self._renderer.render_snap_indicator(
+                    painter, self._viewport, self.palette(), snap.point
+                )
         finally:
             painter.end()
 
@@ -158,6 +174,8 @@ class GeometryView(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Start middle-button pan or forward primary presses to the active tool."""
         if event.button() == Qt.MouseButton.MiddleButton:
+            self._interaction.clear_snap()
+            self.update()
             self._pan_anchor = event.position()
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
@@ -168,6 +186,7 @@ class GeometryView(QWidget):
                 event.position().x(),
                 event.position().y(),
                 bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
+                bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
             )
             event.accept()
             return
@@ -175,8 +194,6 @@ class GeometryView(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Pan with middle drag or forward movement for previews and point dragging."""
-        world = self._viewport.screen_to_world(event.position().x(), event.position().y())
-        self.cursorWorldChanged.emit(world.x, world.y)
         if self._pan_anchor is not None and event.buttons() & Qt.MouseButton.MiddleButton:
             position = event.position()
             delta = position - self._pan_anchor
@@ -188,7 +205,12 @@ class GeometryView(QWidget):
             event.position().x(),
             event.position().y(),
             bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
+            bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
         )
+        raw_world = self._viewport.screen_to_world(event.position().x(), event.position().y())
+        snap = self._interaction.snap_result
+        world = raw_world if snap is None else snap.point
+        self.cursorWorldChanged.emit(world.x, world.y)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
@@ -203,6 +225,7 @@ class GeometryView(QWidget):
                 event.position().x(),
                 event.position().y(),
                 bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
+                bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
             )
             event.accept()
             return

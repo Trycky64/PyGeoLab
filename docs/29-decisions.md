@@ -211,3 +211,16 @@ avec un message contextualisé, sans traceback brut dans l'interface standard.
 La release 1.0 adopte PyInstaller en mode dossier portable. Les builds Windows et Linux sont
 produits nativement par GitHub Actions à partir d'un même fichier `packaging/pygeolab.spec`.
 Un installateur système reste une évolution future : la 1.0 distribue des archives portables.
+
+## ADR-017 — Snapping pur avec seuil écran
+
+Le calcul des cibles vit dans `interaction/snapping.py` et ne dépend pas de Qt. Il reçoit le
+`Document` et le `Viewport`, classe les points, intersections, projections et positions de grille,
+puis compare leur distance en pixels. Le contrôleur remplace uniquement la coordonnée monde du
+`PointerContext`; les outils, previews et commandes existants conservent ainsi leur architecture.
+
+Le point déplacé est exclu des candidats. `Alt` suspend le calcul pour l'événement courant et une
+option du contrôleur l'active globalement. Le renderer ne connaît que la position finale du viseur,
+ce qui maintient la séparation entre décision d'interaction et dessin Qt. Les intersections sont
+calculées à la demande ; un index ou cache ne sera ajouté qu'après mesure dans la section
+performance de la version 1.1.

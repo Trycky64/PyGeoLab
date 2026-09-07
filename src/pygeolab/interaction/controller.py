@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from pygeolab.commands import CommandHistory
 from pygeolab.interaction.selection import SelectionModel
+from pygeolab.interaction.snapping import SnapEngine, SnappingOptions, SnapResult
 from pygeolab.interaction.tools import (
     CircleTool,
     IntersectionTool,
@@ -40,6 +41,9 @@ class InteractionController:
         self.selection = SelectionModel()
         self.viewport = viewport
         self._on_changed = on_changed or (lambda: None)
+        self._snap_engine = SnapEngine()
+        self._snapping_options = SnappingOptions()
+        self._snap_result: SnapResult | None = None
         selection = SelectionTool(document, self.history, self.selection, viewport)
         self._tools: dict[str, Tool] = {
             "select": selection,
@@ -76,6 +80,43 @@ class InteractionController:
         return self.active_tool.preview
 
     @property
+    def snap_result(self) -> SnapResult | None:
+        """Expose the active target for status feedback and the visual indicator."""
+        return self._snap_result
+
+    @property
+    def snapping_options(self) -> SnappingOptions:
+        """Return the current session snapping configuration."""
+        return self._snapping_options
+
+    def set_snapping_enabled(self, enabled: bool) -> None:
+        """Enable or disable snapping globally for this interaction controller."""
+        current = self._snapping_options
+        self._snapping_options = SnappingOptions(
+            enabled,
+            current.threshold_px,
+            current.points,
+            current.grid,
+            current.projections,
+            current.intersections,
+        )
+        if not enabled:
+            self._snap_result = None
+        self._on_changed()
+
+    def set_snapping_threshold(self, threshold_px: float) -> None:
+        """Set the screen-space snap radius while preserving candidate options."""
+        current = self._snapping_options
+        self._snapping_options = SnappingOptions(
+            current.enabled,
+            threshold_px,
+            current.points,
+            current.grid,
+            current.projections,
+            current.intersections,
+        )
+
+    @property
     def tool_names(self) -> tuple[str, ...]:
         """Return all available tool identifiers in toolbar order."""
         return tuple(self._tools)
@@ -98,24 +139,31 @@ class InteractionController:
             if setter is not None:
                 setter(viewport)
 
-    def pointer_press(self, x: float, y: float, shift: bool = False) -> None:
+    def pointer_press(
+        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+    ) -> None:
         """Forward a primary pointer press in screen coordinates."""
-        self.active_tool.press(self._context(x, y, shift))
+        self.active_tool.press(self._context(x, y, shift, suppress_snap))
         self._on_changed()
 
-    def pointer_move(self, x: float, y: float, shift: bool = False) -> None:
+    def pointer_move(
+        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+    ) -> None:
         """Forward pointer movement for previews and drag updates."""
-        self.active_tool.move(self._context(x, y, shift))
+        self.active_tool.move(self._context(x, y, shift, suppress_snap))
         self._on_changed()
 
-    def pointer_release(self, x: float, y: float, shift: bool = False) -> None:
+    def pointer_release(
+        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+    ) -> None:
         """Forward a primary pointer release."""
-        self.active_tool.release(self._context(x, y, shift))
+        self.active_tool.release(self._context(x, y, shift, suppress_snap))
         self._on_changed()
 
     def cancel(self) -> None:
         """Cancel active transient construction or drag state."""
         self.active_tool.cancel()
+        self._snap_result = None
         self._on_changed()
 
     def undo(self) -> bool:
@@ -134,8 +182,23 @@ class InteractionController:
             self._on_changed()
         return changed
 
-    def _context(self, x: float, y: float, shift: bool) -> PointerContext:
-        return PointerContext(self.viewport.screen_to_world(x, y), x, y, shift)
+    def clear_snap(self) -> None:
+        """Clear stale feedback when camera navigation starts."""
+        self._snap_result = None
+
+    def _context(self, x: float, y: float, shift: bool, suppress_snap: bool) -> PointerContext:
+        raw_world = self.viewport.screen_to_world(x, y)
+        self._snap_result = self._snap_engine.snap(
+            self.document,
+            self.viewport,
+            x,
+            y,
+            self._snapping_options,
+            suppressed=suppress_snap,
+            exclude_ids=self.active_tool.snap_excluded_ids,
+        )
+        world = raw_world if self._snap_result is None else self._snap_result.point
+        return PointerContext(world, x, y, shift, self._snap_result)
 
     def _prune_selection(self) -> None:
         for object_id in tuple(self.selection.ids):

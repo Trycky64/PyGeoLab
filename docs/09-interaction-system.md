@@ -60,14 +60,23 @@ Un point calculé n'est pas directement libre.
 
 ## Snapping
 
-Cibles futures :
+Le snapping de la version 1.1 recherche, dans cet ordre de priorité :
 
-- grille ;
-- point existant ;
-- intersection ;
-- axe.
+- les points existants ;
+- les intersections finies de droites, segments, demi-droites et cercles ;
+- la projection la plus proche sur une droite, un segment, une demi-droite, un cercle ou le
+  bord d'un polygone ;
+- la grille adaptative visible.
 
-Le snapping doit être désactivable.
+Le seuil est mesuré en pixels écran (10 px par défaut), donc sa taille visuelle reste constante
+pendant le zoom et le pan. Les objets masqués ou invalides sont ignorés. Le point en cours de
+déplacement est exclu des candidats pour ne pas rester aimanté à son ancienne position.
+
+Le menu **Affichage → Magnétisme** et la touche `M` activent ou désactivent globalement le
+snapping pour la session. Maintenir `Alt` pendant une interaction le suspend temporairement.
+Un viseur coloré indique la cible active. La position résolue est transmise au même
+`PointerContext` que les outils utilisent déjà : previews, points implicites et drag bénéficient
+ainsi du snapping sans modifier le modèle métier ni l'historique de commandes.
 
 ## Sélection multiple
 

@@ -125,7 +125,7 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [x] INT-015 — Preview geometry.
 - [x] INT-016 — Escape cancel.
 - [x] INT-017 — Multi-selection.
-- [ ] INT-018 — Snapping.
+- [x] INT-018 — Snapping.
 
 ## COMMANDS
 
