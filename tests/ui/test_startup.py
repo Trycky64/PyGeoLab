@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QDockWidget, QToolBar
 from pytestqt.qtbot import QtBot
 
 from pygeolab.app import create_application
+from pygeolab.model.objects import GeoObject
 from pygeolab.ui.main_window import MainWindow
 
 
@@ -109,6 +110,21 @@ def test_edit_menu_exposes_advanced_selection_actions(qtbot: QtBot) -> None:
     assert window.select_all_action.shortcut().toString() == "Ctrl+A"
     assert window.clear_selection_action.shortcut().toString() == "Ctrl+Shift+A"
     assert window.duplicate_action.shortcut().toString() == "Ctrl+D"
+
+
+def test_property_relation_actions_update_workspace_selection(qtbot: QtBot, tmp_path) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    first = GeoObject("point", "A", params={"x": 0, "y": 0})
+    second = GeoObject("point", "B", params={"x": 2, "y": 0})
+    segment = GeoObject("segment", "s", (first.id, second.id))
+    window.document.restore((first, second, segment))
+    window.session.save(tmp_path / "relations.pgl")
+    window.geometry_view.set_selected_ids({segment.id})
+
+    window.properties_panel._select_parents_button.click()
+
+    assert window.geometry_view.selected_ids == {first.id, second.id}
 
 
 def test_main_window_exposes_accessible_workspace_names(qtbot: QtBot) -> None:

@@ -23,6 +23,7 @@ Exemples :
 - ChangeStyleCommand ;
 - ChangeVisibilityCommand ;
 - ChangeLockCommand ;
+- ChangeParametersCommand ;
 - DeleteObjectsCommand ;
 - ReorderObjectsCommand ;
 - SetVariableCommand.

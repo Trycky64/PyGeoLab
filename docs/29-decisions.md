@@ -252,3 +252,16 @@ ne demande donc aucun nouveau champ ni migration. `Document.set_order` valide un
 complète et les commandes d'ordre la restaurent exactement sur Undo. Les mutations d'une sélection
 utilisent une commande composée ou une commande groupée spécialisée ; elles occupent une seule
 entrée d'historique même lorsqu'elles concernent plusieurs objets ou descendants.
+
+## ADR-020 — Panneaux comme projections éditables du document
+
+Le panneau Algèbre reconstruit une projection filtrée, triée et regroupée des objets sans copier
+leur état métier. Il mémorise seulement les UUID sélectionnés afin qu'un filtre temporaire ne les
+perde pas. Les cellules éditables créent des commandes de nom, visibilité ou verrouillage ; les
+messages d'invalidité proviennent directement de `GeoObject.error_state`.
+
+Le panneau Propriétés demande les descendants au `Document`, qui expose une vue en lecture seule du
+graphe interne. Les paramètres numériques modifiables sont limités aux clés dont la recette et le
+contrôle UI ont une sémantique claire. `ChangeParametersCommand` remplace le mapping complet, ce qui
+préserve l'immutabilité de `GeoObject` et le recalcul incrémental existant. L'éditeur dédié aux
+fonctions et celui des bornes de curseur restent dans leurs sections respectives.

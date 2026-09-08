@@ -128,4 +128,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   objet, cercles avancés, mesures et transformations, avec previews, annulation et Undo/Redo.
 - Section 3 terminée : sélection rectangulaire et multiple, édition groupée, duplication, ordre
   d'affichage, cycle des objets superposés et menu contextuel du canvas.
-- Les sections 4 à 16 restent planifiées dans `todo.txt`.
+- Section 4 terminée : panneau Algèbre filtrable, triable et éditable, états invalides détaillés,
+  paramètres numériques et navigation dans le graphe depuis Propriétés.
+- Les sections 5 à 16 restent planifiées dans `todo.txt`.

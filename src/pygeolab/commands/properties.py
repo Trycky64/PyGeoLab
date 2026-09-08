@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pygeolab.commands.base import Command
 from pygeolab.model.document import Document
+from pygeolab.model.objects import JsonValue
 from pygeolab.model.styles import Style
 
 
@@ -97,4 +98,24 @@ class ChangeNumberValueCommand(Command):
 
     def undo(self) -> None:
         """Restore the previous numeric parameters."""
+        self.document.update(self.object_id, params=self.before)
+
+
+class ChangeParametersCommand(Command):
+    """Replace one object's serializable recipe parameters reversibly."""
+
+    def __init__(
+        self, document: Document, object_id: str, new_params: dict[str, JsonValue]
+    ) -> None:
+        self.document = document
+        self.object_id = object_id
+        self.before = dict(document.get(object_id).params)
+        self.after = dict(new_params)
+
+    def execute(self) -> None:
+        """Apply the requested recipe parameters and recompute descendants."""
+        self.document.update(self.object_id, params=self.after)
+
+    def undo(self) -> None:
+        """Restore the previous recipe parameters."""
         self.document.update(self.object_id, params=self.before)

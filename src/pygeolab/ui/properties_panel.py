@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from pygeolab.commands import (
     ChangeLockCommand,
+    ChangeParametersCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     Command,
@@ -26,11 +28,14 @@ from pygeolab.commands import (
     RenameObjectCommand,
 )
 from pygeolab.model.document import Document
+from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
 
 
 class PropertiesPanel(QWidget):
     """Edit common object metadata using reversible history commands."""
+
+    selectionRequested = Signal(object)
 
     def __init__(
         self,
@@ -60,6 +65,14 @@ class PropertiesPanel(QWidget):
         self._opacity = QDoubleSpinBox(self)
         self._opacity.setRange(0, 1)
         self._opacity.setSingleStep(0.05)
+        self._parents = QLabel("—", self)
+        self._descendants = QLabel("—", self)
+        self._select_parents_button = QPushButton(self.tr("Sélectionner les parents"), self)
+        self._select_descendants_button = QPushButton(self.tr("Sélectionner les descendants"), self)
+        self._parameters_widget = QWidget(self)
+        self._parameters_form = QFormLayout(self._parameters_widget)
+        self._parameters_form.setContentsMargins(0, 0, 0, 0)
+        self._parameter_editors: dict[str, QDoubleSpinBox] = {}
         form = QFormLayout(self)
         form.addRow(self._empty)
         form.addRow(self.tr("Nom"), self._name)
@@ -71,6 +84,11 @@ class PropertiesPanel(QWidget):
         form.addRow(self.tr("Style de ligne"), self._line_style)
         form.addRow(self.tr("Afficher le label"), self._label)
         form.addRow(self.tr("Opacité du remplissage"), self._opacity)
+        form.addRow(self.tr("Dépendances"), self._parents)
+        form.addRow(self._select_parents_button)
+        form.addRow(self.tr("Descendants"), self._descendants)
+        form.addRow(self._select_descendants_button)
+        form.addRow(self.tr("Paramètres"), self._parameters_widget)
         self._name.editingFinished.connect(self._rename)
         self._visible.toggled.connect(self._change_visibility)
         self._locked.toggled.connect(self._change_locked)
@@ -80,6 +98,8 @@ class PropertiesPanel(QWidget):
         self._line_style.currentTextChanged.connect(lambda _value: self._change_style("line_style"))
         self._label.toggled.connect(lambda _value: self._change_style("show_label"))
         self._opacity.valueChanged.connect(lambda _value: self._change_style("fill_opacity"))
+        self._select_parents_button.clicked.connect(self._select_parents)
+        self._select_descendants_button.clicked.connect(self._select_descendants)
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
 
@@ -129,6 +149,13 @@ class PropertiesPanel(QWidget):
         for widget in widgets:
             widget.setEnabled(enabled)
         self._name.setEnabled(single)
+        parent_ids = frozenset(parent_id for item in objects for parent_id in item.dependencies)
+        descendant_ids = self._document.descendants(self._object_ids) if objects else frozenset()
+        self._parents.setText(self._object_names(parent_ids))
+        self._descendants.setText(self._object_names(descendant_ids))
+        self._select_parents_button.setEnabled(bool(parent_ids))
+        self._select_descendants_button.setEnabled(bool(descendant_ids))
+        self._refresh_parameters(obj if single else None)
         if obj is None:
             return
         self._updating = True
@@ -206,6 +233,67 @@ class PropertiesPanel(QWidget):
             return
         self._execute_command(commands[0] if len(commands) == 1 else CompositeCommand(commands))
 
+    def _refresh_parameters(self, obj: GeoObject | None) -> None:
+        while self._parameters_form.rowCount():
+            self._parameters_form.removeRow(0)
+        self._parameter_editors.clear()
+        if obj is None:
+            self._parameters_widget.setEnabled(False)
+            return
+        editable = _editable_parameter_names(obj.kind)
+        for key in editable:
+            value = obj.params.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                continue
+            editor = QDoubleSpinBox(self._parameters_widget)
+            editor.setDecimals(6)
+            editor.setRange(-1e9, 1e9)
+            editor.setSingleStep(0.1)
+            if key == "radius":
+                editor.setMinimum(0)
+            elif obj.kind == "number" and key == "value":
+                minimum = obj.params.get("minimum", -1e9)
+                maximum = obj.params.get("maximum", 1e9)
+                if isinstance(minimum, (int, float)) and isinstance(maximum, (int, float)):
+                    editor.setRange(float(minimum), float(maximum))
+            elif key == "index":
+                editor.setDecimals(0)
+                editor.setSingleStep(1)
+            editor.setValue(float(value))
+            editor.valueChanged.connect(
+                lambda new_value, parameter=key: self._change_parameter(parameter, new_value)
+            )
+            self._parameters_form.addRow(key, editor)
+            self._parameter_editors[key] = editor
+        self._parameters_widget.setEnabled(bool(self._parameter_editors))
+
+    def _change_parameter(self, key: str, value: float) -> None:
+        if self._updating or self._object_id is None:
+            return
+        obj = self._document.get(self._object_id)
+        params = dict(obj.params)
+        params[key] = int(value) if key == "index" else value
+        if params != dict(obj.params):
+            self._execute_command(ChangeParametersCommand(self._document, obj.id, params))
+
+    def _select_parents(self) -> None:
+        parent_ids = frozenset(
+            parent_id
+            for object_id in self._object_ids
+            for parent_id in self._document.get(object_id).dependencies
+        )
+        if parent_ids:
+            self.selectionRequested.emit(parent_ids)
+
+    def _select_descendants(self) -> None:
+        descendants = self._document.descendants(self._object_ids)
+        if descendants:
+            self.selectionRequested.emit(descendants)
+
+    def _object_names(self, object_ids: frozenset[str]) -> str:
+        names = [obj.name for obj in self._document.objects.values() if obj.id in object_ids]
+        return ", ".join(names) if names else "—"
+
 
 def _replace_style_value(style: Style, field: str, value: str | float | bool) -> Style:
     if field == "color" and isinstance(value, str):
@@ -223,3 +311,15 @@ def _replace_style_value(style: Style, field: str, value: str | float | bool) ->
         if field == "fill_opacity":
             return replace(style, fill_opacity=numeric)
     raise ValueError(f"Propriété de style invalide : {field}")
+
+
+def _editable_parameter_names(kind: str) -> tuple[str, ...]:
+    return {
+        "point": ("x", "y"),
+        "number": ("value",),
+        "circle_radius": ("radius",),
+        "intersection": ("index",),
+        "point_on": ("t",),
+        "rotate": ("angle",),
+        "scale": ("factor",),
+    }.get(kind, ())

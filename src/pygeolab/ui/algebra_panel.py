@@ -1,20 +1,38 @@
-"""Algebra dock widget listing document objects by category and value."""
+"""Searchable algebra tree with inline, reversible document editing."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 
 from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtWidgets import QMenu, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLineEdit,
+    QMenu,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
-from pygeolab.commands import ChangeVisibilityCommand, Command, DeleteObjectCommand
+from pygeolab.commands import (
+    ChangeLockCommand,
+    ChangeVisibilityCommand,
+    Command,
+    CompositeCommand,
+    DeleteObjectsCommand,
+    RenameObjectCommand,
+)
 from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
 from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.document import Document
+from pygeolab.model.objects import GeoObject
 
 
 class AlgebraPanel(QWidget):
-    """Present objects grouped by geometry category and expose selection/context actions."""
+    """Present, filter, group, select and edit document objects."""
 
     selectionChanged = Signal(object)
 
@@ -27,14 +45,37 @@ class AlgebraPanel(QWidget):
         super().__init__(parent)
         self._document = document
         self._execute_command = execute_command
+        self._context_menu: QMenu | None = None
+        self._selection_cache: frozenset[str] = frozenset()
+        self._search = QLineEdit(self)
+        self._search.setPlaceholderText(self.tr("Rechercher…"))
+        self._sort = QComboBox(self)
+        self._sort.addItem(self.tr("Ordre du document"), "document")
+        self._sort.addItem(self.tr("Trier par nom"), "name")
+        self._sort.addItem(self.tr("Trier par type"), "type")
+        self._group = QComboBox(self)
+        self._group.addItem(self.tr("Grouper par catégorie"), "category")
+        self._group.addItem(self.tr("Grouper par type"), "type")
+        self._group.addItem(self.tr("Sans regroupement"), "none")
+        controls = QHBoxLayout()
+        controls.addWidget(self._search, 1)
+        controls.addWidget(self._sort)
+        controls.addWidget(self._group)
         self._tree = QTreeWidget(self)
-        self._tree.setHeaderLabels([self.tr("Objet"), self.tr("Valeur")])
+        self._tree.setHeaderLabels(
+            [self.tr("Objet"), self.tr("Valeur"), self.tr("Visible"), self.tr("Verrouillé")]
+        )
         self._tree.setSelectionMode(QTreeWidget.SelectionMode.ExtendedSelection)
         self._tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._tree.itemSelectionChanged.connect(self._emit_selection)
+        self._tree.itemChanged.connect(self._edit_item)
         self._tree.customContextMenuRequested.connect(self._show_context_menu)
+        self._search.textChanged.connect(self.refresh)
+        self._sort.currentIndexChanged.connect(self.refresh)
+        self._group.currentIndexChanged.connect(self.refresh)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(controls)
         layout.addWidget(self._tree)
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
@@ -43,53 +84,105 @@ class AlgebraPanel(QWidget):
         """Switch to another document and rebuild the object tree."""
         self._unsubscribe()
         self._document = document
+        self._selection_cache = frozenset()
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
 
     def set_selected_ids(self, object_ids: frozenset[str] | set[str]) -> None:
         """Mirror selection coming from the canvas without changing document state."""
+        self._selection_cache = frozenset(
+            object_id for object_id in object_ids if object_id in self._document.objects
+        )
         self._tree.blockSignals(True)
         try:
             self._tree.clearSelection()
             for item in self._iter_object_items():
-                if item.data(0, Qt.ItemDataRole.UserRole) in object_ids:
+                if item.data(0, Qt.ItemDataRole.UserRole) in self._selection_cache:
                     item.setSelected(True)
         finally:
             self._tree.blockSignals(False)
 
     def refresh(self) -> None:
-        """Rebuild categories and human-readable values from current document objects."""
-        selected = {item.data(0, Qt.ItemDataRole.UserRole) for item in self._tree.selectedItems()}
+        """Rebuild the filtered tree while preserving visible object selection."""
+        self._selection_cache = frozenset(
+            object_id for object_id in self._selection_cache if object_id in self._document.objects
+        )
+        selected = set(self._selection_cache)
+        query = self._search.text().strip().casefold()
+        objects = [obj for obj in self._document.objects.values() if self._matches(obj, query)]
+        sort_mode = self._sort.currentData()
+        if sort_mode == "name":
+            objects.sort(key=lambda obj: (obj.name.casefold(), obj.kind, obj.id))
+        elif sort_mode == "type":
+            objects.sort(key=lambda obj: (obj.kind, obj.name.casefold(), obj.id))
+        group_mode = self._group.currentData()
         self._tree.blockSignals(True)
         try:
             self._tree.clear()
             categories: dict[str, QTreeWidgetItem] = {}
-            for obj in self._document.objects.values():
-                category = self._category(obj.geometry)
-                parent = categories.get(category)
-                if parent is None:
-                    parent = QTreeWidgetItem([category, ""])
-                    parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-                    categories[category] = parent
-                    self._tree.addTopLevelItem(parent)
-                item = QTreeWidgetItem([obj.name, self._format_value(obj.geometry, obj.valid)])
-                item.setData(0, Qt.ItemDataRole.UserRole, obj.id)
-                if not obj.visible:
-                    item.setForeground(0, self.palette().mid())
-                parent.addChild(item)
+            for obj in objects:
+                item = self._object_item(obj)
+                if group_mode == "none":
+                    self._tree.addTopLevelItem(item)
+                else:
+                    category = obj.kind if group_mode == "type" else self._category(obj.geometry)
+                    parent = categories.get(category)
+                    if parent is None:
+                        parent = QTreeWidgetItem([category, "", "", ""])
+                        parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                        categories[category] = parent
+                        self._tree.addTopLevelItem(parent)
+                    parent.addChild(item)
                 if obj.id in selected:
                     item.setSelected(True)
             self._tree.expandAll()
+            for column in range(4):
+                self._tree.resizeColumnToContents(column)
         finally:
             self._tree.blockSignals(False)
 
+    def _object_item(self, obj: GeoObject) -> QTreeWidgetItem:
+        item = QTreeWidgetItem([obj.name, self._format_value(obj), "", ""])
+        item.setData(0, Qt.ItemDataRole.UserRole, obj.id)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setCheckState(2, Qt.CheckState.Checked if obj.visible else Qt.CheckState.Unchecked)
+        item.setCheckState(3, Qt.CheckState.Checked if obj.locked else Qt.CheckState.Unchecked)
+        if not obj.valid:
+            error_color = QColor("#dc2626")
+            for column in range(4):
+                item.setForeground(column, error_color)
+                item.setToolTip(column, obj.error_state or self.tr("Construction indéfinie"))
+        elif not obj.visible:
+            for column in range(2):
+                item.setForeground(column, self.palette().mid())
+        return item
+
     def _emit_selection(self) -> None:
-        ids = {
-            item.data(0, Qt.ItemDataRole.UserRole)
-            for item in self._tree.selectedItems()
-            if item.data(0, Qt.ItemDataRole.UserRole)
-        }
-        self.selectionChanged.emit(frozenset(ids))
+        self._selection_cache = self._selected_ids()
+        self.selectionChanged.emit(self._selection_cache)
+
+    def _edit_item(self, item: QTreeWidgetItem, column: int) -> None:
+        object_id = item.data(0, Qt.ItemDataRole.UserRole)
+        if not isinstance(object_id, str) or object_id not in self._document.objects:
+            return
+        obj = self._document.get(object_id)
+        command: Command | None = None
+        if column == 0:
+            name = item.text(0).strip()
+            if name and name != obj.name:
+                command = RenameObjectCommand(self._document, object_id, name)
+        elif column == 2:
+            visible = item.checkState(2) == Qt.CheckState.Checked
+            if visible != obj.visible:
+                command = ChangeVisibilityCommand(self._document, object_id, visible)
+        elif column == 3:
+            locked = item.checkState(3) == Qt.CheckState.Checked
+            if locked != obj.locked:
+                command = ChangeLockCommand(self._document, object_id, locked)
+        if command is not None:
+            self._execute_command(command)
+        elif column == 1 or (column == 0 and item.text(0) != obj.name):
+            self.refresh()
 
     def _show_context_menu(self, position: QPoint) -> None:
         item = self._tree.itemAt(position)
@@ -98,26 +191,92 @@ class AlgebraPanel(QWidget):
         object_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not isinstance(object_id, str) or not object_id:
             return
-        obj = self._document.get(object_id)
+        if object_id not in self._selected_ids():
+            self.set_selected_ids({object_id})
+            self._emit_selection()
+        selected_ids = self._selected_ids()
+        objects = [self._document.get(selected_id) for selected_id in selected_ids]
         menu = QMenu(self)
-        visibility = menu.addAction(self.tr("Masquer") if obj.visible else self.tr("Afficher"))
+        visibility_target = not any(obj.visible for obj in objects)
+        visibility = menu.addAction(self.tr("Afficher" if visibility_target else "Masquer"))
+        visibility.triggered.connect(
+            lambda: self._execute_commands(
+                [
+                    ChangeVisibilityCommand(self._document, obj.id, visibility_target)
+                    for obj in objects
+                    if obj.visible != visibility_target
+                ]
+            )
+        )
+        lock_target = not all(obj.locked for obj in objects)
+        lock = menu.addAction(self.tr("Verrouiller" if lock_target else "Déverrouiller"))
+        lock.triggered.connect(
+            lambda: self._execute_commands(
+                [
+                    ChangeLockCommand(self._document, obj.id, lock_target)
+                    for obj in objects
+                    if obj.locked != lock_target
+                ]
+            )
+        )
+        menu.addSeparator()
+        parents = menu.addAction(self.tr("Sélectionner les parents"))
+        parent_ids = frozenset(parent_id for obj in objects for parent_id in obj.dependencies)
+        parents.setEnabled(bool(parent_ids))
+        parents.triggered.connect(lambda: self._request_selection(parent_ids))
+        descendants = menu.addAction(self.tr("Sélectionner les descendants"))
+        descendant_ids = self._document.descendants(selected_ids)
+        descendants.setEnabled(bool(descendant_ids))
+        descendants.triggered.connect(lambda: self._request_selection(descendant_ids))
+        menu.addSeparator()
         delete = menu.addAction(self.tr("Supprimer"))
-        chosen = menu.exec(self._tree.viewport().mapToGlobal(position))
-        if chosen is visibility:
-            command = ChangeVisibilityCommand(self._document, object_id, not obj.visible)
-            self._execute_command(command)
-        elif chosen is delete:
-            self._execute_command(DeleteObjectCommand(self._document, object_id))
+        delete.triggered.connect(
+            lambda: self._execute_command(DeleteObjectsCommand(self._document, selected_ids))
+        )
+        self._context_menu = menu
+        menu.aboutToHide.connect(lambda: setattr(self, "_context_menu", None))
+        menu.popup(self._tree.viewport().mapToGlobal(position))
+
+    def _execute_commands(self, commands: Sequence[Command]) -> None:
+        if commands:
+            self._execute_command(commands[0] if len(commands) == 1 else CompositeCommand(commands))
+
+    def _selected_ids(self) -> frozenset[str]:
+        return frozenset(
+            object_id
+            for item in self._tree.selectedItems()
+            if isinstance((object_id := item.data(0, Qt.ItemDataRole.UserRole)), str)
+        )
+
+    def _request_selection(self, object_ids: frozenset[str]) -> None:
+        self.set_selected_ids(object_ids)
+        self.selectionChanged.emit(object_ids)
 
     def _iter_object_items(self) -> Iterator[QTreeWidgetItem]:
         for index in range(self._tree.topLevelItemCount()):
-            parent = self._tree.topLevelItem(index)
-            if parent is None:
+            item = self._tree.topLevelItem(index)
+            if item is None:
                 continue
-            for child_index in range(parent.childCount()):
-                child = parent.child(child_index)
+            if isinstance(item.data(0, Qt.ItemDataRole.UserRole), str):
+                yield item
+            for child_index in range(item.childCount()):
+                child = item.child(child_index)
                 if child is not None:
                     yield child
+
+    def _matches(self, obj: GeoObject, query: str) -> bool:
+        if not query:
+            return True
+        searchable = " ".join(
+            (
+                obj.name,
+                obj.kind,
+                self._category(obj.geometry),
+                self._format_value(obj),
+                obj.error_state or "",
+            )
+        ).casefold()
+        return query in searchable
 
     @staticmethod
     def _category(geometry: object) -> str:
@@ -136,9 +295,10 @@ class AlgebraPanel(QWidget):
         return "Objets"
 
     @staticmethod
-    def _format_value(geometry: object, valid: bool) -> str:
-        if not valid or geometry is None:
-            return "indéfini"
+    def _format_value(obj: GeoObject) -> str:
+        geometry = obj.geometry
+        if not obj.valid or geometry is None:
+            return f"indéfini — {obj.error_state}" if obj.error_state else "indéfini"
         if isinstance(geometry, Point2D):
             return f"({geometry.x:.3g}, {geometry.y:.3g})"
         if isinstance(geometry, Segment2D):

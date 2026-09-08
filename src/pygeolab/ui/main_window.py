@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.algebra_dock)
 
         self.properties_panel = PropertiesPanel(self.document, self._execute_command, self)
+        self.properties_panel.selectionRequested.connect(self._selection_from_properties)
         self.properties_dock = QDockWidget(self.tr("Propriétés"), self)
         self.properties_dock.setObjectName("propertiesDock")
         self.properties_dock.setAccessibleName(self.tr("Panneau Propriétés"))
@@ -451,6 +452,11 @@ class MainWindow(QMainWindow):
 
     def _selection_from_algebra(self, ids: frozenset[str]) -> None:
         self.geometry_view.set_selected_ids(ids)
+        self.properties_panel.set_selection(ids)
+
+    def _selection_from_properties(self, ids: frozenset[str]) -> None:
+        self.geometry_view.set_selected_ids(ids)
+        self.algebra_panel.set_selected_ids(ids)
         self.properties_panel.set_selection(ids)
 
     def _show_cursor(self, x: float, y: float) -> None:

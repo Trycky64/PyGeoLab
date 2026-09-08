@@ -9,6 +9,7 @@ from pygeolab.commands.order import ReorderObjectCommand, ReorderObjectsCommand
 from pygeolab.commands.properties import (
     ChangeLockCommand,
     ChangeNumberValueCommand,
+    ChangeParametersCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     RenameObjectCommand,
@@ -16,6 +17,7 @@ from pygeolab.commands.properties import (
 
 __all__ = [
     "ChangeNumberValueCommand",
+    "ChangeParametersCommand",
     "ChangeLockCommand",
     "ChangeStyleCommand",
     "ChangeVisibilityCommand",

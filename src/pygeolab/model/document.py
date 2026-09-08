@@ -168,6 +168,10 @@ class Document:
             {object_id: DirtyFlags(style_dirty=True) for object_id in order},
         )
 
+    def descendants(self, object_ids: Iterable[str]) -> frozenset[str]:
+        """Return all dependent descendants of the supplied objects, excluding the roots."""
+        return frozenset(self._graph.descendants(object_ids, include_roots=False))
+
     def unique_name(self, prefix: str) -> str:
         """Use the requested name when available, otherwise append a numeric suffix."""
         if not prefix.strip():

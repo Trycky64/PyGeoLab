@@ -18,7 +18,9 @@
 
 ## Panneau algébrique
 
-Affiche les objets par catégorie.
+Affiche les objets avec une recherche textuelle, un tri par nom ou type et un regroupement
+configurable par catégorie, type ou sans groupe. La sélection est conservée lorsqu'un filtre la
+masque temporairement.
 
 Exemple :
 
@@ -35,6 +37,11 @@ Functions
 f(x) = sin(x)
 ```
 
+Le nom se modifie directement dans l'arbre. Deux colonnes à cases à cocher pilotent la visibilité
+et le verrouillage avec Undo/Redo. Une construction invalide apparaît en rouge ; sa valeur et son
+infobulle donnent le message d'erreur calculé. Le menu contextuel permet aussi de sélectionner les
+parents directs ou tous les descendants.
+
 ## Propriétés
 
 Permet d'éditer :
@@ -49,6 +56,12 @@ Permet d'éditer :
 
 Avec plusieurs objets sélectionnés, le nom reste désactivé tandis que visibilité, verrouillage et
 champs de style s'appliquent au groupe dans une seule entrée Undo/Redo.
+
+Pour une sélection unique, le panneau affiche les parents directs et tous les descendants, avec
+des boutons permettant de transférer cette relation vers la sélection du workspace. Il expose les
+paramètres numériques directement éditables des points libres, nombres, cercles à rayon littéral,
+intersections, points sur objet, rotations et homothéties. Une modification remplace la recette via
+une commande et déclenche le recalcul normal du graphe.
 
 ## Barre d'état
 
