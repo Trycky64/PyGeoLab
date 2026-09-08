@@ -107,3 +107,14 @@ Le renderer échantillonne les `FunctionObject` sur l'intervalle X visible, sép
 discontinuités et clippe chaque segment au viewport. Les chemins échantillonnés sont mis en
 cache pour une même révision du document et un même viewport ; le cache est borné afin de ne
 pas croître indéfiniment. Le même chemin de rendu est utilisé pour l'écran, le PNG et le SVG.
+
+## Courbes de fonctions en 1.1
+
+Chaque nouvelle courbe reçoit un style violet dédié, modifiable ensuite comme tout autre style.
+Le nombre d'échantillons dépend de la largeur du viewport, du niveau de zoom et de la qualité
+**basse**, **normale** ou **haute**. Il reste borné entre 120 et 4 000 pour conserver un coût
+prévisible. La qualité fait partie de la clé de cache.
+
+Les marqueurs de racines, extrema et intersections sont dessinés après les objets. La dérivée est
+représentée par une courbe pointillée. Une erreur numérique locale interrompt la couche concernée
+sans empêcher le rendu du document.

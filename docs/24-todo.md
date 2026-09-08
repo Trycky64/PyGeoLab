@@ -184,7 +184,7 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [x] UI-006 — Visibility toggle.
 - [x] UI-007 — Style editor.
 - [ ] UI-008 — Coordinates editor.
-- [ ] UI-009 — Function input.
+- [x] UI-009 — Function input.
 - [x] UI-010 — Slider dialog.
 - [x] UI-011 — Settings dialog.
 - [x] UI-012 — About dialog.

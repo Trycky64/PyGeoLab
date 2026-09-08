@@ -123,6 +123,18 @@ class GeometryView(QWidget):
         self._interaction.set_snapping_enabled(enabled)
         self.update()
 
+    def set_function_sampling_quality(self, quality: str) -> None:
+        """Persist the selected adaptive function sampling quality."""
+        if quality not in {"low", "medium", "high"}:
+            raise ValueError("Qualité de sampling inconnue")
+        self._document.set_scene_option("function_sampling_quality", quality)
+
+    def set_function_overlay(self, name: str, visible: bool) -> None:
+        """Toggle one supported numerical function overlay in the scene."""
+        if name not in {"roots", "extrema", "intersections", "derivative"}:
+            raise ValueError("Couche d'analyse inconnue")
+        self._document.set_scene_option(f"show_function_{name}", visible)
+
     def reset_view(self) -> None:
         """Restore the default origin-centered camera while preserving widget size."""
         self._interaction.clear_snap()

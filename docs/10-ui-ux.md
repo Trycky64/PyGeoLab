@@ -97,3 +97,14 @@ Prévoir :
 - thème sombre.
 
 Le thème ne doit pas être codé en dur dans le renderer.
+
+## Fonctions en 1.1
+
+Le menu **Objets** crée et modifie les fonctions. L'éditeur valide immédiatement la syntaxe, le
+domaine et les références aux sliders. La suppression utilise l'action globale de sélection et
+reste groupée avec ses descendants dans l'historique.
+
+Le sous-menu **Affichage > Fonctions** contient le réglage de qualité du tracé et les bascules des
+racines, extrema, intersections et dérivées. Les fonctions valides apparaissent dans Algèbre comme
+les autres objets ; une expression invalide y conserve sa ligne en rouge avec le détail de
+l'erreur.

@@ -82,6 +82,19 @@ def test_algebra_exposes_invalid_state_and_error_message(qtbot) -> None:
     assert item.toolTip(0) == invalid.error_state
 
 
+def test_algebra_exposes_function_expression_errors(qtbot) -> None:
+    document = Document()
+    function = document.add(GeoObject("function", "f", params={"variable": "x", "source": "sin("}))
+    panel = AlgebraPanel(document, CommandHistory().execute)
+    qtbot.addWidget(panel)
+
+    invalid = document.get(function.id)
+    item = _item(panel, function.id)
+    assert not invalid.valid and invalid.error_state
+    assert invalid.error_state in item.text(1)
+    assert item.toolTip(0) == invalid.error_state
+
+
 def test_properties_show_graph_select_relations_and_edit_parameters(qtbot) -> None:
     document = Document()
     first = GeoObject("point", "A", params={"x": 0, "y": 0})

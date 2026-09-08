@@ -130,4 +130,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   d'affichage, cycle des objets superposés et menu contextuel du canvas.
 - Section 4 terminée : panneau Algèbre filtrable, triable et éditable, états invalides détaillés,
   paramètres numériques et navigation dans le graphe depuis Propriétés.
-- Les sections 5 à 16 restent planifiées dans `todo.txt`.
+- Section 5 terminée : éditeur de fonctions lié aux sliders, sampling adaptatif, détection renforcée
+  des asymptotes et couches optionnelles de racines, extrema, intersections et dérivées.
+- Les sections 6 à 16 restent planifiées dans `todo.txt`.

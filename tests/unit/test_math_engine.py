@@ -66,3 +66,17 @@ def test_sampling_splits_asymptote_and_domain() -> None:
         for point in segment
     ]
     assert points and min(p.x for p in points) >= -1 and max(p.x for p in points) <= 1
+
+
+def test_sampling_detects_an_asymptote_between_sample_positions() -> None:
+    pole = 0.013
+    function = FunctionObject.from_source("f", "x", f"1/(x-{pole})")
+
+    sampled = sample_function(function, -1, 1, samples=100)
+
+    assert sampled.segments
+    assert all(
+        not (start.x < pole < end.x)
+        for segment in sampled.segments
+        for start, end in zip(segment, segment[1:], strict=False)
+    )

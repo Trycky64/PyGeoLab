@@ -41,6 +41,7 @@ def sample_function(
     step = (domain_max - domain_min) / (samples - 1)
     pieces: list[tuple[Point2D, ...]] = []
     current: list[Point2D] = []
+    previous_x: float | None = None
     previous_y: float | None = None
     typical_scale = 1.0
     for index in range(samples):
@@ -51,16 +52,35 @@ def sample_function(
             if len(current) >= 2:
                 pieces.append(tuple(current))
             current = []
+            previous_x = None
             previous_y = None
             continue
-        if previous_y is not None:
+        if previous_x is not None and previous_y is not None:
             jump = abs(y - previous_y)
             typical_scale = max(typical_scale, min(abs(y), abs(previous_y)), 1.0)
-            if jump > jump_factor * typical_scale:
+            discontinuity = jump > jump_factor * typical_scale
+            midpoint_x = (previous_x + x) / 2
+            try:
+                midpoint_y = function.evaluate(midpoint_x, variables)
+            except (EvaluationError, ValueError, ArithmeticError):
+                discontinuity = True
+            else:
+                endpoint_scale = max(1.0, abs(previous_y), abs(y))
+                nonlinear_jump = abs(midpoint_y - (previous_y + y) / 2)
+                hidden_pole = (
+                    previous_y * y < 0
+                    and min(abs(previous_y), abs(y)) > 4.0
+                    and abs(midpoint_y) > min(abs(previous_y), abs(y)) / 2
+                )
+                discontinuity = (
+                    discontinuity or nonlinear_jump > jump_factor * endpoint_scale or hidden_pole
+                )
+            if discontinuity:
                 if len(current) >= 2:
                     pieces.append(tuple(current))
                 current = []
         current.append(Point2D(x, y))
+        previous_x = x
         previous_y = y
     if len(current) >= 2:
         pieces.append(tuple(current))

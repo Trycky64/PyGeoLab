@@ -265,3 +265,15 @@ graphe interne. Les paramètres numériques modifiables sont limités aux clés 
 contrôle UI ont une sémantique claire. `ChangeParametersCommand` remplace le mapping complet, ce qui
 préserve l'immutabilité de `GeoObject` et le recalcul incrémental existant. L'éditeur dédié aux
 fonctions et celui des bornes de curseur restent dans leurs sections respectives.
+
+## ADR-021 — Fonctions éditées comme recettes et analyses comme couches de scène
+
+L'éditeur de fonction transforme la saisie validée en recette `GeoObject(kind="function")`. Les
+variables externes sont résolues par nom vers des UUID d'objets numériques avant la commande ; le
+graphe conserve ainsi ses références stables. `ChangeFunctionCommand` remplace ensemble le nom,
+les dépendances et les paramètres, ce qui rend une modification entièrement annulable.
+
+La qualité du sampling et les analyses visibles appartiennent à `Document.scene`, déjà sérialisé
+par le format v1. Le renderer ajuste le nombre de points à la largeur et au zoom, puis dessine les
+résultats numériques sans modifier le modèle. Ce choix ne change pas le schéma `.pgl` et conserve
+la compatibilité avec les documents 1.0.

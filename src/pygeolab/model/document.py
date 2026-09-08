@@ -172,6 +172,20 @@ class Document:
         """Return all dependent descendants of the supplied objects, excluding the roots."""
         return frozenset(self._graph.descendants(object_ids, include_roots=False))
 
+    def set_scene_option(self, key: str, value: JsonValue) -> None:
+        """Store one serializable scene display option and notify observers."""
+        if not key.strip():
+            raise ValueError("Une clé de scène non vide est nécessaire")
+        if self.scene.get(key) == value:
+            return
+        self.scene[key] = value
+        self.revision += 1
+        for callback in tuple(self._observers):
+            try:
+                callback()
+            except Exception:
+                logging.getLogger(__name__).exception("Échec de notification d'un observateur")
+
     def unique_name(self, prefix: str) -> str:
         """Use the requested name when available, otherwise append a numeric suffix."""
         if not prefix.strip():

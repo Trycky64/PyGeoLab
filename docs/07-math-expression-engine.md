@@ -135,3 +135,18 @@ Une fonction persistante est représentée par un `GeoObject(kind="function")`. 
 conservent l'expression source, la variable principale et le domaine optionnel ; ses dépendances
 UUID pointent vers les objets numériques utilisés comme variables externes. L'évaluation produit
 un `FunctionObject` sûr, ce qui raccorde directement les sliders au recalcul des courbes.
+
+## Édition et analyse visuelle en 1.1
+
+Le menu **Objets > Nouvelle fonction** ouvre un éditeur pour le nom, la variable indépendante,
+l'expression et un domaine facultatif. Les noms externes de l'expression sont résolus vers les
+objets numériques de même nom ; une variable absente est signalée avant la création. La même
+boîte modifie une fonction existante par une commande réversible unique.
+
+Le sampling contrôle aussi le point milieu entre deux échantillons. Cette vérification sépare une
+polyline lorsqu'une erreur, une croissance fortement non linéaire ou un changement de signe loin
+de zéro révèle une asymptote située entre les positions échantillonnées.
+
+Le menu **Affichage > Fonctions** propose trois qualités et quatre couches calculées à la demande :
+racines, extrema, intersections et dérivées. Ces couches sont des options de scène persistantes et
+ne créent aucun objet dans le document.

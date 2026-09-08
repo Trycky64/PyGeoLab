@@ -18,6 +18,7 @@ from pygeolab.geometry import (
     Vector2D,
 )
 from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.numerical import derivative, extrema, find_roots, intersections
 from pygeolab.math_engine.sampling import sample_function
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
@@ -61,6 +62,7 @@ class Renderer:
         visible = self._visible_objects
         for obj in visible:
             self._draw_object(painter, document, obj, viewport)
+        self._draw_function_analysis(painter, document, visible, viewport, palette)
         self._draw_labels(painter, document, visible, viewport, palette)
         for obj in visible:
             if obj.id in selected:
@@ -363,15 +365,21 @@ class Renderer:
             viewport.center.x,
             viewport.scale,
             viewport.width,
+            document.scene.get("function_sampling_quality", "medium"),
             tuple(sorted(variables.items())),
         )
         pieces = self._function_cache.get(cache_key)
         if pieces is None:
+            quality_name = document.scene.get("function_sampling_quality", "medium")
+            quality = {"low": 0.75, "medium": 1.5, "high": 3.0}.get(
+                quality_name if isinstance(quality_name, str) else "medium", 1.5
+            )
+            zoom_factor = math.sqrt(min(4.0, max(0.5, viewport.scale / 80.0)))
             sampled = sample_function(
                 function,
                 left,
                 right,
-                samples=min(2000, max(200, viewport.width * 2)),
+                samples=min(4000, max(120, round(viewport.width * quality * zoom_factor))),
                 variables=variables,
             )
             pieces = sampled.segments
@@ -382,6 +390,111 @@ class Renderer:
             for start, end in zip(piece, piece[1:], strict=False):
                 clipped = clip_segment(start, end, viewport.world_bounds)
                 Renderer._draw_clipped_line(painter, clipped, viewport)
+
+    def _draw_function_analysis(
+        self,
+        painter: QPainter,
+        document: Document,
+        objects: Iterable[GeoObject],
+        viewport: Viewport,
+        palette: QPalette,
+    ) -> None:
+        functions = [
+            (obj, obj.geometry, self._function_variables(document, obj))
+            for obj in objects
+            if isinstance(obj.geometry, FunctionObject)
+        ]
+        if not functions:
+            return
+        left, _, right, _ = viewport.world_bounds
+        marker_color = QColor(palette.highlight().color())
+        painter.save()
+        painter.setPen(QPen(marker_color, 1.5))
+        painter.setBrush(marker_color)
+        if document.scene.get("show_function_roots", False) is True:
+            for _obj, function, variables in functions:
+                for x in self._safe_roots(function, left, right, variables):
+                    self._draw_analysis_marker(painter, viewport, Point2D(x, 0))
+        if document.scene.get("show_function_extrema", False) is True:
+            for _obj, function, variables in functions:
+                try:
+                    function_extrema = extrema(function, left, right, variables, samples=256)
+                except (ValueError, ArithmeticError):
+                    function_extrema = ()
+                for extremum in function_extrema:
+                    self._draw_analysis_marker(painter, viewport, Point2D(extremum.x, extremum.y))
+        if document.scene.get("show_function_intersections", False) is True:
+            for index, (_obj, first, first_variables) in enumerate(functions):
+                for _other_obj, second, second_variables in functions[index + 1 :]:
+                    variables = {**first_variables, **second_variables}
+                    try:
+                        points = intersections(first, second, left, right, variables, samples=256)
+                    except (ValueError, ArithmeticError):
+                        points = ()
+                    for x, y in points:
+                        self._draw_analysis_marker(painter, viewport, Point2D(x, y))
+        if document.scene.get("show_function_derivative", False) is True:
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            derivative_pen = QPen(marker_color, 1.2, Qt.PenStyle.DotLine)
+            derivative_pen.setCosmetic(True)
+            painter.setPen(derivative_pen)
+            for _obj, function, variables in functions:
+                self._draw_derivative(painter, function, variables, viewport)
+        painter.restore()
+
+    @staticmethod
+    def _safe_roots(
+        function: FunctionObject,
+        left: float,
+        right: float,
+        variables: dict[str, float],
+    ) -> tuple[float, ...]:
+        try:
+            return find_roots(function, left, right, variables, samples=256)
+        except (ValueError, ArithmeticError):
+            return ()
+
+    @staticmethod
+    def _draw_analysis_marker(painter: QPainter, viewport: Viewport, point: Point2D) -> None:
+        x, y = viewport.world_to_screen(point)
+        if -6 <= x <= viewport.width + 6 and -6 <= y <= viewport.height + 6:
+            painter.drawEllipse(QPointF(x, y), 4.0, 4.0)
+
+    @staticmethod
+    def _function_variables(document: Document, obj: GeoObject) -> dict[str, float]:
+        return {
+            parent.name: parent.geometry
+            for dependency_id in obj.dependencies
+            if isinstance((parent := document.get(dependency_id)).geometry, float)
+        }
+
+    @staticmethod
+    def _draw_derivative(
+        painter: QPainter,
+        function: FunctionObject,
+        variables: dict[str, float],
+        viewport: Viewport,
+    ) -> None:
+        left, _, right, _ = viewport.world_bounds
+        samples = min(1200, max(100, viewport.width))
+        previous: Point2D | None = None
+        for index in range(samples):
+            x = left + (right - left) * index / (samples - 1)
+            try:
+                point = Point2D(x, derivative(function, x, variables))
+            except (ValueError, ArithmeticError):
+                previous = None
+                continue
+            if (
+                previous is not None
+                and abs(point.y - previous.y) * viewport.scale < viewport.height * 4
+            ):
+                Renderer._draw_clipped_line(
+                    painter,
+                    clip_segment(previous, point, viewport.world_bounds),
+                    viewport,
+                )
+            previous = point
 
     def _draw_labels(
         self,

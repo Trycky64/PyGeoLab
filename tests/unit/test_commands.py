@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from pygeolab.commands import (
+    ChangeFunctionCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     Command,
@@ -128,3 +129,38 @@ def test_history_limit_discards_oldest_entries() -> None:
     for index in range(3):
         history.execute(CreateObjectCommand(document, point(f"P{index}", index, 0)))
     assert history.undo_count == 2
+
+
+def test_function_edit_is_one_reversible_command() -> None:
+    document = Document()
+    parameter = document.add(GeoObject("number", "a", params={"value": 2.0}))
+    function = document.add(
+        GeoObject(
+            "function",
+            "f",
+            (parameter.id,),
+            {"variable": "x", "source": "a*x"},
+        )
+    )
+    history = CommandHistory()
+
+    history.execute(
+        ChangeFunctionCommand(
+            document,
+            function.id,
+            "g",
+            (),
+            {"variable": "t", "source": "t^2", "domain": (-3.0, 3.0)},
+        )
+    )
+
+    edited = document.get(function.id)
+    assert edited.name == "g" and edited.dependencies == ()
+    assert edited.geometry is not None and edited.geometry.evaluate(2) == pytest.approx(4)
+    assert history.undo()
+    restored = document.get(function.id)
+    assert restored.name == "f" and restored.dependencies == (parameter.id,)
+    assert restored.geometry is not None
+    assert restored.geometry.evaluate(2, {"a": 2}) == pytest.approx(4)
+    assert history.redo()
+    assert document.get(function.id).name == "g"

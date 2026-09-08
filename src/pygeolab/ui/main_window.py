@@ -19,11 +19,12 @@ from PySide6.QtWidgets import (
 )
 
 from pygeolab import __version__
-from pygeolab.commands import Command, CreateObjectCommand
+from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectCommand
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
 from pygeolab.persistence import ProjectSession
 from pygeolab.ui.algebra_panel import AlgebraPanel
+from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
 from pygeolab.ui.geometry_view import GeometryView
@@ -181,6 +182,12 @@ class MainWindow(QMainWindow):
 
         objects_menu = self.menuBar().addMenu(self.tr("&Objets"))
         self._add_action(objects_menu, "Nouveau &curseur…", self._new_slider)
+        self.new_function_action = self._add_action(
+            objects_menu, "Nouvelle &fonction…", self._new_function, "Ctrl+F"
+        )
+        self.edit_function_action = self._add_action(
+            objects_menu, "&Modifier la fonction…", self._edit_function
+        )
 
         view_menu = self.menuBar().addMenu(self.tr("&Affichage"))
         view_menu.addAction(self.algebra_dock.toggleViewAction())
@@ -198,10 +205,56 @@ class MainWindow(QMainWindow):
         theme_menu = view_menu.addMenu(self.tr("Thème"))
         self._add_action(theme_menu, "Clair", lambda: self._apply_theme(False))
         self._add_action(theme_menu, "Sombre", lambda: self._apply_theme(True))
+        function_menu = view_menu.addMenu(self.tr("Fonctions"))
+        quality_menu = function_menu.addMenu(self.tr("Qualité du tracé"))
+        quality_group = QActionGroup(self)
+        quality_group.setExclusive(True)
+        self.function_quality_actions: dict[str, QAction] = {}
+        for quality, label in (("low", "Basse"), ("medium", "Normale"), ("high", "Haute")):
+            action = QAction(self.tr(label), self)
+            action.setCheckable(True)
+            action.setChecked(quality == "medium")
+            action.triggered.connect(
+                lambda checked=False, value=quality: self._set_function_quality(value, checked)
+            )
+            quality_group.addAction(action)
+            quality_menu.addAction(action)
+            self.function_quality_actions[quality] = action
+        self.function_overlay_actions: dict[str, QAction] = {}
+        for name, label in (
+            ("roots", "Afficher les racines"),
+            ("extrema", "Afficher les extrema"),
+            ("intersections", "Afficher les intersections"),
+            ("derivative", "Afficher la dérivée"),
+        ):
+            action = QAction(self.tr(label), self)
+            action.setCheckable(True)
+            action.toggled.connect(
+                lambda checked, value=name: self.geometry_view.set_function_overlay(value, checked)
+            )
+            function_menu.addAction(action)
+            self.function_overlay_actions[name] = action
 
         help_menu = self.menuBar().addMenu(self.tr("&Aide"))
         self._add_action(help_menu, "Ouvrir le dossier des &logs", self._open_logs)
         self._add_action(help_menu, "À &propos de PyGeoLab", self._show_about)
+
+    def _set_function_quality(self, quality: str, checked: bool) -> None:
+        if checked:
+            self.geometry_view.set_function_sampling_quality(quality)
+
+    def _sync_function_actions(self) -> None:
+        quality = self.document.scene.get("function_sampling_quality", "medium")
+        if not isinstance(quality, str) or quality not in self.function_quality_actions:
+            quality = "medium"
+        for name, action in self.function_quality_actions.items():
+            blocked = action.blockSignals(True)
+            action.setChecked(name == quality)
+            action.blockSignals(blocked)
+        for name, action in self.function_overlay_actions.items():
+            blocked = action.blockSignals(True)
+            action.setChecked(self.document.scene.get(f"show_function_{name}", False) is True)
+            action.blockSignals(blocked)
 
     def _add_action(
         self,
@@ -291,6 +344,39 @@ class MainWindow(QMainWindow):
             self._execute_command(CreateObjectCommand(self.document, variable))
         except ValueError as exc:
             QMessageBox.warning(self, self.tr("Curseur invalide"), str(exc))
+
+    def _new_function(self) -> None:
+        dialog = FunctionDialog(self.document, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            function = dialog.object_definition()
+            if function.name in {obj.name for obj in self.document.objects.values()}:
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(CreateObjectCommand(self.document, function))
+        except ValueError as exc:
+            QMessageBox.warning(self, self.tr("Fonction invalide"), str(exc))
+
+    def _edit_function(self) -> None:
+        selected = tuple(self.geometry_view.selected_ids)
+        if len(selected) != 1 or self.document.get(selected[0]).kind != "function":
+            self.statusBar().showMessage(self.tr("Sélectionnez une fonction à modifier"))
+            return
+        function = self.document.get(selected[0])
+        dialog = FunctionDialog(self.document, function, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            name, dependencies, params = dialog.definition()
+            if any(
+                obj.name == name and obj.id != function.id for obj in self.document.objects.values()
+            ):
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(
+                ChangeFunctionCommand(self.document, function.id, name, dependencies, params)
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, self.tr("Fonction invalide"), str(exc))
 
     def _new_project(self) -> None:
         if not self._confirm_discard_changes():
@@ -442,6 +528,7 @@ class MainWindow(QMainWindow):
         self.algebra_panel.set_document(self.document)
         self.properties_panel.set_document(self.document)
         self.slider_panel.set_document(self.document)
+        self._sync_function_actions()
         self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
         self._update_history_actions()
         self._update_title()
