@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from pygeolab import __version__
-from pygeolab.commands import Command, CreateObjectCommand, DeleteObjectCommand
+from pygeolab.commands import Command, CreateObjectCommand
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
 from pygeolab.persistence import ProjectSession
@@ -157,6 +157,25 @@ class MainWindow(QMainWindow):
             QKeySequence.StandardKey.Delete,
         )
         edit_menu.addSeparator()
+        self.select_all_action = self._add_action(
+            edit_menu,
+            "Tout &sélectionner",
+            self.geometry_view.select_all,
+            QKeySequence.StandardKey.SelectAll,
+        )
+        self.clear_selection_action = self._add_action(
+            edit_menu,
+            "Effacer la sélection",
+            self.geometry_view.clear_selection,
+            "Ctrl+Shift+A",
+        )
+        self.duplicate_action = self._add_action(
+            edit_menu,
+            "&Dupliquer",
+            self.geometry_view.duplicate_selection,
+            "Ctrl+D",
+        )
+        edit_menu.addSeparator()
         self._add_action(edit_menu, "&Préférences…", self._show_preferences)
 
         objects_menu = self.menuBar().addMenu(self.tr("&Objets"))
@@ -252,10 +271,8 @@ class MainWindow(QMainWindow):
         self._update_history_actions()
 
     def _delete_selection(self) -> None:
-        selected = tuple(self.geometry_view.selected_ids)
-        if len(selected) == 1:
-            self._execute_command(DeleteObjectCommand(self.document, selected[0]))
-            self.geometry_view.set_selected_ids(set())
+        self.geometry_view.delete_selection()
+        self._update_history_actions()
 
     def _new_slider(self) -> None:
         dialog = SliderDialog(self)

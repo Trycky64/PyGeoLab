@@ -102,6 +102,15 @@ def test_toolbar_exposes_every_advanced_construction_tool(qtbot: QtBot) -> None:
     assert all(window.tool_actions[name].isCheckable() for name in expected)
 
 
+def test_edit_menu_exposes_advanced_selection_actions(qtbot: QtBot) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    assert window.select_all_action.shortcut().toString() == "Ctrl+A"
+    assert window.clear_selection_action.shortcut().toString() == "Ctrl+Shift+A"
+    assert window.duplicate_action.shortcut().toString() == "Ctrl+D"
+
+
 def test_main_window_exposes_accessible_workspace_names(qtbot: QtBot) -> None:
     """Core interactive regions expose textual names to assistive technologies."""
     window = MainWindow()

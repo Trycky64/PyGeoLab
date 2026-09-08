@@ -75,20 +75,17 @@ Afficher :
 
 ## Ordre de rendu
 
-Proposition :
+Les objets sont dessinés dans l'ordre persistant du document entre les axes et les labels. Les
+actions **Mettre au premier plan** et **Mettre à l'arrière-plan** modifient cet ordre sans changer
+les recettes géométriques. Le rendu complet suit donc :
 
 1. fond ;
 2. grille ;
 3. axes ;
-4. surfaces ;
-5. courbes ;
-6. lignes ;
-7. segments ;
-8. cercles ;
-9. points ;
-10. labels ;
-11. sélection ;
-12. outils temporaires.
+4. objets dans l'ordre du document ;
+5. labels ;
+6. surbrillance de sélection ;
+7. outils temporaires.
 
 ## Clipping
 

@@ -80,10 +80,22 @@ ainsi du snapping sans modifier le modèle métier ni l'historique de commandes.
 
 ## Sélection multiple
 
-Support futur ou MVP avancé :
+L'outil Sélection prend en charge :
 
-- `Shift+clic` ;
-- rectangle de sélection.
+- clic simple pour remplacer la sélection ;
+- `Shift+clic` pour ajouter un objet ;
+- `Ctrl+clic` pour basculer un objet ;
+- glisser depuis une zone vide pour tracer un rectangle de sélection ;
+- `Shift` avec un rectangle pour ajouter les objets traversés et `Ctrl` pour les basculer ;
+- clics répétés au même emplacement pour parcourir les objets superposés dans l'ordre visuel.
+
+Le rectangle est une preview transitoire et `Escape` l'abandonne. **Édition → Tout sélectionner**
+utilise `Ctrl+A` et **Effacer la sélection** utilise `Ctrl+Shift+A`.
+
+Le menu contextuel du canvas agit sur toute la sélection. Il permet d'afficher ou masquer, de
+verrouiller ou déverrouiller, de dupliquer les objets indépendants, de déplacer les objets au
+premier plan ou à l'arrière-plan et de supprimer. La duplication décale légèrement les points
+libres et ignore les recettes dépendantes dont les parents devraient aussi être copiés.
 
 ## Aperçu
 

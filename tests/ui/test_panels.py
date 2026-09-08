@@ -38,3 +38,27 @@ def test_slider_panel_lists_numeric_variables(qtbot) -> None:
     document.add(numeric_variable("a", 2, 0, 10, 1))
     panel.refresh()
     assert any("a = 2" in label.text() for label in panel.findChildren(QLabel))
+
+
+def test_properties_panel_edits_multiple_objects_as_grouped_commands(qtbot) -> None:
+    document = Document()
+    history = CommandHistory()
+    first = document.add(GeoObject("point", "A", params={"x": 0, "y": 0}))
+    second = document.add(GeoObject("point", "B", params={"x": 1, "y": 0}))
+    properties = PropertiesPanel(document, history.execute)
+    qtbot.addWidget(properties)
+    properties.set_selection({first.id, second.id})
+
+    assert not properties._name.isEnabled()
+    properties._width.setValue(4)
+    assert history.undo_count == 1
+    assert document.get(first.id).style.width == document.get(second.id).style.width == 4
+    properties._locked.setChecked(True)
+    assert history.undo_count == 2
+    assert document.get(first.id).locked and document.get(second.id).locked
+    properties._visible.setChecked(False)
+    assert history.undo_count == 3
+    assert not document.get(first.id).visible and not document.get(second.id).visible
+
+    history.undo()
+    assert document.get(first.id).visible and document.get(second.id).visible

@@ -61,6 +61,24 @@ class ChangeVisibilityCommand(Command):
         self.document.update(self.object_id, visible=self.before)
 
 
+class ChangeLockCommand(Command):
+    """Change one object's editing lock reversibly."""
+
+    def __init__(self, document: Document, object_id: str, locked: bool) -> None:
+        self.document = document
+        self.object_id = object_id
+        self.before = document.get(object_id).locked
+        self.after = locked
+
+    def execute(self) -> None:
+        """Apply the requested lock state."""
+        self.document.update(self.object_id, locked=self.after)
+
+    def undo(self) -> None:
+        """Restore the previous lock state."""
+        self.document.update(self.object_id, locked=self.before)
+
+
 class ChangeNumberValueCommand(Command):
     """Change a numeric variable value reversibly while preserving slider metadata."""
 

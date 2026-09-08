@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import (
+    QContextMenuEvent,
     QKeyEvent,
     QMouseEvent,
     QPainter,
@@ -13,11 +14,12 @@ from PySide6.QtGui import (
     QResizeEvent,
     QWheelEvent,
 )
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QMenu, QWidget
 
 from pygeolab.commands import CommandHistory
 from pygeolab.interaction import InteractionController
 from pygeolab.model.document import Document
+from pygeolab.rendering.hit_test import first_hit
 from pygeolab.rendering.renderer import Renderer
 from pygeolab.rendering.viewport import Viewport
 
@@ -38,6 +40,7 @@ class GeometryView(QWidget):
         self._viewport = Viewport(width=max(1, self.width()), height=max(1, self.height()))
         self._renderer = Renderer()
         self._pan_anchor: QPointF | None = None
+        self._context_menu: QMenu | None = None
         self._last_selection: frozenset[str] = frozenset()
         self._unsubscribe: Callable[[], None] = self._document.subscribe(self._on_document_changed)
         self._interaction = InteractionController(
@@ -93,6 +96,22 @@ class GeometryView(QWidget):
                 self._interaction.selection.toggle(object_id)
         self._emit_selection_if_changed()
         self.update()
+
+    def select_all(self) -> None:
+        """Select every document object."""
+        self._interaction.select_all()
+
+    def clear_selection(self) -> None:
+        """Clear every selected identity."""
+        self._interaction.clear_selection()
+
+    def delete_selection(self) -> bool:
+        """Delete selected objects and descendants as one history command."""
+        return self._interaction.delete_selection()
+
+    def duplicate_selection(self) -> frozenset[str]:
+        """Duplicate dependency-free selected objects."""
+        return self._interaction.duplicate_selection()
 
     def activate_tool(self, name: str) -> None:
         """Activate one registered interaction tool by stable identifier."""
@@ -187,6 +206,7 @@ class GeometryView(QWidget):
                 event.position().y(),
                 bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
                 bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
+                bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier),
             )
             event.accept()
             return
@@ -206,6 +226,7 @@ class GeometryView(QWidget):
             event.position().y(),
             bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
             bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
+            bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier),
         )
         raw_world = self._viewport.screen_to_world(event.position().x(), event.position().y())
         snap = self._interaction.snap_result
@@ -226,6 +247,7 @@ class GeometryView(QWidget):
                 event.position().y(),
                 bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
                 bool(event.modifiers() & Qt.KeyboardModifier.AltModifier),
+                bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier),
             )
             event.accept()
             return
@@ -238,6 +260,42 @@ class GeometryView(QWidget):
             event.accept()
             return
         super().keyPressEvent(event)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """Open non-blocking actions for the selection under the canvas pointer."""
+        position = event.pos()
+        obj = first_hit(self._document, self._viewport, position.x(), position.y())
+        if obj is None:
+            self.clear_selection()
+            event.accept()
+            return
+        if obj.id not in self.selected_ids:
+            self.set_selected_ids({obj.id})
+        selected = [self._document.get(object_id) for object_id in self.selected_ids]
+        menu = QMenu(self)
+        visibility_target = not any(item.visible for item in selected)
+        visibility = menu.addAction(self.tr("Afficher" if visibility_target else "Masquer"))
+        visibility.triggered.connect(
+            lambda: self._interaction.set_selection_visibility(visibility_target)
+        )
+        lock_target = not all(item.locked for item in selected)
+        lock = menu.addAction(self.tr("Verrouiller" if lock_target else "Déverrouiller"))
+        lock.triggered.connect(lambda: self._interaction.set_selection_locked(lock_target))
+        menu.addSeparator()
+        duplicate = menu.addAction(self.tr("Dupliquer"))
+        duplicate.setEnabled(any(not item.dependencies for item in selected))
+        duplicate.triggered.connect(self.duplicate_selection)
+        front = menu.addAction(self.tr("Mettre au premier plan"))
+        front.triggered.connect(lambda: self._interaction.reorder_selection(to_front=True))
+        back = menu.addAction(self.tr("Mettre à l'arrière-plan"))
+        back.triggered.connect(lambda: self._interaction.reorder_selection(to_front=False))
+        menu.addSeparator()
+        delete = menu.addAction(self.tr("Supprimer"))
+        delete.triggered.connect(self.delete_selection)
+        self._context_menu = menu
+        menu.aboutToHide.connect(lambda: setattr(self, "_context_menu", None))
+        menu.popup(event.globalPos())
+        event.accept()
 
     def _sync_interaction_viewport(self) -> None:
         self._interaction.set_viewport(self._viewport)

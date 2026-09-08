@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import replace
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -17,9 +18,11 @@ from PySide6.QtWidgets import (
 )
 
 from pygeolab.commands import (
+    ChangeLockCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     Command,
+    CompositeCommand,
     RenameObjectCommand,
 )
 from pygeolab.model.document import Document
@@ -39,10 +42,12 @@ class PropertiesPanel(QWidget):
         self._document = document
         self._execute_command = execute_command
         self._object_id: str | None = None
+        self._object_ids: frozenset[str] = frozenset()
         self._updating = False
         self._empty = QLabel(self.tr("Sélectionnez un objet"), self)
         self._name = QLineEdit(self)
         self._visible = QCheckBox(self)
+        self._locked = QCheckBox(self)
         self._color = QPushButton(self.tr("Choisir…"), self)
         self._width = QDoubleSpinBox(self)
         self._width.setRange(0.5, 20)
@@ -59,6 +64,7 @@ class PropertiesPanel(QWidget):
         form.addRow(self._empty)
         form.addRow(self.tr("Nom"), self._name)
         form.addRow(self.tr("Visible"), self._visible)
+        form.addRow(self.tr("Verrouillé"), self._locked)
         form.addRow(self.tr("Couleur"), self._color)
         form.addRow(self.tr("Épaisseur"), self._width)
         form.addRow(self.tr("Taille du point"), self._point_size)
@@ -67,12 +73,13 @@ class PropertiesPanel(QWidget):
         form.addRow(self.tr("Opacité du remplissage"), self._opacity)
         self._name.editingFinished.connect(self._rename)
         self._visible.toggled.connect(self._change_visibility)
+        self._locked.toggled.connect(self._change_locked)
         self._color.clicked.connect(self._choose_color)
-        self._width.valueChanged.connect(self._change_style)
-        self._point_size.valueChanged.connect(self._change_style)
-        self._line_style.currentTextChanged.connect(self._change_style)
-        self._label.toggled.connect(self._change_style)
-        self._opacity.valueChanged.connect(self._change_style)
+        self._width.valueChanged.connect(lambda _value: self._change_style("width"))
+        self._point_size.valueChanged.connect(lambda _value: self._change_style("point_size"))
+        self._line_style.currentTextChanged.connect(lambda _value: self._change_style("line_style"))
+        self._label.toggled.connect(lambda _value: self._change_style("show_label"))
+        self._opacity.valueChanged.connect(lambda _value: self._change_style("fill_opacity"))
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
 
@@ -81,22 +88,37 @@ class PropertiesPanel(QWidget):
         self._unsubscribe()
         self._document = document
         self._object_id = None
+        self._object_ids = frozenset()
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
 
     def set_selection(self, object_ids: frozenset[str] | set[str]) -> None:
-        """Inspect exactly one selected object; multiple selections show no editor."""
-        self._object_id = next(iter(object_ids)) if len(object_ids) == 1 else None
+        """Inspect one object or expose common style controls for multiple objects."""
+        self._object_ids = frozenset(
+            object_id for object_id in object_ids if object_id in self._document.objects
+        )
+        self._object_id = next(iter(self._object_ids)) if len(self._object_ids) == 1 else None
         self.refresh()
 
     def refresh(self) -> None:
         """Synchronize controls from the immutable current object value."""
-        obj = self._document.objects.get(self._object_id or "")
-        enabled = obj is not None
-        self._empty.setVisible(not enabled)
+        objects = [
+            self._document.get(object_id)
+            for object_id in self._object_ids
+            if object_id in self._document.objects
+        ]
+        obj = objects[0] if objects else None
+        enabled = bool(objects)
+        single = len(objects) == 1
+        self._empty.setText(
+            self.tr("Sélectionnez un objet")
+            if not objects
+            else self.tr(f"{len(objects)} objets sélectionnés")
+        )
+        self._empty.setVisible(not single)
         widgets = (
-            self._name,
             self._visible,
+            self._locked,
             self._color,
             self._width,
             self._point_size,
@@ -106,12 +128,14 @@ class PropertiesPanel(QWidget):
         )
         for widget in widgets:
             widget.setEnabled(enabled)
+        self._name.setEnabled(single)
         if obj is None:
             return
         self._updating = True
         try:
             self._name.setText(obj.name)
             self._visible.setChecked(obj.visible)
+            self._locked.setChecked(obj.locked)
             self._width.setValue(obj.style.width)
             self._point_size.setValue(obj.style.point_size)
             self._line_style.setCurrentText(obj.style.line_style)
@@ -130,38 +154,72 @@ class PropertiesPanel(QWidget):
             self._execute_command(RenameObjectCommand(self._document, obj.id, name))
 
     def _change_visibility(self, visible: bool) -> None:
-        if self._updating or self._object_id is None:
+        if self._updating or not self._object_ids:
             return
-        obj = self._document.get(self._object_id)
-        if visible != obj.visible:
-            command = ChangeVisibilityCommand(self._document, obj.id, visible)
-            self._execute_command(command)
+        commands = [
+            ChangeVisibilityCommand(self._document, object_id, visible)
+            for object_id in self._object_ids
+            if self._document.get(object_id).visible != visible
+        ]
+        self._execute_commands(commands)
+
+    def _change_locked(self, locked: bool) -> None:
+        if self._updating or not self._object_ids:
+            return
+        commands = [
+            ChangeLockCommand(self._document, object_id, locked)
+            for object_id in self._object_ids
+            if self._document.get(object_id).locked != locked
+        ]
+        self._execute_commands(commands)
 
     def _choose_color(self) -> None:
-        if self._object_id is None:
+        if not self._object_ids:
             return
-        obj = self._document.get(self._object_id)
         color = QColorDialog.getColor(parent=self)
         if color.isValid():
-            style = self._style(color=color.name())
-            self._execute_command(ChangeStyleCommand(self._document, obj.id, style))
+            self._apply_style_value("color", color.name())
 
-    def _change_style(self, *args: object) -> None:
-        del args
-        if self._updating or self._object_id is None:
+    def _change_style(self, field: str) -> None:
+        if self._updating or not self._object_ids:
             return
-        obj = self._document.get(self._object_id)
-        style = self._style()
-        if style != obj.style:
-            self._execute_command(ChangeStyleCommand(self._document, obj.id, style))
+        values: dict[str, str | float | bool] = {
+            "width": self._width.value(),
+            "point_size": self._point_size.value(),
+            "line_style": self._line_style.currentText(),
+            "show_label": self._label.isChecked(),
+            "fill_opacity": self._opacity.value(),
+        }
+        self._apply_style_value(field, values[field])
 
-    def _style(self, color: str | None = None) -> Style:
-        obj = self._document.get(self._object_id or "")
-        return Style(
-            color=color or obj.style.color,
-            width=self._width.value(),
-            point_size=self._point_size.value(),
-            line_style=self._line_style.currentText(),
-            show_label=self._label.isChecked(),
-            fill_opacity=self._opacity.value(),
-        )
+    def _apply_style_value(self, field: str, value: str | float | bool) -> None:
+        commands: list[Command] = []
+        for object_id in self._object_ids:
+            obj = self._document.get(object_id)
+            style = _replace_style_value(obj.style, field, value)
+            if style != obj.style:
+                commands.append(ChangeStyleCommand(self._document, object_id, style))
+        self._execute_commands(commands)
+
+    def _execute_commands(self, commands: Sequence[Command]) -> None:
+        if not commands:
+            return
+        self._execute_command(commands[0] if len(commands) == 1 else CompositeCommand(commands))
+
+
+def _replace_style_value(style: Style, field: str, value: str | float | bool) -> Style:
+    if field == "color" and isinstance(value, str):
+        return replace(style, color=value)
+    if field == "line_style" and isinstance(value, str):
+        return replace(style, line_style=value)
+    if field == "show_label" and isinstance(value, bool):
+        return replace(style, show_label=value)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        numeric = float(value)
+        if field == "width":
+            return replace(style, width=numeric)
+        if field == "point_size":
+            return replace(style, point_size=numeric)
+        if field == "fill_opacity":
+            return replace(style, fill_opacity=numeric)
+    raise ValueError(f"Propriété de style invalide : {field}")

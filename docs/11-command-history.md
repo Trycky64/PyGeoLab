@@ -22,6 +22,9 @@ Exemples :
 - RenameObjectCommand ;
 - ChangeStyleCommand ;
 - ChangeVisibilityCommand ;
+- ChangeLockCommand ;
+- DeleteObjectsCommand ;
+- ReorderObjectsCommand ;
 - SetVariableCommand.
 
 ## Historique
@@ -55,3 +58,10 @@ Des commandes composées doivent pouvoir regrouper plusieurs modifications.
 Exemple :
 
 - création automatique de deux points + segment.
+- visibilité, verrouillage ou style d'une sélection multiple ;
+- suppression de plusieurs racines avec leurs descendants ;
+- changement d'ordre d'affichage d'un groupe.
+
+La suppression groupée restaure sur Undo les définitions, leurs dépendances et l'ordre exact du
+document. La duplication de plusieurs objets indépendants utilise également une seule commande de
+création groupée.

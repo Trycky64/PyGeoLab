@@ -16,6 +16,7 @@ class PointerContext:
     screen_x: float
     screen_y: float
     shift: bool = False
+    ctrl: bool = False
     snap: SnapResult | None = None
 
 

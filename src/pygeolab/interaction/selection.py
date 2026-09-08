@@ -25,6 +25,18 @@ class SelectionModel:
         else:
             self._ids.add(object_id)
 
+    def replace_many(self, object_ids: set[str] | frozenset[str]) -> None:
+        """Replace the complete selection with the supplied identities."""
+        self._ids = set(object_ids)
+
+    def add_many(self, object_ids: set[str] | frozenset[str]) -> None:
+        """Add several identities without changing existing selection."""
+        self._ids.update(object_ids)
+
+    def toggle_many(self, object_ids: set[str] | frozenset[str]) -> None:
+        """Toggle several identities as one selection gesture."""
+        self._ids.symmetric_difference_update(object_ids)
+
     def clear(self) -> None:
         """Remove every selected identity."""
         self._ids.clear()

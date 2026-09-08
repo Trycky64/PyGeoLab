@@ -135,6 +135,39 @@ class Document:
         dirty = {key: DirtyFlags(geometry_dirty=True) for key in geometry_dirty}
         self._commit(draft, graph, geometry_dirty, dirty)
 
+    def reorder(self, object_id: str, index: int) -> None:
+        """Move one definition to a drawing-order index without changing its recipe."""
+        self.get(object_id)
+        items = list(self._objects.items())
+        current_index = next(i for i, (key, _) in enumerate(items) if key == object_id)
+        key, obj = items.pop(current_index)
+        target = max(0, min(index, len(items)))
+        items.insert(target, (key, obj))
+        if target == current_index:
+            return
+        draft = dict(items)
+        self._commit(
+            draft,
+            self._graph,
+            set(),
+            {object_id: DirtyFlags(style_dirty=True)},
+        )
+
+    def set_order(self, object_ids: Iterable[str]) -> None:
+        """Apply an exact drawing-order permutation of all current identities."""
+        order = tuple(object_ids)
+        if len(order) != len(self._objects) or set(order) != set(self._objects):
+            raise ValueError("L'ordre doit contenir exactement les objets du document")
+        if order == tuple(self._objects):
+            return
+        draft = {object_id: self._objects[object_id] for object_id in order}
+        self._commit(
+            draft,
+            self._graph,
+            set(),
+            {object_id: DirtyFlags(style_dirty=True) for object_id in order},
+        )
+
     def unique_name(self, prefix: str) -> str:
         """Use the requested name when available, otherwise append a numeric suffix."""
         if not prefix.strip():

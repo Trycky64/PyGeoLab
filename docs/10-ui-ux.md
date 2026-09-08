@@ -47,6 +47,9 @@ Permet d'éditer :
 - type de ligne ;
 - affichage du label.
 
+Avec plusieurs objets sélectionnés, le nom reste désactivé tandis que visibilité, verrouillage et
+champs de style s'appliquent au groupe dans une seule entrée Undo/Redo.
+
 ## Barre d'état
 
 Peut afficher :

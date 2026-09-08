@@ -239,3 +239,16 @@ angle ou un rapport signé dans la recette. Le cercle centre-rayon enregistre de
 second clic comme rayon littéral. Ces valeurs sont des paramètres JSON ordinaires ; tous les types
 de recettes existaient déjà dans le format `.pgl` version 1, donc la section 2 ne change ni le
 schéma ni son numéro de version et ne nécessite aucune migration.
+
+## ADR-019 — Sélection avancée et ordre portés par le document existant
+
+La sélection multiple reste un état d'interaction non sérialisé. Le rectangle est converti en
+bornes monde pour interroger les géométries visibles, tandis que le hit-testing ponctuel conserve
+sa priorité sémantique et départage les égalités avec l'ordre d'affichage. Des clics répétés
+parcourent la pile complète sans modifier le document.
+
+L'ordre d'affichage correspond à l'ordre des définitions déjà sérialisées dans `.pgl`. Le déplacer
+ne demande donc aucun nouveau champ ni migration. `Document.set_order` valide une permutation
+complète et les commandes d'ordre la restaurent exactement sur Undo. Les mutations d'une sélection
+utilisent une commande composée ou une commande groupée spécialisée ; elles occupent une seule
+entrée d'historique même lorsqu'elles concernent plusieurs objets ou descendants.

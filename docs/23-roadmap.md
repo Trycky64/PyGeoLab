@@ -126,4 +126,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   global, suspension par `Alt` et indicateur visuel.
 - Section 2 terminée : outils demi-droite, vecteur, médiatrice, bissectrice, projection, point sur
   objet, cercles avancés, mesures et transformations, avec previews, annulation et Undo/Redo.
-- Les sections 3 à 16 restent planifiées dans `todo.txt`.
+- Section 3 terminée : sélection rectangulaire et multiple, édition groupée, duplication, ordre
+  d'affichage, cycle des objets superposés et menu contextuel du canvas.
+- Les sections 4 à 16 restent planifiées dans `todo.txt`.

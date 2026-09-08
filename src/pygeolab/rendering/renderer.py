@@ -59,21 +59,12 @@ class Renderer:
             )
             self._visible_revision = document.revision
         visible = self._visible_objects
-        order = (
-            Polygon2D,
-            Line2D,
-            Ray2D,
-            Segment2D,
-            Circle2D,
-            Vector2D,
-            FunctionObject,
-            Point2D,
-        )
-        for geometry_type in order:
-            for obj in visible:
-                if isinstance(obj.geometry, geometry_type):
-                    self._draw_object(painter, document, obj, viewport, obj.id in selected, palette)
+        for obj in visible:
+            self._draw_object(painter, document, obj, viewport)
         self._draw_labels(painter, document, visible, viewport, palette)
+        for obj in visible:
+            if obj.id in selected:
+                self._draw_selection(painter, document, obj, viewport, palette)
         painter.restore()
 
     def render_preview(
@@ -199,19 +190,25 @@ class Renderer:
         document: Document,
         obj: GeoObject,
         viewport: Viewport,
-        selected: bool,
-        palette: QPalette,
     ) -> None:
         geometry = obj.geometry
         if geometry is None:
             return
-        if selected:
-            selection = QColor(palette.highlight().color())
-            selection.setAlpha(130)
-            painter.setPen(QPen(selection, obj.style.width + 5.0))
-            self._draw_geometry(painter, document, obj, viewport, fill=False)
         painter.setPen(self._pen(obj.style))
         self._draw_geometry(painter, document, obj, viewport, fill=True)
+
+    def _draw_selection(
+        self,
+        painter: QPainter,
+        document: Document,
+        obj: GeoObject,
+        viewport: Viewport,
+        palette: QPalette,
+    ) -> None:
+        selection = QColor(palette.highlight().color())
+        selection.setAlpha(130)
+        painter.setPen(QPen(selection, obj.style.width + 5.0))
+        self._draw_geometry(painter, document, obj, viewport, fill=False)
 
     def _draw_geometry(
         self,

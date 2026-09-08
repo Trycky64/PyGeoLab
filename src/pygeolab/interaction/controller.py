@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
-from pygeolab.commands import CommandHistory
+from pygeolab.commands import (
+    ChangeLockCommand,
+    ChangeStyleCommand,
+    ChangeVisibilityCommand,
+    Command,
+    CommandHistory,
+    CompositeCommand,
+    CreateObjectsCommand,
+    DeleteObjectsCommand,
+    ReorderObjectsCommand,
+)
 from pygeolab.interaction.selection import SelectionModel
 from pygeolab.interaction.snapping import SnapEngine, SnappingOptions, SnapResult
 from pygeolab.interaction.tools import (
@@ -38,6 +48,8 @@ from pygeolab.interaction.tools import (
 from pygeolab.interaction.tools.base import GeometryPreview
 from pygeolab.interaction.tools.selection import SelectionTool
 from pygeolab.model.document import Document
+from pygeolab.model.objects import GeoObject
+from pygeolab.model.styles import Style
 from pygeolab.rendering.viewport import Viewport
 
 
@@ -170,24 +182,39 @@ class InteractionController:
                 setter(viewport)
 
     def pointer_press(
-        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+        self,
+        x: float,
+        y: float,
+        shift: bool = False,
+        suppress_snap: bool = False,
+        ctrl: bool = False,
     ) -> None:
         """Forward a primary pointer press in screen coordinates."""
-        self.active_tool.press(self._context(x, y, shift, suppress_snap))
+        self.active_tool.press(self._context(x, y, shift, suppress_snap, ctrl))
         self._on_changed()
 
     def pointer_move(
-        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+        self,
+        x: float,
+        y: float,
+        shift: bool = False,
+        suppress_snap: bool = False,
+        ctrl: bool = False,
     ) -> None:
         """Forward pointer movement for previews and drag updates."""
-        self.active_tool.move(self._context(x, y, shift, suppress_snap))
+        self.active_tool.move(self._context(x, y, shift, suppress_snap, ctrl))
         self._on_changed()
 
     def pointer_release(
-        self, x: float, y: float, shift: bool = False, suppress_snap: bool = False
+        self,
+        x: float,
+        y: float,
+        shift: bool = False,
+        suppress_snap: bool = False,
+        ctrl: bool = False,
     ) -> None:
         """Forward a primary pointer release."""
-        self.active_tool.release(self._context(x, y, shift, suppress_snap))
+        self.active_tool.release(self._context(x, y, shift, suppress_snap, ctrl))
         self._on_changed()
 
     def cancel(self) -> None:
@@ -216,7 +243,98 @@ class InteractionController:
         """Clear stale feedback when camera navigation starts."""
         self._snap_result = None
 
-    def _context(self, x: float, y: float, shift: bool, suppress_snap: bool) -> PointerContext:
+    def select_all(self) -> None:
+        """Select every object in document drawing order."""
+        self.selection.replace_many(frozenset(self.document.objects))
+        self._on_changed()
+
+    def clear_selection(self) -> None:
+        """Clear the current selection and notify connected views."""
+        self.selection.clear()
+        self._on_changed()
+
+    def delete_selection(self) -> bool:
+        """Delete the complete selection as one reversible command."""
+        selected = self.selection.ids
+        if not selected:
+            return False
+        self.history.execute(DeleteObjectsCommand(self.document, selected))
+        self.selection.clear()
+        self._on_changed()
+        return True
+
+    def set_selection_visibility(self, visible: bool) -> bool:
+        """Apply one visibility state to all selected objects as one history entry."""
+        commands = [
+            ChangeVisibilityCommand(self.document, object_id, visible)
+            for object_id in self.selection.ids
+            if self.document.get(object_id).visible != visible
+        ]
+        return self._execute_group(commands)
+
+    def set_selection_locked(self, locked: bool) -> bool:
+        """Apply one editing lock state to all selected objects as one history entry."""
+        commands = [
+            ChangeLockCommand(self.document, object_id, locked)
+            for object_id in self.selection.ids
+            if self.document.get(object_id).locked != locked
+        ]
+        return self._execute_group(commands)
+
+    def set_selection_style(self, style: Style) -> bool:
+        """Apply one visual style to every selected object as one history entry."""
+        commands = [
+            ChangeStyleCommand(self.document, object_id, style)
+            for object_id in self.selection.ids
+            if self.document.get(object_id).style != style
+        ]
+        return self._execute_group(commands)
+
+    def duplicate_selection(self) -> frozenset[str]:
+        """Duplicate dependency-free selected definitions and select the copies."""
+        existing_names = {obj.name for obj in self.document.objects.values()}
+        duplicates: list[GeoObject] = []
+        for obj in self.document.objects.values():
+            if obj.id not in self.selection.ids or obj.dependencies:
+                continue
+            name = _unique_name(obj.name, existing_names)
+            existing_names.add(name)
+            params = dict(obj.params)
+            if obj.kind == "point":
+                x, y = params.get("x"), params.get("y")
+                if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                    params.update(x=float(x) + 0.25, y=float(y) - 0.25)
+            duplicates.append(
+                GeoObject(
+                    obj.kind,
+                    name,
+                    params=params,
+                    visible=obj.visible,
+                    locked=obj.locked,
+                    style=obj.style,
+                )
+            )
+        if not duplicates:
+            return frozenset()
+        self.history.execute(CreateObjectsCommand(self.document, duplicates))
+        created_ids = frozenset(obj.id for obj in duplicates)
+        self.selection.replace_many(created_ids)
+        self._on_changed()
+        return created_ids
+
+    def reorder_selection(self, *, to_front: bool) -> bool:
+        """Move selected objects to the front or back while preserving relative order."""
+        if not self.selection.ids:
+            return False
+        self.history.execute(
+            ReorderObjectsCommand(self.document, self.selection.ids, to_front=to_front)
+        )
+        self._on_changed()
+        return True
+
+    def _context(
+        self, x: float, y: float, shift: bool, suppress_snap: bool, ctrl: bool
+    ) -> PointerContext:
         raw_world = self.viewport.screen_to_world(x, y)
         self._snap_result = self._snap_engine.snap(
             self.document,
@@ -228,9 +346,23 @@ class InteractionController:
             exclude_ids=self.active_tool.snap_excluded_ids,
         )
         world = raw_world if self._snap_result is None else self._snap_result.point
-        return PointerContext(world, x, y, shift, self._snap_result)
+        return PointerContext(world, x, y, shift=shift, ctrl=ctrl, snap=self._snap_result)
 
     def _prune_selection(self) -> None:
         for object_id in tuple(self.selection.ids):
             if object_id not in self.document.objects:
                 self.selection.toggle(object_id)
+
+    def _execute_group(self, commands: Sequence[Command]) -> bool:
+        if not commands:
+            return False
+        self.history.execute(CompositeCommand(commands))
+        self._on_changed()
+        return True
+
+
+def _unique_name(base: str, reserved: set[str]) -> str:
+    suffix = 1
+    while f"{base}{suffix}" in reserved:
+        suffix += 1
+    return f"{base}{suffix}"

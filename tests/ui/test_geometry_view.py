@@ -1,5 +1,7 @@
 """Exercise the Qt geometry viewport integration without implementing construction tools."""
 
+from PySide6.QtCore import QCoreApplication, QPoint, Qt
+from PySide6.QtGui import QContextMenuEvent
 from pytestqt.qtbot import QtBot
 
 from pygeolab.geometry import Point2D
@@ -45,3 +47,37 @@ def test_geometry_view_tracks_size_pan_zoom_and_document_updates(qtbot: QtBot) -
 
     document.move_point(point.id, Point2D(2, 3))
     assert document.get(point.id).geometry == Point2D(2, 3)
+
+
+def test_canvas_ctrl_selection_and_non_blocking_context_menu(qtbot: QtBot) -> None:
+    document = Document()
+    first = document.add(GeoObject("point", "A", params={"x": -1, "y": 0}))
+    second = document.add(GeoObject("point", "B", params={"x": 1, "y": 0}))
+    view = GeometryView(document)
+    qtbot.addWidget(view)
+    view.resize(800, 600)
+    view.show()
+    qtbot.waitUntil(view.isVisible)
+
+    first_pos = QPoint(*map(round, view.viewport.world_to_screen(Point2D(-1, 0))))
+    second_pos = QPoint(*map(round, view.viewport.world_to_screen(Point2D(1, 0))))
+    qtbot.mouseClick(view, Qt.MouseButton.LeftButton, pos=first_pos)
+    qtbot.mouseClick(
+        view,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.ControlModifier,
+        pos=second_pos,
+    )
+    assert view.selected_ids == {first.id, second.id}
+
+    context_event = QContextMenuEvent(
+        QContextMenuEvent.Reason.Mouse,
+        second_pos,
+        view.mapToGlobal(second_pos),
+    )
+    QCoreApplication.sendEvent(view, context_event)
+    qtbot.waitUntil(lambda: view._context_menu is not None)
+    assert view._context_menu is not None and view._context_menu.isVisible()
+    action_texts = {action.text() for action in view._context_menu.actions()}
+    assert {"Masquer", "Verrouiller", "Dupliquer", "Supprimer"} <= action_texts
+    view._context_menu.close()
