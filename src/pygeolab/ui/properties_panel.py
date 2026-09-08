@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -49,6 +49,8 @@ class PropertiesPanel(QWidget):
         self._object_id: str | None = None
         self._object_ids: frozenset[str] = frozenset()
         self._updating = False
+        self._changing_parameter = False
+        self._refresh_scheduled = False
         self._empty = QLabel(self.tr("Sélectionnez un objet"), self)
         self._name = QLineEdit(self)
         self._visible = QCheckBox(self)
@@ -100,7 +102,7 @@ class PropertiesPanel(QWidget):
         self._opacity.valueChanged.connect(lambda _value: self._change_style("fill_opacity"))
         self._select_parents_button.clicked.connect(self._select_parents)
         self._select_descendants_button.clicked.connect(self._select_descendants)
-        self._unsubscribe = document.subscribe(self.refresh)
+        self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
     def set_document(self, document: Document) -> None:
@@ -109,7 +111,7 @@ class PropertiesPanel(QWidget):
         self._document = document
         self._object_id = None
         self._object_ids = frozenset()
-        self._unsubscribe = document.subscribe(self.refresh)
+        self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
     def set_selection(self, object_ids: frozenset[str] | set[str]) -> None:
@@ -274,7 +276,11 @@ class PropertiesPanel(QWidget):
         params = dict(obj.params)
         params[key] = int(value) if key == "index" else value
         if params != dict(obj.params):
-            self._execute_command(ChangeParametersCommand(self._document, obj.id, params))
+            self._changing_parameter = True
+            try:
+                self._execute_command(ChangeParametersCommand(self._document, obj.id, params))
+            finally:
+                self._changing_parameter = False
 
     def _select_parents(self) -> None:
         parent_ids = frozenset(
@@ -293,6 +299,18 @@ class PropertiesPanel(QWidget):
     def _object_names(self, object_ids: frozenset[str]) -> str:
         names = [obj.name for obj in self._document.objects.values() if obj.id in object_ids]
         return ", ".join(names) if names else "—"
+
+    def _document_changed(self) -> None:
+        if not self._changing_parameter:
+            self.refresh()
+            return
+        if not self._refresh_scheduled:
+            self._refresh_scheduled = True
+            QTimer.singleShot(0, self._run_scheduled_refresh)
+
+    def _run_scheduled_refresh(self) -> None:
+        self._refresh_scheduled = False
+        self.refresh()
 
 
 def _replace_style_value(style: Style, field: str, value: str | float | bool) -> Style:

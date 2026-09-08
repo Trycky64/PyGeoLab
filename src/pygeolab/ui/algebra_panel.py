@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -47,6 +47,8 @@ class AlgebraPanel(QWidget):
         self._execute_command = execute_command
         self._context_menu: QMenu | None = None
         self._selection_cache: frozenset[str] = frozenset()
+        self._handling_item_change = False
+        self._refresh_scheduled = False
         self._search = QLineEdit(self)
         self._search.setPlaceholderText(self.tr("Rechercher…"))
         self._sort = QComboBox(self)
@@ -77,7 +79,7 @@ class AlgebraPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(controls)
         layout.addWidget(self._tree)
-        self._unsubscribe = document.subscribe(self.refresh)
+        self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
     def set_document(self, document: Document) -> None:
@@ -85,7 +87,7 @@ class AlgebraPanel(QWidget):
         self._unsubscribe()
         self._document = document
         self._selection_cache = frozenset()
-        self._unsubscribe = document.subscribe(self.refresh)
+        self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
     def set_selected_ids(self, object_ids: frozenset[str] | set[str]) -> None:
@@ -180,7 +182,11 @@ class AlgebraPanel(QWidget):
             if locked != obj.locked:
                 command = ChangeLockCommand(self._document, object_id, locked)
         if command is not None:
-            self._execute_command(command)
+            self._handling_item_change = True
+            try:
+                self._execute_command(command)
+            finally:
+                self._handling_item_change = False
         elif column == 1 or (column == 0 and item.text(0) != obj.name):
             self.refresh()
 
@@ -251,6 +257,18 @@ class AlgebraPanel(QWidget):
     def _request_selection(self, object_ids: frozenset[str]) -> None:
         self.set_selected_ids(object_ids)
         self.selectionChanged.emit(object_ids)
+
+    def _document_changed(self) -> None:
+        if not self._handling_item_change:
+            self.refresh()
+            return
+        if not self._refresh_scheduled:
+            self._refresh_scheduled = True
+            QTimer.singleShot(0, self._run_scheduled_refresh)
+
+    def _run_scheduled_refresh(self) -> None:
+        self._refresh_scheduled = False
+        self.refresh()
 
     def _iter_object_items(self) -> Iterator[QTreeWidgetItem]:
         for index in range(self._tree.topLevelItemCount()):
