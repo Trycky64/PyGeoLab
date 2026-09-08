@@ -108,3 +108,11 @@ Le sous-menu **Affichage > Fonctions** contient le réglage de qualité du trac�
 racines, extrema, intersections et dérivées. Les fonctions valides apparaissent dans Algèbre comme
 les autres objets ; une expression invalide y conserve sa ligne en rouge avec le détail de
 l'erreur.
+
+## Curseurs en 1.1
+
+Le bouton **+ Curseur** du panneau Algèbre ouvre la création sans imposer de changement de panneau.
+Dans le panneau Curseurs, chaque variable regroupe une glissière accessible au clavier, une saisie
+directe, un reset, l'édition des bornes et du pas, la vitesse, le mode aller-retour et le bouton
+lecture/pause. Les widgets sont conservés pendant les mises à jour du document pour éviter de
+détruire un contrôle au milieu de son signal Qt.

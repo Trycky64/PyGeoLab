@@ -150,3 +150,14 @@ de zéro révèle une asymptote située entre les positions échantillonnées.
 Le menu **Affichage > Fonctions** propose trois qualités et quatre couches calculées à la demande :
 racines, extrema, intersections et dérivées. Ces couches sont des options de scène persistantes et
 ne créent aucun objet dans le document.
+
+## Curseurs en 1.1
+
+Le panneau Curseurs expose la valeur courante par glissière et saisie numérique. Les bornes et le
+pas se modifient après création, tandis que **Reset** revient à la valeur initiale sérialisée. Les
+anciens fichiers sans champ `initial` utilisent leur valeur chargée comme valeur de reset.
+
+L'animation possède une vitesse en unités par seconde, une lecture cyclique ou aller-retour et une
+commande lecture/pause. Elle conserve une position continue entre les frames avant d'appliquer le
+pas configuré, afin qu'un petit déplacement finisse toujours par produire une nouvelle valeur.
+Chaque frame appelle le recalcul incrémental du document sans ajouter de commande Undo.

@@ -11,17 +11,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pygeolab.model.objects import GeoObject
-from pygeolab.model.variables import numeric_variable
+from pygeolab.model.objects import GeoObject, JsonValue
+from pygeolab.model.variables import numeric_variable, slider_initial, slider_spec
 
 
 class SliderDialog(QDialog):
     """Collect slider name, current value, bounds and step."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, variable: GeoObject | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(self.tr("Nouveau curseur"))
-        self.name_edit = QLineEdit("a", self)
+        self._variable = variable
+        self.setWindowTitle(self.tr("Modifier le curseur" if variable else "Nouveau curseur"))
+        self.name_edit = QLineEdit(variable.name if variable else "a", self)
         self.value_spin = QDoubleSpinBox(self)
         self.minimum_spin = QDoubleSpinBox(self)
         self.maximum_spin = QDoubleSpinBox(self)
@@ -34,6 +35,12 @@ class SliderDialog(QDialog):
         self.minimum_spin.setValue(-10)
         self.maximum_spin.setValue(10)
         self.step_spin.setValue(0.1)
+        if variable is not None:
+            spec = slider_spec(variable)
+            self.value_spin.setValue(spec.value)
+            self.minimum_spin.setValue(spec.minimum)
+            self.maximum_spin.setValue(spec.maximum)
+            self.step_spin.setValue(spec.step)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -57,3 +64,16 @@ class SliderDialog(QDialog):
             self.maximum_spin.value(),
             self.step_spin.value(),
         )
+
+    def definition(self) -> tuple[str, dict[str, JsonValue]]:
+        """Return validated editable parameters while retaining animation preferences."""
+        candidate = self.variable()
+        params = dict(candidate.params)
+        if self._variable is not None:
+            params["initial"] = min(
+                self.maximum_spin.value(),
+                max(self.minimum_spin.value(), slider_initial(self._variable)),
+            )
+            params["animation_speed"] = self._variable.params.get("animation_speed", 1.0)
+            params["ping_pong"] = self._variable.params.get("ping_pong", False)
+        return candidate.name, params

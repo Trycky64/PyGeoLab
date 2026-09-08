@@ -277,3 +277,15 @@ La qualité du sampling et les analyses visibles appartiennent à `Document.scen
 par le format v1. Le renderer ajuste le nombre de points à la largeur et au zoom, puis dessine les
 résultats numériques sans modifier le modèle. Ce choix ne change pas le schéma `.pgl` et conserve
 la compatibilité avec les documents 1.0.
+
+## ADR-022 — Animation des curseurs hors de l'historique de commandes
+
+Les paramètres durables d'un curseur, notamment sa valeur initiale, sa vitesse et son mode
+aller-retour, restent dans sa recette sérialisable. Une édition explicite passe par une commande et
+reste annulable. Le timer d'animation applique en revanche les valeurs de frame directement au
+`Document`, car chacune est un état transitoire d'une même lecture et ne doit pas remplir la pile
+Undo.
+
+Le panneau conserve une position continue séparée de la valeur alignée sur le pas. Le document ne
+reçoit que les changements de valeur effectifs et son graphe recalcule alors le curseur et ses seuls
+descendants. L'état lecture/pause et le sens courant restent des états UI non sérialisés.

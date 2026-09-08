@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMenu,
+    QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -35,6 +36,7 @@ class AlgebraPanel(QWidget):
     """Present, filter, group, select and edit document objects."""
 
     selectionChanged = Signal(object)
+    sliderCreationRequested = Signal()
 
     def __init__(
         self,
@@ -60,6 +62,9 @@ class AlgebraPanel(QWidget):
         self._group.addItem(self.tr("Grouper par type"), "type")
         self._group.addItem(self.tr("Sans regroupement"), "none")
         controls = QHBoxLayout()
+        self._new_slider_button = QPushButton(self.tr("+ Curseur"), self)
+        self._new_slider_button.clicked.connect(self.sliderCreationRequested)
+        controls.addWidget(self._new_slider_button)
         controls.addWidget(self._search, 1)
         controls.addWidget(self._sort)
         controls.addWidget(self._group)

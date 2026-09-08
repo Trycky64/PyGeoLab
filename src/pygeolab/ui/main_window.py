@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
     def _build_docks(self) -> None:
         self.algebra_panel = AlgebraPanel(self.document, self._execute_command, self)
         self.algebra_panel.selectionChanged.connect(self._selection_from_algebra)
+        self.algebra_panel.sliderCreationRequested.connect(self._new_slider)
         self.algebra_dock = QDockWidget(self.tr("Algèbre"), self)
         self.algebra_dock.setObjectName("algebraDock")
         self.algebra_dock.setAccessibleName(self.tr("Panneau Algèbre"))

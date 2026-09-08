@@ -132,4 +132,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   paramètres numériques et navigation dans le graphe depuis Propriétés.
 - Section 5 terminée : éditeur de fonctions lié aux sliders, sampling adaptatif, détection renforcée
   des asymptotes et couches optionnelles de racines, extrema, intersections et dérivées.
-- Les sections 6 à 16 restent planifiées dans `todo.txt`.
+- Section 6 terminée : création depuis Algèbre, édition complète, saisie et reset, contrôle clavier
+  et animation configurable avec recalcul incrémental sans historique par frame.
+- Les sections 7 à 16 restent planifiées dans `todo.txt`.

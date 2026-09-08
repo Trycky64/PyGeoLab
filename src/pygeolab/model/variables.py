@@ -52,9 +52,12 @@ def numeric_variable(
         name,
         params={
             "value": spec.value,
+            "initial": spec.value,
             "minimum": spec.minimum,
             "maximum": spec.maximum,
             "step": spec.step,
+            "animation_speed": 1.0,
+            "ping_pong": False,
         },
     )
 
@@ -77,3 +80,10 @@ def slider_params(obj: GeoObject, value: float) -> dict[str, JsonValue]:
     params = dict(obj.params)
     params["value"] = spec.snapped(value)
     return params
+
+
+def slider_initial(obj: GeoObject) -> float:
+    """Return the backward-compatible initial value, clamped to current bounds."""
+    spec = slider_spec(obj)
+    initial = number(obj.params, "initial", spec.value)
+    return spec.snapped(initial)
