@@ -22,12 +22,14 @@ from pygeolab import __version__
 from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectCommand
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
+from pygeolab.model.objects import GeoObject
 from pygeolab.persistence import ProjectSession
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
 from pygeolab.ui.geometry_view import GeometryView
+from pygeolab.ui.numerical_panel import NumericalPanel
 from pygeolab.ui.preferences import Preferences
 from pygeolab.ui.properties_panel import PropertiesPanel
 from pygeolab.ui.slider_panel import SliderPanel
@@ -118,6 +120,13 @@ class MainWindow(QMainWindow):
         self.slider_dock.setWidget(self.slider_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.slider_dock)
 
+        self.numerical_panel = NumericalPanel(self.document, self)
+        self.numerical_dock = QDockWidget(self.tr("Analyse numérique"), self)
+        self.numerical_dock.setObjectName("numericalDock")
+        self.numerical_dock.setAccessibleName(self.tr("Panneau Analyse numérique"))
+        self.numerical_dock.setWidget(self.numerical_panel)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.numerical_dock)
+
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
         self._add_action(file_menu, "&Nouveau", self._new_project, QKeySequence.StandardKey.New)
@@ -189,11 +198,21 @@ class MainWindow(QMainWindow):
         self.edit_function_action = self._add_action(
             objects_menu, "&Modifier la fonction…", self._edit_function
         )
+        objects_menu.addSeparator()
+        self._add_action(
+            objects_menu,
+            "Mesurer la &longueur sélectionnée",
+            lambda: self._measure_selected("length"),
+        )
+        self._add_action(
+            objects_menu, "Mesurer l'&aire sélectionnée", lambda: self._measure_selected("area")
+        )
 
         view_menu = self.menuBar().addMenu(self.tr("&Affichage"))
         view_menu.addAction(self.algebra_dock.toggleViewAction())
         view_menu.addAction(self.properties_dock.toggleViewAction())
         view_menu.addAction(self.slider_dock.toggleViewAction())
+        view_menu.addAction(self.numerical_dock.toggleViewAction())
         self._add_action(view_menu, "Réinitialiser la vue", self.geometry_view.reset_view, "Home")
         self.snapping_action = self._add_action(
             view_menu,
@@ -379,6 +398,20 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(self, self.tr("Fonction invalide"), str(exc))
 
+    def _measure_selected(self, kind: str) -> None:
+        selected = tuple(self.geometry_view.selected_ids)
+        expected = {"length": {"segment", "vector"}, "area": {"polygon"}}
+        if len(selected) != 1 or kind not in expected:
+            self.statusBar().showMessage(self.tr("Sélectionnez un objet mesurable"))
+            return
+        parent = self.document.get(selected[0])
+        if parent.kind not in expected[kind]:
+            self.statusBar().showMessage(self.tr("La sélection ne convient pas à cette mesure"))
+            return
+        prefix = "L" if kind == "length" else "Aire"
+        measurement = GeoObject(kind, self.document.unique_name(prefix), (parent.id,))
+        self._execute_command(CreateObjectCommand(self.document, measurement))
+
     def _new_project(self) -> None:
         if not self._confirm_discard_changes():
             return
@@ -529,6 +562,7 @@ class MainWindow(QMainWindow):
         self.algebra_panel.set_document(self.document)
         self.properties_panel.set_document(self.document)
         self.slider_panel.set_document(self.document)
+        self.numerical_panel.set_document(self.document)
         self._sync_function_actions()
         self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
         self._update_history_actions()

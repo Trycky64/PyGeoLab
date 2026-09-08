@@ -49,6 +49,28 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         return Point2D(number(params, "x"), number(params, "y"))
     if kind == "number":
         return number(params, "value")
+    if kind == "length":
+        geometry = parents[0].geometry
+        if isinstance(geometry, Segment2D):
+            return geometry.start.distance_to(geometry.end)
+        if isinstance(geometry, Vector2D):
+            return geometry.norm
+        raise ValueError("Une longueur nécessite un segment ou un vecteur")
+    if kind == "area":
+        geometry = parents[0].geometry
+        if not isinstance(geometry, Polygon2D):
+            raise ValueError("Une aire nécessite un polygone")
+        vertices = geometry.vertices
+        return (
+            abs(
+                sum(
+                    point.x * vertices[(index + 1) % len(vertices)].y
+                    - vertices[(index + 1) % len(vertices)].x * point.y
+                    for index, point in enumerate(vertices)
+                )
+            )
+            / 2
+        )
     if kind == "function":
         source = params.get("source")
         variable = params.get("variable", "x")

@@ -161,3 +161,15 @@ L'animation possède une vitesse en unités par seconde, une lecture cyclique ou
 commande lecture/pause. Elle conserve une position continue entre les frames avant d'appliquer le
 pas configuré, afin qu'un petit déplacement finisse toujours par produire une nouvelle valeur.
 Chaque frame appelle le recalcul incrémental du document sans ajouter de commande Undo.
+
+## Panneau d'analyse numérique en 1.1
+
+Le panneau Analyse numérique exécute dérivée, intégrale, recherche de racines, extrema et
+intersections sur les fonctions valides du document. L'utilisateur choisit l'intervalle, la
+tolérance et un nombre d'échantillons borné de 32 à 10 000. Les résultats et les erreurs restent
+dans le panneau et ne modifient pas le document.
+
+Une racine ou intersection obtenue après dichotomie n'est conservée que si le résidu final est
+proche de zéro. L'intégration vérifie au préalable que le sampling couvre l'intervalle en une seule
+polyline ; une asymptote ou une portion hors domaine produit ainsi une erreur lisible au lieu d'un
+résultat trompeur.

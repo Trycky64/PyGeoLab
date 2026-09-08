@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from pygeolab.math_engine.evaluator import EvaluationError
 from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.sampling import sample_function
 
 
 def derivative(
@@ -43,6 +44,19 @@ def integrate(
     if end < start:
         start, end = end, start
         sign = -1.0
+    sampled = sample_function(
+        function,
+        start,
+        end,
+        samples=min(2001, max(65, intervals + 1)),
+        variables=variables,
+    )
+    if (
+        len(sampled.segments) != 1
+        or not math.isclose(sampled.segments[0][0].x, start)
+        or not math.isclose(sampled.segments[0][-1].x, end)
+    ):
+        raise ValueError("La fonction est discontinue ou invalide sur l'intervalle")
     h = (end - start) / intervals
     total = function.evaluate(start, variables) + function.evaluate(end, variables)
     for index in range(1, intervals):
@@ -76,7 +90,12 @@ def find_roots(
             _append_unique(roots, x, tolerance * 10)
         if previous_x is not None and previous_y is not None and previous_y * y < 0:
             root = _bisect(function, previous_x, x, variables, tolerance)
-            _append_unique(roots, root, tolerance * 10)
+            try:
+                root_y = function.evaluate(root, variables)
+            except (ValueError, EvaluationError, ArithmeticError):
+                root_y = math.inf
+            if abs(root_y) <= math.sqrt(tolerance):
+                _append_unique(roots, root, tolerance * 10)
         previous_x, previous_y = x, y
     return tuple(roots)
 
@@ -194,6 +213,12 @@ def intersections(
                     right = middle
                 else:
                     left, left_y = middle, middle_y
-            _append_unique(roots, (left + right) / 2, tolerance * 10)
+            root = (left + right) / 2
+            try:
+                root_y = difference(root)
+            except (ValueError, EvaluationError, ArithmeticError):
+                root_y = math.inf
+            if abs(root_y) <= math.sqrt(tolerance):
+                _append_unique(roots, root, tolerance * 10)
         previous_x, previous_y = x, y
     return tuple((x, first.evaluate(x, variables)) for x in roots)

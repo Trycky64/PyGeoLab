@@ -67,3 +67,18 @@ def test_extrema_and_function_intersections() -> None:
 def test_external_variables_work_in_numerical_analysis() -> None:
     function = FunctionObject.from_source("f", "x", "a*x")
     assert derivative(function, math.pi, {"a": 3}) == pytest.approx(3, rel=1e-6)
+
+
+def test_hidden_discontinuities_are_not_reported_as_roots_or_integrated() -> None:
+    function = FunctionObject.from_source("f", "x", "1/(x-0.013)")
+
+    assert find_roots(function, -1, 1, samples=100) == ()
+    with pytest.raises(ValueError, match="discontinue"):
+        integrate(function, -1, 1, intervals=100)
+
+
+def test_integration_rejects_an_interval_outside_function_domain() -> None:
+    function = FunctionObject.from_source("f", "x", "sqrt(x)", (0, 4))
+
+    with pytest.raises(ValueError, match="discontinue|invalide"):
+        integrate(function, -1, 2)

@@ -61,3 +61,10 @@ Exemple :
 L'objet doit rester présent mais être marqué comme invalide.
 
 Il peut redevenir valide automatiquement lorsque ses dépendances changent.
+
+## Mesures dynamiques en 1.1
+
+Les objets `distance` et `angle` mesurent déjà leurs points parents. Les objets `length` et `area`
+complètent ce modèle : une longueur dépend d'un segment ou d'un vecteur, une aire dépend d'un
+polygone. Leur géométrie calculée est un nombre et suit automatiquement les déplacements de tous
+les points en amont.

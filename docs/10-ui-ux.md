@@ -116,3 +116,13 @@ Dans le panneau Curseurs, chaque variable regroupe une glissière accessible au 
 directe, un reset, l'édition des bornes et du pas, la vitesse, le mode aller-retour et le bouton
 lecture/pause. Les widgets sont conservés pendant les mises à jour du document pour éviter de
 détruire un contrôle au milieu de son signal Qt.
+
+## Analyse numérique et mesures en 1.1
+
+Le dock Analyse numérique rassemble le choix des fonctions et de l'opération, les bornes, la
+tolérance, le sampling et une liste de résultats. Les erreurs de domaine ou de discontinuité sont
+affichées dans ce dock, sans boîte de dialogue modale.
+
+Les actions **Mesurer la longueur sélectionnée** et **Mesurer l'aire sélectionnée** créent des
+mesures dynamiques depuis un segment, un vecteur ou un polygone. Les outils Distance et Angle de la
+barre de constructions continuent à créer leurs mesures depuis des points.

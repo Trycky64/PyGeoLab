@@ -289,3 +289,14 @@ Undo.
 Le panneau conserve une position continue séparée de la valeur alignée sur le pas. Le document ne
 reçoit que les changements de valeur effectifs et son graphe recalcule alors le curseur et ses seuls
 descendants. L'état lecture/pause et le sens courant restent des états UI non sérialisés.
+
+## ADR-023 — Résultats numériques transitoires et mesures persistantes
+
+Les calculs ponctuels de dérivée, intégrale, racines, extrema et intersections sont présentés dans
+un panneau dédié. Ils dépendent de bornes et d'une tolérance choisies pour une demande précise ; ils
+restent donc des résultats UI transitoires et ne chargent ni le graphe ni l'historique.
+
+Les longueurs et aires destinées à suivre une construction sont au contraire des `GeoObject`
+persistants. Leurs dépendances passent par le graphe normal et leur valeur est recalculée comme les
+mesures de distance et d'angle existantes. Ces deux nouveaux types utilisent la structure ouverte
+des recettes v1 et ne demandent aucune migration du format.

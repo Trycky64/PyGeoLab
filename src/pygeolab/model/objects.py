@@ -47,6 +47,8 @@ KINDS = frozenset(
         "projection",
         "distance",
         "angle",
+        "length",
+        "area",
         "translate",
         "rotate",
         "reflect_point",
