@@ -119,3 +119,11 @@ Les milestones 0 à 11 sont réalisés pour le périmètre 1.0. Les éléments e
 au backlog (snapping, édition directe des coordonnées, saisie de fonctions dédiée, fichiers
 récents, autosave, vidéo portfolio) ne bloquent pas la release et restent identifiés dans
 `docs/24-todo.md`.
+
+## Version 1.1 — Précision et constructions avancées
+
+- Section 1 terminée : snapping sur points, grille, projections et intersections, avec contrôle
+  global, suspension par `Alt` et indicateur visuel.
+- Section 2 terminée : outils demi-droite, vecteur, médiatrice, bissectrice, projection, point sur
+  objet, cercles avancés, mesures et transformations, avec previews, annulation et Undo/Redo.
+- Les sections 3 à 16 restent planifiées dans `todo.txt`.

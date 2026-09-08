@@ -224,3 +224,18 @@ option du contrôleur l'active globalement. Le renderer ne connaît que la posit
 ce qui maintient la séparation entre décision d'interaction et dessin Qt. Les intersections sont
 calculées à la demande ; un index ou cache ne sera ajouté qu'après mesure dans la section
 performance de la version 1.1.
+
+## ADR-018 — Outils avancés fondés sur les recettes existantes
+
+Les outils de construction 1.1 vivent dans `interaction/tools/advanced.py` et créent les types de
+recettes déjà pris en charge par le modèle. Ils partagent les primitives d'interaction de
+`construction.py` pour le hit-testing, les points implicites et l'exécution de commandes. Chaque
+geste final exécute une unique `CreateObjectsCommand`, tandis que ses clics intermédiaires et sa
+prévisualisation restent hors du document.
+
+La rotation et l'homothétie utilisent trois clics : source, centre et direction ou position cible.
+Ce choix fournit une prévisualisation continue, évite une boîte de dialogue modale et enregistre un
+angle ou un rapport signé dans la recette. Le cercle centre-rayon enregistre de même la distance du
+second clic comme rayon littéral. Ces valeurs sont des paramètres JSON ordinaires ; tous les types
+de recettes existaient déjà dans le format `.pgl` version 1, donc la section 2 ne change ni le
+schéma ni son numéro de version et ne nécessite aucune migration.

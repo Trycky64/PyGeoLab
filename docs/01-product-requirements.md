@@ -98,7 +98,8 @@ PyGeoLab doit supporter :
 - translation ;
 - rotation ;
 - symétrie centrale ;
-- symétrie axiale.
+- symétrie axiale ;
+- homothétie.
 
 ## Fonctions
 

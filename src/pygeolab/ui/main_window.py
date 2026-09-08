@@ -49,6 +49,21 @@ class MainWindow(QMainWindow):
         "intersection": "Intersection",
         "parallel": "Parallèle",
         "perpendicular": "Perpendiculaire",
+        "ray": "Demi-droite",
+        "vector": "Vecteur",
+        "perpendicular_bisector": "Médiatrice",
+        "angle_bisector": "Bissectrice",
+        "projection": "Projection",
+        "point_on": "Point sur objet",
+        "circle_radius": "Cercle centre-rayon",
+        "circumcircle": "Cercle circonscrit",
+        "distance": "Distance",
+        "angle": "Angle",
+        "translate": "Translation",
+        "rotate": "Rotation",
+        "reflect_point": "Symétrie centrale",
+        "reflect_line": "Symétrie axiale",
+        "scale": "Homothétie",
     }
 
     def __init__(self) -> None:

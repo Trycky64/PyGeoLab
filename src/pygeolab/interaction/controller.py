@@ -8,17 +8,32 @@ from pygeolab.commands import CommandHistory
 from pygeolab.interaction.selection import SelectionModel
 from pygeolab.interaction.snapping import SnapEngine, SnappingOptions, SnapResult
 from pygeolab.interaction.tools import (
+    AngleBisectorTool,
+    AngleTool,
+    AxialReflectionTool,
+    CentralReflectionTool,
+    CircleRadiusTool,
     CircleTool,
+    CircumcircleTool,
+    DistanceTool,
     IntersectionTool,
     LineTool,
     MidpointTool,
     ParallelTool,
+    PerpendicularBisectorTool,
     PerpendicularTool,
     PointerContext,
+    PointOnObjectTool,
     PointTool,
     PolygonTool,
+    ProjectionTool,
+    RayTool,
+    RotationTool,
+    ScaleTool,
     SegmentTool,
     Tool,
+    TranslationTool,
+    VectorTool,
 )
 from pygeolab.interaction.tools.base import GeometryPreview
 from pygeolab.interaction.tools.selection import SelectionTool
@@ -56,6 +71,21 @@ class InteractionController:
             "intersection": IntersectionTool(document, self.history, viewport),
             "parallel": ParallelTool(document, self.history, viewport),
             "perpendicular": PerpendicularTool(document, self.history, viewport),
+            "ray": RayTool(document, self.history, viewport),
+            "vector": VectorTool(document, self.history, viewport),
+            "perpendicular_bisector": PerpendicularBisectorTool(document, self.history, viewport),
+            "angle_bisector": AngleBisectorTool(document, self.history, viewport),
+            "projection": ProjectionTool(document, self.history, viewport),
+            "point_on": PointOnObjectTool(document, self.history, viewport),
+            "circle_radius": CircleRadiusTool(document, self.history, viewport),
+            "circumcircle": CircumcircleTool(document, self.history, viewport),
+            "distance": DistanceTool(document, self.history, viewport),
+            "angle": AngleTool(document, self.history, viewport),
+            "translate": TranslationTool(document, self.history, viewport),
+            "rotate": RotationTool(document, self.history, viewport),
+            "reflect_point": CentralReflectionTool(document, self.history, viewport),
+            "reflect_line": AxialReflectionTool(document, self.history, viewport),
+            "scale": ScaleTool(document, self.history, viewport),
         }
         self._active_name = "select"
 

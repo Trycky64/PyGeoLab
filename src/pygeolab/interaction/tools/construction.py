@@ -15,12 +15,16 @@ from pygeolab.rendering.viewport import Viewport
 
 
 @dataclass(slots=True)
-class _PointChoice:
+class PointChoice:
+    """A selected existing point or a free point pending command execution."""
+
     obj: GeoObject
     pending: bool
 
 
-class _DocumentTool(Tool):
+class DocumentTool(Tool):
+    """Share document access, hit-testing, implicit points and command execution."""
+
     def __init__(self, document: Document, history: CommandHistory, viewport: Viewport) -> None:
         self.document = document
         self.history = history
@@ -38,7 +42,7 @@ class _DocumentTool(Tool):
             self.document, self.viewport, context.screen_x, context.screen_y, kinds=kinds
         )
 
-    def _point_choice(self, context: PointerContext) -> _PointChoice:
+    def _point_choice(self, context: PointerContext) -> PointChoice:
         point_kinds = frozenset(
             {
                 "point",
@@ -61,7 +65,7 @@ class _DocumentTool(Tool):
         if existing is None:
             existing = self._hit(context, point_kinds)
         if existing is not None and isinstance(existing.geometry, Point2D):
-            return _PointChoice(existing, False)
+            return PointChoice(existing, False)
         existing_names = {obj.name for obj in self.document.objects.values()}
         while f"P{self._implicit_serial}" in existing_names:
             self._implicit_serial += 1
@@ -72,13 +76,20 @@ class _DocumentTool(Tool):
             name,
             params={"x": context.world.x, "y": context.world.y},
         )
-        return _PointChoice(point, True)
+        return PointChoice(point, True)
+
+    @staticmethod
+    def _point_value(choice: PointChoice) -> Point2D:
+        """Read evaluated or pending coordinates from one point choice."""
+        if isinstance(choice.obj.geometry, Point2D):
+            return choice.obj.geometry
+        return Point2D(number(choice.obj.params, "x"), number(choice.obj.params, "y"))
 
     def _execute(self, objects: tuple[GeoObject, ...]) -> None:
         self.history.execute(CreateObjectsCommand(self.document, objects))
 
 
-class PointTool(_DocumentTool):
+class PointTool(DocumentTool):
     """Create one free point at each click unless an existing point is hit."""
 
     name = "point"
@@ -90,13 +101,15 @@ class PointTool(_DocumentTool):
             self._execute((choice.obj,))
 
 
-class _TwoPointTool(_DocumentTool):
+class TwoPointTool(DocumentTool):
+    """Build one recipe from two existing or implicit defining points."""
+
     kind = "segment"
     prefix = "s"
 
     def __init__(self, document: Document, history: CommandHistory, viewport: Viewport) -> None:
         super().__init__(document, history, viewport)
-        self._first: _PointChoice | None = None
+        self._first: PointChoice | None = None
         self._cursor: Point2D | None = None
 
     def press(self, context: PointerContext) -> None:
@@ -143,12 +156,14 @@ class _TwoPointTool(_DocumentTool):
         if self.kind == "line":
             line = Line2D.from_points(start, self._cursor)
             return () if line is None else (line,)
+        if self.kind == "ray":
+            return () if start.almost_equals(self._cursor) else (Ray2D(start, self._cursor),)
         if self.kind == "circle":
             return (Circle2D(start, start.distance_to(self._cursor)),)
         return (Segment2D(start, self._cursor),)
 
 
-class SegmentTool(_TwoPointTool):
+class SegmentTool(TwoPointTool):
     """Create a segment from two existing or implicit points."""
 
     name = "segment"
@@ -156,7 +171,7 @@ class SegmentTool(_TwoPointTool):
     prefix = "s"
 
 
-class LineTool(_TwoPointTool):
+class LineTool(TwoPointTool):
     """Create an infinite line through two points."""
 
     name = "line"
@@ -164,7 +179,7 @@ class LineTool(_TwoPointTool):
     prefix = "d"
 
 
-class CircleTool(_TwoPointTool):
+class CircleTool(TwoPointTool):
     """Create a center-through-point circle."""
 
     name = "circle"
@@ -172,14 +187,14 @@ class CircleTool(_TwoPointTool):
     prefix = "c"
 
 
-class PolygonTool(_DocumentTool):
+class PolygonTool(DocumentTool):
     """Create a polygon by clicking vertices and close by clicking the first vertex."""
 
     name = "polygon"
 
     def __init__(self, document: Document, history: CommandHistory, viewport: Viewport) -> None:
         super().__init__(document, history, viewport)
-        self._vertices: list[_PointChoice] = []
+        self._vertices: list[PointChoice] = []
         self._cursor: Point2D | None = None
 
     def press(self, context: PointerContext) -> None:
@@ -228,14 +243,8 @@ class PolygonTool(_DocumentTool):
         self._execute(pending + (polygon,))
         self.cancel()
 
-    @staticmethod
-    def _point_value(choice: _PointChoice) -> Point2D:
-        if isinstance(choice.obj.geometry, Point2D):
-            return choice.obj.geometry
-        return Point2D(number(choice.obj.params, "x"), number(choice.obj.params, "y"))
 
-
-class MidpointTool(_DocumentTool):
+class MidpointTool(DocumentTool):
     """Create a midpoint from one segment or two points."""
 
     name = "midpoint"
@@ -269,7 +278,7 @@ class MidpointTool(_DocumentTool):
         self._first = None
 
 
-class IntersectionTool(_DocumentTool):
+class IntersectionTool(DocumentTool):
     """Create the first finite intersection of two supported loci."""
 
     name = "intersection"
@@ -300,7 +309,7 @@ class IntersectionTool(_DocumentTool):
         self._first = None
 
 
-class _PointLineTool(_DocumentTool):
+class _PointLineTool(DocumentTool):
     kind = "parallel"
     prefix = "d"
 

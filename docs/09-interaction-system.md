@@ -92,3 +92,35 @@ Un outil peut afficher une prévisualisation avant validation.
 Exemple :
 
 - cercle temporaire durant le mouvement de la souris.
+
+## Outils avancés 1.1
+
+Les outils avancés réutilisent le hit-testing, le snapping et les points implicites du système
+d'interaction. Une construction incomplète reste transitoire. Le dernier clic crée sa recette et
+ses éventuels points implicites dans une seule commande ; `Escape` abandonne l'ensemble sans
+modifier le document.
+
+Les séquences de clics sont les suivantes :
+
+- demi-droite, vecteur et médiatrice : deux points ;
+- bissectrice et angle : un point sur le premier côté, le sommet, puis un point sur le second côté ;
+- projection orthogonale : un point, puis une droite, un segment ou une demi-droite ;
+- point sur objet : une droite, un segment, une demi-droite ou un cercle sous le curseur ;
+- cercle centre-rayon : le centre, puis une position qui fixe un rayon numérique ;
+- cercle circonscrit : trois points non alignés ;
+- distance : un point, puis un autre point ou un support linéaire ;
+- translation : un point existant, puis un vecteur existant ;
+- symétrie centrale : le point à transformer, puis le centre ;
+- symétrie axiale : le point à transformer, puis l'axe linéaire ;
+- rotation : le point à transformer, le centre, puis une direction cible qui fixe l'angle signé ;
+- homothétie : le point à transformer, le centre, puis une position dont la projection sur l'axe
+  centre-source fixe le rapport signé.
+
+La distance et l'angle produisent des valeurs numériques dynamiques visibles dans la catégorie
+**Nombres** du panneau Algèbre. Les transformations produisent des points dépendants. Les paramètres
+de rotation, d'homothétie et de cercle centre-rayon sont enregistrés comme valeurs numériques dans
+la recette ; les autres résultats suivent leurs objets parents lors du recalcul.
+
+Chaque outil affiche une prévisualisation dès que ses données temporaires suffisent : support,
+segments auxiliaires, cercle ou point résultat selon la construction. Aucune boîte de dialogue
+modale n'est nécessaire pendant ces interactions.

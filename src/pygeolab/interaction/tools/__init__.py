@@ -1,5 +1,22 @@
 """Available geometry construction and selection tool implementations."""
 
+from pygeolab.interaction.tools.advanced import (
+    AngleBisectorTool,
+    AngleTool,
+    AxialReflectionTool,
+    CentralReflectionTool,
+    CircleRadiusTool,
+    CircumcircleTool,
+    DistanceTool,
+    PerpendicularBisectorTool,
+    PointOnObjectTool,
+    ProjectionTool,
+    RayTool,
+    RotationTool,
+    ScaleTool,
+    TranslationTool,
+    VectorTool,
+)
 from pygeolab.interaction.tools.base import GeometryPreview, PointerContext, Tool
 from pygeolab.interaction.tools.construction import (
     CircleTool,
@@ -15,17 +32,32 @@ from pygeolab.interaction.tools.construction import (
 from pygeolab.interaction.tools.selection import SelectionTool
 
 __all__ = [
+    "AngleBisectorTool",
+    "AngleTool",
+    "AxialReflectionTool",
+    "CentralReflectionTool",
     "CircleTool",
+    "CircleRadiusTool",
+    "CircumcircleTool",
+    "DistanceTool",
     "GeometryPreview",
     "IntersectionTool",
     "LineTool",
     "MidpointTool",
     "ParallelTool",
+    "PerpendicularBisectorTool",
     "PerpendicularTool",
     "PointTool",
+    "PointOnObjectTool",
     "PointerContext",
     "PolygonTool",
+    "ProjectionTool",
+    "RayTool",
+    "RotationTool",
+    "ScaleTool",
     "SegmentTool",
     "SelectionTool",
     "Tool",
+    "TranslationTool",
+    "VectorTool",
 ]

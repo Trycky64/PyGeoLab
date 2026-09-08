@@ -77,6 +77,31 @@ def test_main_window_exposes_global_snapping_toggle(qtbot: QtBot) -> None:
     assert window.geometry_view.interaction.snapping_options.enabled
 
 
+def test_toolbar_exposes_every_advanced_construction_tool(qtbot: QtBot) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    expected = {
+        "ray",
+        "vector",
+        "perpendicular_bisector",
+        "angle_bisector",
+        "projection",
+        "point_on",
+        "circle_radius",
+        "circumcircle",
+        "distance",
+        "angle",
+        "translate",
+        "rotate",
+        "reflect_point",
+        "reflect_line",
+        "scale",
+    }
+
+    assert expected <= window.tool_actions.keys()
+    assert all(window.tool_actions[name].isCheckable() for name in expected)
+
+
 def test_main_window_exposes_accessible_workspace_names(qtbot: QtBot) -> None:
     """Core interactive regions expose textual names to assistive technologies."""
     window = MainWindow()
