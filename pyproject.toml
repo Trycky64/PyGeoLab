@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pygeolab"
-version = "1.0.0"
+version = "1.1.0"
 description = "Dynamic plane geometry and mathematical visualization"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -40,4 +40,3 @@ select = ["E", "F", "I", "UP", "B", "D100", "D101", "D102", "D103", "D104"]
 python_version = "3.12"
 strict = true
 files = ["src"]
-

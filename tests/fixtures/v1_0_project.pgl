@@ -1,0 +1,56 @@
+{
+  "format": "pygeolab",
+  "version": 1,
+  "document": {
+    "name": "Projet PyGeoLab 1.0",
+    "metadata": {
+      "created_with": "1.0.0"
+    },
+    "scene": {
+      "grid": true,
+      "axes": true
+    },
+    "objects": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "kind": "point",
+        "name": "A",
+        "dependencies": [],
+        "params": {"x": 1.0, "y": 2.0},
+        "visible": true,
+        "locked": false,
+        "style": {
+          "color": "#2563eb",
+          "width": 2.0,
+          "point_size": 5.0,
+          "line_style": "solid",
+          "show_label": true,
+          "fill_opacity": 0.12
+        }
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "kind": "point",
+        "name": "B",
+        "dependencies": [],
+        "params": {"x": 4.0, "y": 2.0},
+        "visible": true,
+        "locked": false,
+        "style": {}
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "kind": "segment",
+        "name": "AB",
+        "dependencies": [
+          "10000000-0000-4000-8000-000000000001",
+          "10000000-0000-4000-8000-000000000002"
+        ],
+        "params": {},
+        "visible": true,
+        "locked": false,
+        "style": {}
+      }
+    ]
+  }
+}

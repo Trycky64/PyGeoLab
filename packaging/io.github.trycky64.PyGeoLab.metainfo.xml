@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.trycky64.PyGeoLab</id>
+  <name>PyGeoLab</name>
+  <summary>Dynamic plane geometry and mathematical visualization</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Create dynamic Euclidean constructions, plot functions, animate parameters,
+    perform numerical analysis, and export publication-ready diagrams.</p>
+  </description>
+  <launchable type="desktop-id">pygeolab.desktop</launchable>
+  <provides>
+    <binary>PyGeoLab</binary>
+    <mediatype>application/x-pygeolab</mediatype>
+  </provides>
+  <categories>
+    <category>Education</category>
+    <category>Science</category>
+    <category>Math</category>
+  </categories>
+  <releases>
+    <release version="1.1.0" date="2026-09-09"/>
+    <release version="1.0.0" date="2026-09-05"/>
+  </releases>
+  <url type="homepage">https://github.com/Trycky64/PyGeoLab</url>
+  <url type="bugtracker">https://github.com/Trycky64/PyGeoLab/issues</url>
+</component>

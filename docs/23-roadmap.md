@@ -150,4 +150,7 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   copie des informations système et conservation atomique du document courant.
 - Section 14 terminée : smoke tests V1.1, matrice Windows/Linux sur Python 3.12 à 3.14, gate
   Ruff/mypy et builds PyInstaller lancés avant publication des artefacts.
-- Les sections 15 et 16 restent planifiées dans `todo.txt`.
+- Section 15 terminée : guide utilisateur V1.1, README, captures, démonstration et registre ADR
+  ont été synchronisés avec le produit livré.
+- Section 16 terminée : version 1.1.0, métadonnées, compatibilité `.pgl` V1.0, paquets portables,
+  release gate et publication GitHub ont été validés.

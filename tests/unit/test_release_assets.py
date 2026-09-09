@@ -1,6 +1,10 @@
 """Regression tests for release metadata and the bundled demonstration project."""
 
 import re
+import subprocess
+import sys
+import tomllib
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from PySide6.QtGui import QImage
@@ -12,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_release_version_and_demo_project() -> None:
-    assert __version__ == "1.0.0"
+    assert __version__ == "1.1.0"
     demo = load_project(ROOT / "examples" / "demo.pgl")
     assert demo.name == "Démo PyGeoLab 1.1"
     assert {obj.name for obj in demo.objects.values()} >= {
@@ -46,8 +50,61 @@ def test_release_build_assets_are_present() -> None:
         ROOT / "assets" / "pygeolab.png",
         ROOT / ".github" / "workflows" / "release.yml",
         ROOT / "CHANGELOG.md",
+        ROOT / "RELEASE_NOTES.md",
+        ROOT / "packaging" / "io.github.trycky64.PyGeoLab.metainfo.xml",
+        ROOT / "tests" / "fixtures" / "v1_0_project.pgl",
     )
     assert all(path.is_file() and path.stat().st_size > 0 for path in required)
+
+
+def test_release_metadata_is_consistently_versioned() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert project["project"]["version"] == __version__ == "1.1.0"
+
+    windows = (ROOT / "packaging" / "version_info.txt").read_text(encoding="utf-8")
+    assert "filevers=(1, 1, 0, 0)" in windows
+    assert "prodvers=(1, 1, 0, 0)" in windows
+    assert windows.count("'1.1.0'") == 2
+
+    metainfo_path = ROOT / "packaging" / "io.github.trycky64.PyGeoLab.metainfo.xml"
+    metainfo = ET.parse(metainfo_path).getroot()
+    assert metainfo.findtext("id") == "io.github.trycky64.PyGeoLab"
+    assert metainfo.find("./releases/release").attrib["version"] == "1.1.0"
+
+    assert "## 1.1.0 — 2026-09-09" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").startswith("# PyGeoLab 1.1.0")
+
+
+def test_release_tag_validator_accepts_only_the_project_version() -> None:
+    script = ROOT / "scripts" / "check-release-tag.py"
+    valid = subprocess.run(
+        [sys.executable, str(script), "v1.1.0"], capture_output=True, text=True, check=False
+    )
+    invalid = subprocess.run(
+        [sys.executable, str(script), "v9.9.9"], capture_output=True, text=True, check=False
+    )
+
+    assert valid.returncode == 0 and "matches v1.1.0" in valid.stdout
+    assert invalid.returncode == 1 and "must be 'v1.1.0'" in invalid.stderr
+
+
+def test_release_workflow_and_archives_use_stable_names_and_contents() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    windows_script = (ROOT / "scripts" / "build-windows.ps1").read_text(encoding="utf-8")
+    linux_script = (ROOT / "scripts" / "build-linux.sh").read_text(encoding="utf-8")
+
+    assert 'tags: ["v*"]' in workflow
+    assert "check-release-tag.py" in workflow
+    assert "PYGEOLAB_BUILD_ID: ${{ github.sha }}" in workflow
+    assert "PyGeoLab-Windows-x64.zip" in workflow
+    assert "PyGeoLab-Linux-x64.tar.gz" in workflow
+    assert "body_path: RELEASE_NOTES.md" in workflow
+    for required in ("LICENSE", "README.md", "CHANGELOG.md", "RELEASE_NOTES.md"):
+        assert required in windows_script
+        assert required in linux_script
+    assert "pygeolab.ico" in windows_script
+    assert "pygeolab.desktop" in linux_script
+    assert "io.github.trycky64.PyGeoLab.metainfo.xml" in linux_script
 
 
 def test_ci_release_gate_covers_supported_pythons_platforms_builds_and_artifacts() -> None:

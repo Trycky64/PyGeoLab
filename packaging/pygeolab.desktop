@@ -1,9 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=PyGeoLab
+GenericName=Dynamic Geometry
 Comment=Dynamic geometry and mathematical visualization
 Exec=PyGeoLab
 Icon=pygeolab
 Terminal=false
 Categories=Education;Science;Math;
 MimeType=application/x-pygeolab;
+StartupNotify=true
