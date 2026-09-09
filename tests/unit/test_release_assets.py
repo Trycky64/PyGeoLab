@@ -37,3 +37,14 @@ def test_release_build_assets_are_present() -> None:
         ROOT / "CHANGELOG.md",
     )
     assert all(path.is_file() and path.stat().st_size > 0 for path in required)
+
+
+def test_ci_release_gate_covers_supported_pythons_platforms_builds_and_artifacts() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert 'python: ["3.12", "3.13", "3.14"]' in workflow
+    assert "os: [ubuntu-latest, windows-latest]" in workflow
+    assert "python -m pytest" in workflow
+    assert "python -m PyInstaller" in workflow
+    assert "--smoke-test" in workflow
+    assert "actions/upload-artifact@v4" in workflow

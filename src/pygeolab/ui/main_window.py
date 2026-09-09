@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         "scale": "Homothétie",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, *, offer_recovery: bool = True) -> None:
         super().__init__()
         self._disposed = False
         self.resize(1280, 800)
@@ -117,7 +117,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(self.tr("Prêt"))
         self._update_history_actions()
         self._update_title()
-        self._offer_recovery()
+        if offer_recovery:
+            self._offer_recovery()
 
     def _execute_command(self, command: Command) -> None:
         self.geometry_view.history.execute(command)

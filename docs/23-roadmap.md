@@ -148,4 +148,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   optimisé, seuils de régression et nettoyage explicite des ressources Qt.
 - Section 13 terminée : diagnostics de build et de plateforme, erreurs fichier/export contextualisées,
   copie des informations système et conservation atomique du document courant.
-- Les sections 14 à 16 restent planifiées dans `todo.txt`.
+- Section 14 terminée : smoke tests V1.1, matrice Windows/Linux sur Python 3.12 à 3.14, gate
+  Ruff/mypy et builds PyInstaller lancés avant publication des artefacts.
+- Les sections 15 et 16 restent planifiées dans `todo.txt`.

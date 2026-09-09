@@ -43,8 +43,16 @@ def main() -> int:
     logging.getLogger(__name__).info("Démarrage\n%s", system_information())
     application = create_application()
     apply_theme(application, Preferences.load().theme_mode)
-    window = MainWindow()
+    window = MainWindow(offer_recovery="--smoke-test" not in sys.argv)
     window.show()
+    if "--smoke-test" in sys.argv:
+        application.processEvents()
+        if not window.close():
+            logging.getLogger(__name__).error("Le smoke test n'a pas pu fermer la fenêtre")
+            return 1
+        application.processEvents()
+        logging.getLogger(__name__).info("Smoke test de l'exécutable réussi")
+        return 0
     exit_code = application.exec()
     logging.getLogger(__name__).info("Arrêt de PyGeoLab (code %s)", exit_code)
     return exit_code

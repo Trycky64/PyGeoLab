@@ -30,13 +30,14 @@ jobs:
         run: python -m mypy src
 
   tests:
-    name: Tests / Python 3.13 / ${{ matrix.os }}
+    name: Tests / Python ${{ matrix.python }} / ${{ matrix.os }}
     needs: quality
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        python: ["3.12", "3.13", "3.14"]
     env:
       QT_QPA_PLATFORM: offscreen
       QT_API: pyside6
@@ -47,10 +48,58 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libxkbcommon0 libxcb-cursor0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install package and development tools
         run: python -m pip install -e ".[dev]"
       - name: Run tests and automated release smoke
         run: python -m pytest
+
+  packages:
+    name: Package and launch / ${{ matrix.os }}
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_API: pyside6
+      PYGEOLAB_BUILD_ID: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libxkbcommon0 libxcb-cursor0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install build tools
+        run: python -m pip install -e ".[dev]"
+      - name: Build application
+        run: python -m PyInstaller --clean --noconfirm packaging/pygeolab.spec
+      - name: Launch Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./dist/PyGeoLab/PyGeoLab.exe --smoke-test
+      - name: Launch Linux executable
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./dist/PyGeoLab/PyGeoLab --smoke-test
+      - name: Archive Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/PyGeoLab/* -DestinationPath dist/PyGeoLab-Windows-x64.zip -Force
+      - name: Archive Linux package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: tar -C dist -czf dist/PyGeoLab-Linux-x64.tar.gz PyGeoLab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pygeolab-${{ runner.os }}-${{ github.sha }}
+          path: dist/PyGeoLab-*.*
+          if-no-files-found: error

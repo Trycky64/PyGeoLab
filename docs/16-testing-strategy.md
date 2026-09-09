@@ -13,5 +13,17 @@ benchmarks essentiel sans ajouter une dépendance runtime. `tests/performance` a
 de régression, tandis que les tests de stabilité vérifient le cache de fonctions, le périmètre de
 recalcul, les abonnements Qt, les timers de fermeture et l'absence de dialogue modal au démarrage.
 
-La CI exécute `pytest`, Ruff et mypy sur Python 3.13. Les tests Qt utilisent
-`QT_QPA_PLATFORM=offscreen`.
+## Release gate 1.1
+
+La CI exécute toute la suite avec `QT_QPA_PLATFORM=offscreen` sur Windows et Linux pour Python
+3.12, 3.13 et 3.14. Le job qualité exécute séparément `python -m ruff check .`,
+`python -m ruff format --check .` et `python -m mypy src` sur Python 3.13.
+
+Les smoke tests non interactifs couvrent le snapping, un outil avancé avec Undo, une fonction liée
+à un slider animé, l'autosave/récupération et l'export d'une sélection. Un mode de démarrage
+`python -m pygeolab --smoke-test` crée la vraie fenêtre, traite les événements puis la ferme avec
+un code contrôlé.
+
+Après les tests, la CI construit l'application PyInstaller sur Windows et Linux, lance chaque
+exécutable en mode smoke, crée l'archive native et la publie comme artefact du workflow. Les scripts
+locaux de build appliquent le même contrôle de démarrage avant compression.

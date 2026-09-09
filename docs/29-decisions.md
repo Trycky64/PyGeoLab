@@ -370,3 +370,14 @@ Une session ne publie un document chargé qu'après validation et création de s
 erreurs récupérables utilisent un message UI commun avec résumé, détail court et chemin du journal.
 Cette frontière laisse les exceptions internes au gestionnaire global avec traceback, tout en
 gardant les échecs attendus dans le flux normal de l'application.
+
+## ADR-030 — Même mode smoke pour les sources et les exécutables
+
+L'option `--smoke-test` emprunte le démarrage normal jusqu'à la création de `MainWindow`, traite une
+itération d'événements puis exige une fermeture propre. Elle désactive seulement la proposition de
+récupération, qui rendrait un démarrage automatisé dépendant de l'état du poste. Le même point
+d'entrée sert aux tests Python et aux dossiers PyInstaller sur Windows et Linux.
+
+La matrice de compatibilité teste chaque combinaison des trois versions Python supportées et des
+deux systèmes. Les builds restent sur Python 3.13 pour produire deux artefacts déterministes après
+la réussite de toute la matrice ; chaque exécutable doit réussir le smoke avant son archivage.

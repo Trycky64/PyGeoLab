@@ -20,6 +20,12 @@ les ressources applicatives et masque la console pour l'application desktop.
 
 Un installateur MSI/NSIS/AppImage n'est pas requis pour 1.0 et pourra être ajouté ultérieurement.
 
+## Gate de packaging 1.1
+
+Chaque build lance `PyGeoLab --smoke-test` avec Qt offscreen avant de créer l'archive. Le workflow
+CI produit ainsi `PyGeoLab-Windows-x64.zip` et `PyGeoLab-Linux-x64.tar.gz` depuis les mêmes sources
+que la matrice de tests, puis conserve ces deux fichiers comme artefacts associés au commit.
+
 ## CI et releases GitHub
 
 `.github/workflows/ci.yml` valide lint, formatage, typage et tests sous Windows/Linux.
