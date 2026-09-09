@@ -51,3 +51,4 @@ Cette documentation décrit l'architecture cible, les choix techniques, les conv
 | `27-portfolio-presentation.md` | Présentation portfolio |
 | `28-glossary.md` | Glossaire |
 | `29-decisions.md` | Décisions d'architecture |
+| `30-user-guide-v11.md` | Guide utilisateur complet V1.1 |

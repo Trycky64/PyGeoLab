@@ -175,21 +175,21 @@ fonctions autorisées. Aucun `eval`, `exec`, attribut Python, indexation ou cons
 n'est accepté. L'évaluateur reçoit explicitement les variables et le sampling sépare ses
 polylines lorsqu'une évaluation échoue ou lorsqu'un saut numérique indique une discontinuité.
 
-## ADR-013 — Curseurs comme objets numériques du document
+## ADR-017 — Curseurs comme objets numériques du document
 
 Les curseurs utilisent le type sérialisable `number` du modèle métier avec les paramètres
 `value`, `minimum`, `maximum` et `step`. Une variation passe par `Document.update`, ce qui
 réutilise le graphe de dépendances, les dirty flags et le recalcul incrémental existants au lieu
 d'introduire un second système de variables réactives.
 
-## ADR-014 — Analyse numérique déterministe sans dépendance scientifique obligatoire
+## ADR-018 — Analyse numérique déterministe sans dépendance scientifique obligatoire
 
 La dérivée utilise une différence centrée, l'intégration la méthode de Simpson composite,
 les racines un balayage suivi de dichotomie, les extrema un voisinage échantillonné avec
 raffinement parabolique et les intersections la recherche de racines de `f-g`. Ces algorithmes
 restent indépendants de Qt et de NumPy/SciPy afin de conserver un socle léger et testable.
 
-## ADR-015 — Persistance `.pgl` validée avant adoption par l'UI
+## ADR-019 — Persistance `.pgl` validée avant adoption par l'UI
 
 Le format courant est le JSON versionné v1 documenté dans `docs/12-persistence.md`. Les
 fichiers sont migrés puis validés comme données non fiables avant reconstruction. Les caches
@@ -197,7 +197,7 @@ dérivés ne sont pas sérialisés. `ProjectSession` compare le contenu sériali
 dernière sauvegarde afin que l'indicateur de modifications non enregistrées reflète le contenu
 et pas seulement un compteur de révision.
 
-## ADR-015 — Export piloté par le renderer et builds desktop reproductibles
+## ADR-020 — Export piloté par le renderer et builds desktop reproductibles
 
 Les exports PNG et SVG réutilisent le même `Renderer` et le même `Viewport` que l'affichage,
 avec un facteur de résolution indépendant et un fond optionnellement transparent. Cela évite
@@ -212,7 +212,7 @@ La release 1.0 adopte PyInstaller en mode dossier portable. Les builds Windows e
 produits nativement par GitHub Actions à partir d'un même fichier `packaging/pygeolab.spec`.
 Un installateur système reste une évolution future : la 1.0 distribue des archives portables.
 
-## ADR-017 — Snapping pur avec seuil écran
+## ADR-021 — Snapping pur avec seuil écran
 
 Le calcul des cibles vit dans `interaction/snapping.py` et ne dépend pas de Qt. Il reçoit le
 `Document` et le `Viewport`, classe les points, intersections, projections et positions de grille,
@@ -225,7 +225,7 @@ ce qui maintient la séparation entre décision d'interaction et dessin Qt. Les 
 calculées à la demande ; un index ou cache ne sera ajouté qu'après mesure dans la section
 performance de la version 1.1.
 
-## ADR-018 — Outils avancés fondés sur les recettes existantes
+## ADR-022 — Outils avancés fondés sur les recettes existantes
 
 Les outils de construction 1.1 vivent dans `interaction/tools/advanced.py` et créent les types de
 recettes déjà pris en charge par le modèle. Ils partagent les primitives d'interaction de
@@ -240,7 +240,7 @@ second clic comme rayon littéral. Ces valeurs sont des paramètres JSON ordinai
 de recettes existaient déjà dans le format `.pgl` version 1, donc la section 2 ne change ni le
 schéma ni son numéro de version et ne nécessite aucune migration.
 
-## ADR-019 — Sélection avancée et ordre portés par le document existant
+## ADR-023 — Sélection avancée et ordre portés par le document existant
 
 La sélection multiple reste un état d'interaction non sérialisé. Le rectangle est converti en
 bornes monde pour interroger les géométries visibles, tandis que le hit-testing ponctuel conserve
@@ -253,7 +253,7 @@ complète et les commandes d'ordre la restaurent exactement sur Undo. Les mutati
 utilisent une commande composée ou une commande groupée spécialisée ; elles occupent une seule
 entrée d'historique même lorsqu'elles concernent plusieurs objets ou descendants.
 
-## ADR-020 — Panneaux comme projections éditables du document
+## ADR-024 — Panneaux comme projections éditables du document
 
 Le panneau Algèbre reconstruit une projection filtrée, triée et regroupée des objets sans copier
 leur état métier. Il mémorise seulement les UUID sélectionnés afin qu'un filtre temporaire ne les
@@ -266,7 +266,7 @@ contrôle UI ont une sémantique claire. `ChangeParametersCommand` remplace le m
 préserve l'immutabilité de `GeoObject` et le recalcul incrémental existant. L'éditeur dédié aux
 fonctions et celui des bornes de curseur restent dans leurs sections respectives.
 
-## ADR-021 — Fonctions éditées comme recettes et analyses comme couches de scène
+## ADR-025 — Fonctions éditées comme recettes et analyses comme couches de scène
 
 L'éditeur de fonction transforme la saisie validée en recette `GeoObject(kind="function")`. Les
 variables externes sont résolues par nom vers des UUID d'objets numériques avant la commande ; le
@@ -278,7 +278,7 @@ par le format v1. Le renderer ajuste le nombre de points à la largeur et au zoo
 résultats numériques sans modifier le modèle. Ce choix ne change pas le schéma `.pgl` et conserve
 la compatibilité avec les documents 1.0.
 
-## ADR-022 — Animation des curseurs hors de l'historique de commandes
+## ADR-026 — Animation des curseurs hors de l'historique de commandes
 
 Les paramètres durables d'un curseur, notamment sa valeur initiale, sa vitesse et son mode
 aller-retour, restent dans sa recette sérialisable. Une édition explicite passe par une commande et
@@ -290,7 +290,7 @@ Le panneau conserve une position continue séparée de la valeur alignée sur le
 reçoit que les changements de valeur effectifs et son graphe recalcule alors le curseur et ses seuls
 descendants. L'état lecture/pause et le sens courant restent des états UI non sérialisés.
 
-## ADR-023 — Résultats numériques transitoires et mesures persistantes
+## ADR-027 — Résultats numériques transitoires et mesures persistantes
 
 Les calculs ponctuels de dérivée, intégrale, racines, extrema et intersections sont présentés dans
 un panneau dédié. Ils dépendent de bornes et d'une tolérance choisies pour une demande précise ; ils
@@ -301,7 +301,7 @@ persistants. Leurs dépendances passent par le graphe normal et leur valeur est 
 mesures de distance et d'angle existantes. Ces deux nouveaux types utilisent la structure ouverte
 des recettes v1 et ne demandent aucune migration du format.
 
-## ADR-024 — Récupération atomique séparée et récents dans QSettings
+## ADR-028 — Récupération atomique séparée et récents dans QSettings
 
 L'autosave réutilise le sérialiseur et l'écriture atomique `.pgl`, mais vise un chemin de
 récupération propre à l'application. Il ne change ni le chemin ni le snapshot enregistré de la
@@ -312,7 +312,7 @@ La liste MRU contient uniquement des chemins et relève des préférences de pos
 dans `QSettings`, se borne à dix entrées et élimine les fichiers absents à chaque lecture. Aucun de
 ces ajouts ne modifie la version 1 du schéma de document.
 
-## ADR-025 — Préférences globales typées et styles par défaut tardifs
+## ADR-029 — Préférences globales typées et styles par défaut tardifs
 
 Une dataclass `Preferences` validée constitue l'unique représentation des réglages persistants.
 Elle lit et écrit toutes ses valeurs dans `QSettings`, migre l'ancien booléen de thème et borne les
@@ -324,7 +324,7 @@ nouvelles définitions encore à leur révision initiale et portant le style neu
 fichier existant sont donc reconstruits avant l'application des préférences et restent fidèles au
 projet enregistré.
 
-## ADR-026 — Une caméra d'export calculée, un filtre d'objets et un renderer commun
+## ADR-030 — Une caméra d'export calculée, un filtre d'objets et un renderer commun
 
 L'export de document ou de sélection calcule un `Viewport` ajusté aux bornes finies des objets,
 indépendamment de la caméra du canvas. Les fonctions bornées contribuent par leur sampling ; les
@@ -335,7 +335,7 @@ La sélection est transmise comme filtre d'UUID au même renderer, qui conserve 
 complet pour résoudre les dépendances. PNG, SVG et presse-papiers réutilisent ainsi les mêmes
 règles de dessin, de labels et de courbes sans dupliquer le moteur géométrique.
 
-## ADR-027 — Accessibilité appliquée à l'arbre de widgets et raccourcis issus des actions
+## ADR-031 — Accessibilité appliquée à l'arbre de widgets et raccourcis issus des actions
 
 La fenêtre principale complète les métadonnées accessibles de chaque contrôle focalisable après
 la construction de ses docks et barres d'outils. La même passe impose la taille minimale des
@@ -347,7 +347,7 @@ effectives. La documentation visible ne peut ainsi pas diverger des raccourcis c
 tests contrôlent leur unicité, la chaîne de focus, les métadonnées accessibles et le contraste des
 deux palettes.
 
-## ADR-028 — Optimiser le rendu multi-fonctions après mesure
+## ADR-032 — Optimiser le rendu multi-fonctions après mesure
 
 Les profils 1.1 montrent que le rendu initial de nombreuses fonctions domine les autres scénarios.
 Le renderer envoie désormais chaque morceau continu en une polyligne Qt et répartit le sampling
@@ -359,7 +359,7 @@ référence. Aucun index spatial ni cache de hit-testing n'est donc ajouté. Les
 laissent une marge importante aux runners partagés et visent les régressions d'un ordre de
 grandeur, pas les fluctuations ordinaires de charge.
 
-## ADR-029 — Diagnostic partageable et adoption atomique des documents
+## ADR-033 — Diagnostic partageable et adoption atomique des documents
 
 Le diagnostic système est produit par une fonction pure commune au log de démarrage et au
 presse-papiers. L'identifiant de build vient de l'environnement de packaging ou de CI, avec une
@@ -371,7 +371,7 @@ erreurs récupérables utilisent un message UI commun avec résumé, détail cou
 Cette frontière laisse les exceptions internes au gestionnaire global avec traceback, tout en
 gardant les échecs attendus dans le flux normal de l'application.
 
-## ADR-030 — Même mode smoke pour les sources et les exécutables
+## ADR-034 — Même mode smoke pour les sources et les exécutables
 
 L'option `--smoke-test` emprunte le démarrage normal jusqu'à la création de `MainWindow`, traite une
 itération d'événements puis exige une fermeture propre. Elle désactive seulement la proposition de

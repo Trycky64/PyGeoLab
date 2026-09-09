@@ -63,6 +63,21 @@ def test_numerical_panel_reports_discontinuous_integral_inline(qtbot: QtBot) -> 
     assert panel.results.count() == 0
 
 
+def test_numerical_panel_clears_empty_state_when_a_function_becomes_available(
+    qtbot: QtBot,
+) -> None:
+    panel = NumericalPanel(Document())
+    qtbot.addWidget(panel)
+    assert panel.message.text() == "Aucune fonction valide"
+    populated = Document()
+    populated.add(_function("f", "x"))
+
+    panel.set_document(populated)
+
+    assert panel.message.text() == ""
+    assert panel.first_function.count() == 1
+
+
 def test_length_and_area_measurements_follow_their_geometry() -> None:
     document = Document()
     a = document.add(GeoObject("point", "A", params={"x": 0, "y": 0}))

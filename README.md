@@ -1,32 +1,34 @@
 # PyGeoLab
 
-PyGeoLab 1.0 est une application desktop de **géométrie dynamique** et de **visualisation mathématique** développée en Python et PySide6. Elle combine constructions géométriques dépendantes, outils interactifs, expressions mathématiques sécurisées, analyse numérique et projets `.pgl` versionnés.
+PyGeoLab 1.1 est une application desktop de **géométrie dynamique** et de **visualisation mathématique** écrite en Python et PySide6. Elle combine constructions dépendantes, fonctions paramétrées, analyse numérique et projets `.pgl` versionnés dans une interface utilisable à la souris comme au clavier.
 
-![Aperçu PyGeoLab](docs/screenshots/workspace-light.svg)
+![Espace de travail PyGeoLab 1.1](docs/screenshots/workspace-v11.png)
 
-## Fonctionnalités
+## Nouveautés 1.1
 
-- points, segments, droites, cercles, polygones, milieux, intersections, parallèles et perpendiculaires ;
-- pan, zoom sous le curseur, grille adaptative, axes et labels ;
-- sélection, déplacement des points libres, previews et annulation avec `Escape` ;
-- historique Undo/Redo ;
-- panneaux Algèbre, Propriétés et Curseurs ;
-- variables numériques et sliders liés au graphe de dépendances ;
-- parser mathématique fermé, sans exécution arbitraire de code ;
-- dérivée, intégration, racines, extrema et intersections numériques ;
-- sauvegarde/chargement `.pgl`, validation et migrations ;
-- export PNG/SVG, facteur de résolution et fond transparent ;
-- thèmes clair/sombre, préférences persistantes et logs rotatifs.
+- magnétisme sur la grille, les points, projections et intersections, suspendu avec `Alt` ;
+- quinze outils avancés : demi-droite, vecteur, médiatrice, bissectrice, projections, cercles, mesures et transformations ;
+- sélection rectangulaire et multiple, édition groupée, duplication, ordre d'affichage et cycle des objets superposés ;
+- panneau Algèbre filtrable et triable, propriétés numériques, dépendances et descendants ;
+- création et édition de fonctions, sampling adaptatif, racines, extrema, intersections et dérivée ;
+- curseurs éditables et animés avec vitesse, aller-retour, pause et reset ;
+- dérivée, intégrale, racines, extrema, intersections et mesures dynamiques ;
+- fichiers récents, autosave atomique et récupération après incident ;
+- préférences centralisées, thèmes contrastés, raccourcis consultables avec `F1` ;
+- export du viewport, du document ou de la sélection en PNG/SVG, plus copie presse-papiers ;
+- diagnostics partageables et release gate Windows/Linux sur Python 3.12, 3.13 et 3.14.
+
+Le [guide utilisateur V1.1](docs/30-user-guide-v11.md) décrit les outils, fonctions, curseurs, raccourcis, préférences, fichiers et exports.
 
 ## Installation développeur
 
-Python 3.12 ou supérieur est requis. La CI et les builds de release utilisent Python 3.13.
+Python 3.12 à 3.14 est pris en charge.
 
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-py -m pip install -e ".[dev]"
-py -m pygeolab
+python -m pip install -e ".[dev]"
+python -m pygeolab
 ```
 
 Sous Linux :
@@ -38,14 +40,6 @@ python -m pip install -e '.[dev]'
 python -m pygeolab
 ```
 
-## Smoke tests automatisés
-
-Le parcours critique de la version 1.0 est couvert par des tests Qt offscreen dans
-`tests/system/test_release_smoke.py`. Les dialogues natifs et services de bureau sont mockés,
-tandis que le document, l’historique, la persistance et les exports restent réellement exécutés.
-Cela permet à `pytest` et à la CI de valider création, Undo/Redo, sauvegarde/chargement, exports,
-préférences, logs et gestion des modifications non enregistrées sans intervention manuelle.
-
 ## Vérifications
 
 ```powershell
@@ -55,15 +49,11 @@ py -m ruff format --check .
 py -m mypy src
 ```
 
-Pour les tests Qt sans affichage : `QT_QPA_PLATFORM=offscreen`.
+La suite compte plus de 340 tests non interactifs. La CI les exécute avec Qt offscreen sur Windows et Linux pour Python 3.12, 3.13 et 3.14. Elle construit ensuite les deux applications PyInstaller, lance chaque exécutable avec `--smoke-test` et publie les archives du commit.
 
 ## Projet de démonstration
 
-Ouvrir `examples/demo.pgl` depuis **Fichier → Ouvrir**. Il contient trois points, un triangle, un milieu dépendant, un cercle, un curseur `a` et la fonction `f(x)=sin(x)+a` pour vérifier immédiatement le recalcul dynamique.
-
-## Exports
-
-**Fichier → Exporter** permet d'enregistrer le viewport courant en PNG ou SVG. La résolution et le fond transparent par défaut sont configurables dans **Édition → Préférences**.
+Ouvrez [`examples/demo.pgl`](examples/demo.pgl) avec **Fichier > Ouvrir**. Le projet V1.1 présente un triangle, un cercle, un milieu, un vecteur, une translation, des mesures dynamiques, le curseur animé `a` et la fonction `f(x) = sin(x) + a`.
 
 ## Builds desktop
 
@@ -79,11 +69,11 @@ Linux :
 ./scripts/build-linux.sh
 ```
 
-Les tags `v*` déclenchent également `.github/workflows/release.yml`, qui construit les artefacts Windows et Linux puis les joint à la GitHub Release.
+Chaque script exécute le release gate, construit le dossier portable, vérifie son démarrage hors écran et produit l'archive de plateforme. Les tags `v*` déclenchent aussi [le workflow de release](.github/workflows/release.yml).
 
-## Architecture et documentation
+## Architecture et sécurité
 
-Le cahier des charges, l'architecture, les ADR, les choix de sécurité et le backlog sont dans [`docs/`](docs/README.md). Le format `.pgl` est traité comme une entrée non fiable et validé avant reconstruction. Le moteur mathématique n'utilise jamais `eval` ou `exec`.
+La [documentation d'architecture](docs/README.md) couvre le modèle, le graphe de dépendances, le rendu, la persistance, les tests et les ADR. Le format `.pgl` est validé avant reconstruction et une ouverture invalide conserve le document courant. Le moteur mathématique utilise un parser fermé et n'appelle jamais `eval` ou `exec`.
 
 ## Licence
 

@@ -83,7 +83,7 @@ Livrables :
 - save/load ;
 - validation ;
 - migrations ;
-- recent files *(reporté après 1.0 ; non requis par la checklist Section 11)*.
+- fichiers récents *(livré en 1.1, section 8)*.
 
 ## Milestone 9 — Analyse mathématique
 

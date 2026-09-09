@@ -112,6 +112,8 @@ class NumericalPanel(QWidget):
         self.calculate_button.setEnabled(bool(functions))
         if not functions:
             self.message.setText(self.tr("Aucune fonction valide"))
+        elif self.message.text() == self.tr("Aucune fonction valide"):
+            self.message.clear()
 
     def _sync_operation(self) -> None:
         operation = self.operation.currentData()

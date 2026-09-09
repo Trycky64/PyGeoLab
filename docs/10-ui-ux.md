@@ -91,12 +91,9 @@ Principes :
 
 ## Thème
 
-Prévoir :
-
-- thème clair ;
-- thème sombre.
-
-Le thème ne doit pas être codé en dur dans le renderer.
+Les modes système, clair et sombre sont disponibles dans Affichage et Préférences. Le renderer
+utilise la palette Qt active, sans couleur de thème codée en dur. Les deux palettes explicites
+respectent un contraste minimal de 4,5:1 pour le texte.
 
 ## Fonctions en 1.1
 

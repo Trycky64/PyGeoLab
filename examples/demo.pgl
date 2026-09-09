@@ -1,7 +1,10 @@
 {
   "document": {
-    "metadata": {},
-    "name": "Démo PyGeoLab 1.0",
+    "metadata": {
+      "description": "Fonctions, curseurs, outils avancés et mesures dynamiques",
+      "release": "1.1.0"
+    },
+    "name": "Démo PyGeoLab 1.1",
     "objects": [
       {
         "dependencies": [],
@@ -70,8 +73,11 @@
         "locked": false,
         "name": "a",
         "params": {
+          "animation_speed": 0.75,
+          "initial": 0.5,
           "maximum": 2.0,
           "minimum": -2.0,
+          "ping_pong": true,
           "step": 0.1,
           "value": 0.5
         },
@@ -167,9 +173,91 @@
           "width": 2.0
         },
         "visible": true
+      },
+      {
+        "dependencies": [
+          "90726a89-0928-4ae3-9a52-4b1e0954f532",
+          "96294a78-913b-486b-a058-5ed61db2dd4e"
+        ],
+        "id": "241180df-05ea-4073-811a-d28a5be49f9a",
+        "kind": "vector",
+        "locked": false,
+        "name": "u",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "06a416b9-3cf9-47fc-be9c-f11552ceba5f",
+          "241180df-05ea-4073-811a-d28a5be49f9a"
+        ],
+        "id": "a8051cc4-ce22-480b-a166-d63b26bc17c0",
+        "kind": "translate",
+        "locked": false,
+        "name": "C_translaté",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "241180df-05ea-4073-811a-d28a5be49f9a"
+        ],
+        "id": "87141f89-c040-4e3c-aaed-098da756becd",
+        "kind": "length",
+        "locked": false,
+        "name": "Longueur_u",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "77dbd485-079d-4d1c-964c-84768343aa26"
+        ],
+        "id": "6b507f81-7940-45bf-9ba8-07d3e8be6b9c",
+        "kind": "area",
+        "locked": false,
+        "name": "Aire_triangle",
+        "params": {},
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
       }
     ],
-    "scene": {}
+    "scene": {
+      "function_sampling_quality": "high",
+      "show_function_extrema": true,
+      "show_function_roots": true
+    }
   },
   "format": "pygeolab",
   "version": 1
