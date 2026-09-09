@@ -140,4 +140,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   restauration de crash dans un fichier séparé compatible avec le format v1.
 - Section 9 terminée : préférences centralisées pour thème, affichage, snapping, styles, export et
   autosave, avec restauration des valeurs par défaut et round-trip QSettings.
-- Les sections 10 à 16 restent planifiées dans `todo.txt`.
+- Section 10 terminée : export viewport, document ou sélection en PNG/SVG, dimensions et résolution
+  personnalisées, transparence, métadonnées et presse-papiers Qt.
+- Les sections 11 à 16 restent planifiées dans `todo.txt`.

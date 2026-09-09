@@ -323,3 +323,14 @@ Le `Document` reçoit le style de création après son chargement. Il l'applique
 nouvelles définitions encore à leur révision initiale et portant le style neutre. Les styles d'un
 fichier existant sont donc reconstruits avant l'application des préférences et restent fidèles au
 projet enregistré.
+
+## ADR-026 — Une caméra d'export calculée, un filtre d'objets et un renderer commun
+
+L'export de document ou de sélection calcule un `Viewport` ajusté aux bornes finies des objets,
+indépendamment de la caméra du canvas. Les fonctions bornées contribuent par leur sampling ; les
+fonctions sans domaine utilisent l'étendue finie disponible ou l'intervalle `[-10, 10]`. Les
+objets infinis sont ensuite clippés par le renderer à cette caméra.
+
+La sélection est transmise comme filtre d'UUID au même renderer, qui conserve l'accès au document
+complet pour résoudre les dépendances. PNG, SVG et presse-papiers réutilisent ainsi les mêmes
+règles de dessin, de labels et de courbes sans dupliquer le moteur géométrique.

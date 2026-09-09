@@ -11,6 +11,7 @@ from pytestqt.qtbot import QtBot
 
 from pygeolab.model.variables import numeric_variable, slider_spec
 from pygeolab.ui import main_window as main_window_module
+from pygeolab.ui.dialogs.export_dialog import ExportOptions
 from pygeolab.ui.main_window import MainWindow
 from pygeolab.ui.preferences import Preferences
 
@@ -24,6 +25,19 @@ def _deterministic_preferences(monkeypatch) -> None:
 def _window(qtbot: QtBot, monkeypatch) -> MainWindow:
     """Create a window whose teardown can never open an unsaved-changes dialog."""
     _deterministic_preferences(monkeypatch)
+
+    class AcceptedExportDialog:
+        def __init__(self, width, height, scale, transparent, has_selection, parent=None) -> None:
+            del has_selection, parent
+            self._options = ExportOptions("viewport", transparent, scale, width, height)
+
+        def exec(self) -> QDialog.DialogCode:
+            return QDialog.DialogCode.Accepted
+
+        def options(self) -> ExportOptions:
+            return self._options
+
+    monkeypatch.setattr(main_window_module, "ExportDialog", AcceptedExportDialog)
     window = MainWindow()
     qtbot.addWidget(window)
     monkeypatch.setattr(window, "_confirm_discard_changes", lambda: True)

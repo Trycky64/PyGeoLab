@@ -21,12 +21,20 @@ from PySide6.QtWidgets import (
 
 from pygeolab import __version__
 from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectCommand
-from pygeolab.exporting import export_png, export_svg
+from pygeolab.exporting import (
+    copy_png_to_clipboard,
+    copy_svg_to_clipboard,
+    export_png,
+    export_svg,
+    fitted_viewport,
+)
 from pygeolab.logging_config import log_directory
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
 from pygeolab.persistence import ProjectSession, RecoveryManager
+from pygeolab.rendering.viewport import Viewport
 from pygeolab.ui.algebra_panel import AlgebraPanel
+from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
@@ -158,6 +166,9 @@ class MainWindow(QMainWindow):
         export_menu = file_menu.addMenu(self.tr("&Exporter"))
         self._add_action(export_menu, "Image &PNG…", self._export_png)
         self._add_action(export_menu, "Image &SVG…", self._export_svg)
+        export_menu.addSeparator()
+        self._add_action(export_menu, "Copier le viewport en PNG", self._copy_png)
+        self._add_action(export_menu, "Copier le viewport en SVG", self._copy_svg)
         file_menu.addSeparator()
         self._add_action(file_menu, "&Quitter", self.close, QKeySequence.StandardKey.Quit)
 
@@ -556,29 +567,58 @@ class MainWindow(QMainWindow):
 
     def _export(self, format_name: str) -> None:
         extension = format_name.lower()
+        current = self.geometry_view.viewport
+        options_dialog = ExportDialog(
+            current.width,
+            current.height,
+            self.preferences.export_scale,
+            self.preferences.transparent_export,
+            bool(self.geometry_view.selected_ids),
+            self,
+        )
+        if options_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        options = options_dialog.options()
         suggested = f"{self.document.name}.{extension}"
         filter_text = "PNG (*.png)" if extension == "png" else "SVG (*.svg)"
         path, _ = QFileDialog.getSaveFileName(self, self.tr("Exporter"), suggested, filter_text)
         if not path:
             return
         try:
+            object_ids = self.geometry_view.selected_ids if options.area == "selection" else None
+            if options.area in {"document", "selection"}:
+                viewport = fitted_viewport(
+                    self.document,
+                    options.width,
+                    options.height,
+                    object_ids,
+                )
+            else:
+                viewport = Viewport(
+                    current.center,
+                    current.scale,
+                    options.width,
+                    options.height,
+                )
             if extension == "png":
                 target = export_png(
                     path,
                     self.document,
-                    self.geometry_view.viewport,
+                    viewport,
                     self.palette(),
-                    scale=self.preferences.export_scale,
-                    transparent=self.preferences.transparent_export,
+                    scale=options.scale,
+                    transparent=options.transparent,
+                    object_ids=object_ids,
                 )
             else:
                 target = export_svg(
                     path,
                     self.document,
-                    self.geometry_view.viewport,
+                    viewport,
                     self.palette(),
-                    scale=self.preferences.export_scale,
-                    transparent=self.preferences.transparent_export,
+                    scale=options.scale,
+                    transparent=options.transparent,
+                    object_ids=object_ids,
                 )
         except (OSError, ValueError) as exc:
             LOGGER.error("Échec export %s: %s", extension.upper(), exc)
@@ -586,6 +626,22 @@ class MainWindow(QMainWindow):
             return
         LOGGER.info("Export %s: %s", extension.upper(), target)
         self.statusBar().showMessage(self.tr(f"Exporté vers {target}"), 5000)
+
+    def _copy_png(self) -> None:
+        application = QApplication.instance()
+        if isinstance(application, QApplication):
+            copy_png_to_clipboard(
+                application, self.document, self.geometry_view.viewport, self.palette()
+            )
+            self.statusBar().showMessage(self.tr("Viewport PNG copié"), 3000)
+
+    def _copy_svg(self) -> None:
+        application = QApplication.instance()
+        if isinstance(application, QApplication):
+            copy_svg_to_clipboard(
+                application, self.document, self.geometry_view.viewport, self.palette()
+            )
+            self.statusBar().showMessage(self.tr("Viewport SVG copié"), 3000)
 
     def _show_preferences(self) -> None:
         dialog = PreferencesDialog(self.preferences, self)

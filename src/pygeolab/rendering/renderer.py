@@ -34,6 +34,7 @@ class Renderer:
     def __init__(self) -> None:
         self._grid_cache = GridCache()
         self._visible_revision = -1
+        self._visible_filter: frozenset[str] | None = None
         self._visible_objects: tuple[GeoObject, ...] = ()
         self._function_cache: dict[tuple[object, ...], tuple[tuple[Point2D, ...], ...]] = {}
         self.show_grid = True
@@ -56,6 +57,7 @@ class Renderer:
         selected_ids: Iterable[str] = (),
         *,
         draw_background: bool = True,
+        object_ids: Iterable[str] | None = None,
     ) -> None:
         """Draw grid, axes, valid visible objects, labels and selection overlays."""
         painter.save()
@@ -64,11 +66,17 @@ class Renderer:
             painter.fillRect(QRectF(0, 0, viewport.width, viewport.height), palette.window())
         self._draw_grid_and_axes(painter, viewport, palette)
         selected = set(selected_ids)
-        if document.revision != self._visible_revision:
+        visible_filter = frozenset(object_ids) if object_ids is not None else None
+        if document.revision != self._visible_revision or visible_filter != self._visible_filter:
             self._visible_objects = tuple(
-                obj for obj in document.objects.values() if obj.visible and obj.valid
+                obj
+                for obj in document.objects.values()
+                if obj.visible
+                and obj.valid
+                and (visible_filter is None or obj.id in visible_filter)
             )
             self._visible_revision = document.revision
+            self._visible_filter = visible_filter
         visible = self._visible_objects
         for obj in visible:
             self._draw_object(painter, document, obj, viewport)
@@ -134,6 +142,7 @@ class Renderer:
         """Drop renderer-owned cached layout data."""
         self._grid_cache.clear()
         self._visible_revision = -1
+        self._visible_filter = None
         self._visible_objects = ()
         self._function_cache.clear()
 
