@@ -78,8 +78,9 @@ class Renderer:
             self._visible_revision = document.revision
             self._visible_filter = visible_filter
         visible = self._visible_objects
+        function_count = sum(isinstance(obj.geometry, FunctionObject) for obj in visible)
         for obj in visible:
-            self._draw_object(painter, document, obj, viewport)
+            self._draw_object(painter, document, obj, viewport, function_count)
         self._draw_function_analysis(painter, document, visible, viewport, palette)
         if self.show_labels:
             self._draw_labels(painter, document, visible, viewport, palette)
@@ -217,12 +218,15 @@ class Renderer:
         document: Document,
         obj: GeoObject,
         viewport: Viewport,
+        function_count: int = 1,
     ) -> None:
         geometry = obj.geometry
         if geometry is None:
             return
         painter.setPen(self._pen(obj.style))
-        self._draw_geometry(painter, document, obj, viewport, fill=True)
+        self._draw_geometry(
+            painter, document, obj, viewport, fill=True, function_count=function_count
+        )
 
     def _draw_selection(
         self,
@@ -245,6 +249,7 @@ class Renderer:
         viewport: Viewport,
         *,
         fill: bool,
+        function_count: int = 1,
     ) -> None:
         geometry = obj.geometry
         if isinstance(geometry, Point2D):
@@ -276,7 +281,7 @@ class Renderer:
             self._draw_vector(painter, document, obj, geometry, viewport)
             return
         if isinstance(geometry, FunctionObject):
-            self._draw_function(painter, document, obj, geometry, viewport)
+            self._draw_function(painter, document, obj, geometry, viewport, function_count)
 
     @staticmethod
     def _draw_clipped_line(
@@ -376,6 +381,7 @@ class Renderer:
         obj: GeoObject,
         function: FunctionObject,
         viewport: Viewport,
+        function_count: int,
     ) -> None:
         """Sample and draw a safe mathematical function inside the visible world bounds."""
         variables: dict[str, float] = {}
@@ -385,11 +391,12 @@ class Renderer:
                 variables[parent.name] = parent.geometry
         left, _, right, _ = viewport.world_bounds
         cache_key = (
-            document.revision,
+            obj.revision,
             obj.id,
             viewport.center.x,
             viewport.scale,
             viewport.width,
+            function_count,
             document.scene.get("function_sampling_quality", "medium"),
             tuple(sorted(variables.items())),
         )
@@ -400,21 +407,22 @@ class Renderer:
                 quality_name if isinstance(quality_name, str) else "medium", 1.5
             )
             zoom_factor = math.sqrt(min(4.0, max(0.5, viewport.scale / 80.0)))
+            base_samples = round(viewport.width * quality * zoom_factor)
+            sample_budget = max(1, math.ceil(math.sqrt(function_count)))
             sampled = sample_function(
                 function,
                 left,
                 right,
-                samples=min(4000, max(120, round(viewport.width * quality * zoom_factor))),
+                samples=min(4000, max(120, base_samples // sample_budget)),
                 variables=variables,
             )
             pieces = sampled.segments
-            if len(self._function_cache) >= 16:
+            if len(self._function_cache) >= 256:
                 self._function_cache.clear()
             self._function_cache[cache_key] = pieces
         for piece in pieces:
-            for start, end in zip(piece, piece[1:], strict=False):
-                clipped = clip_segment(start, end, viewport.world_bounds)
-                Renderer._draw_clipped_line(painter, clipped, viewport)
+            screen_points = [viewport.world_to_screen(point) for point in piece]
+            painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
 
     def _draw_function_analysis(
         self,

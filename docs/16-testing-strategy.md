@@ -9,7 +9,9 @@ le démarrage, le viewport, les panneaux, le renderer et les exports.
 
 `tests/unit/test_release_assets.py` charge le projet de démonstration comme fixture de
 régression et vérifie les artefacts de release. `benchmarks/benchmark_core.py` fournit le jeu de
-benchmarks essentiel sans ajouter une dépendance runtime.
+benchmarks essentiel sans ajouter une dépendance runtime. `tests/performance` applique les seuils
+de régression, tandis que les tests de stabilité vérifient le cache de fonctions, le périmètre de
+recalcul, les abonnements Qt, les timers de fermeture et l'absence de dialogue modal au démarrage.
 
 La CI exécute `pytest`, Ruff et mypy sur Python 3.13. Les tests Qt utilisent
 `QT_QPA_PLATFORM=offscreen`.

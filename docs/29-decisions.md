@@ -346,3 +346,15 @@ La fenêtre d'aide reçoit directement les `QAction` de l'application et affiche
 effectives. La documentation visible ne peut ainsi pas diverger des raccourcis configurés. Les
 tests contrôlent leur unicité, la chaîne de focus, les métadonnées accessibles et le contraste des
 deux palettes.
+
+## ADR-028 — Optimiser le rendu multi-fonctions après mesure
+
+Les profils 1.1 montrent que le rendu initial de nombreuses fonctions domine les autres scénarios.
+Le renderer envoie désormais chaque morceau continu en une polyligne Qt et répartit le sampling
+selon le nombre de fonctions visibles. Sa clé utilise la révision de l'objet fonction plutôt que la
+révision globale du document, afin qu'une modification indépendante ne recalcule pas sa courbe.
+
+Le hit-testing de 10 000 objets reste de l'ordre de quelques millisecondes sur la machine de
+référence. Aucun index spatial ni cache de hit-testing n'est donc ajouté. Les seuils automatisés
+laissent une marge importante aux runners partagés et visent les régressions d'un ordre de
+grandeur, pas les fluctuations ordinaires de charge.

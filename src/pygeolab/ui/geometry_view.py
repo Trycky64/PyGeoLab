@@ -88,6 +88,10 @@ class GeometryView(QWidget):
         self._renderer.invalidate_cache()
         self.update()
 
+    def dispose(self) -> None:
+        """Release the document subscription before the viewport is destroyed."""
+        self._unsubscribe()
+
     def set_selected_ids(self, object_ids: set[str] | frozenset[str]) -> None:
         """Replace selection for external panels while preserving controller ownership."""
         self._interaction.selection.clear()
@@ -318,8 +322,7 @@ class GeometryView(QWidget):
         self._interaction.set_viewport(self._viewport)
 
     def _on_document_changed(self) -> None:
-        """Invalidate visual caches and repaint after one committed document edit."""
-        self._renderer.invalidate_cache()
+        """Repaint after a commit; revision-aware renderer caches update themselves."""
         self.update()
 
     def _on_interaction_changed(self) -> None:

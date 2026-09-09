@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self._disposed = False
         self.resize(1280, 800)
         self.setAccessibleName(self.tr("Fenêtre principale PyGeoLab"))
         self.preferences = Preferences.load()
@@ -822,6 +823,19 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         """Prompt for unsaved changes before allowing the window to close."""
         if self._confirm_discard_changes():
+            self._dispose()
             event.accept()
         else:
             event.ignore()
+
+    def _dispose(self) -> None:
+        if self._disposed:
+            return
+        self._disposed = True
+        self._autosave_timer.stop()
+        self._unsubscribe_dirty()
+        self.geometry_view.dispose()
+        self.algebra_panel.dispose()
+        self.properties_panel.dispose()
+        self.slider_panel.dispose()
+        self.numerical_panel.dispose()

@@ -114,6 +114,10 @@ class PropertiesPanel(QWidget):
         self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
+    def dispose(self) -> None:
+        """Release the document subscription before the widget is destroyed."""
+        self._unsubscribe()
+
     def set_selection(self, object_ids: frozenset[str] | set[str]) -> None:
         """Inspect one object or expose common style controls for multiple objects."""
         self._object_ids = frozenset(

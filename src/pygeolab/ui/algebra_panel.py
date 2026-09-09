@@ -95,6 +95,10 @@ class AlgebraPanel(QWidget):
         self._unsubscribe = document.subscribe(self._document_changed)
         self.refresh()
 
+    def dispose(self) -> None:
+        """Release the document subscription before the widget is destroyed."""
+        self._unsubscribe()
+
     def set_selected_ids(self, object_ids: frozenset[str] | set[str]) -> None:
         """Mirror selection coming from the canvas without changing document state."""
         self._selection_cache = frozenset(

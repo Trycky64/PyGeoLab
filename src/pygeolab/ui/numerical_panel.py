@@ -84,6 +84,10 @@ class NumericalPanel(QWidget):
         self.results.clear()
         self.refresh()
 
+    def dispose(self) -> None:
+        """Release the document subscription before the widget is destroyed."""
+        self._unsubscribe()
+
     def refresh(self) -> None:
         """Keep valid function choices synchronized by stable UUID."""
         first_id = self.first_function.currentData()

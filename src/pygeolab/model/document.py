@@ -52,6 +52,11 @@ class Document:
         """Expose the current object registry without allowing external replacement."""
         return MappingProxyType(self._objects)
 
+    @property
+    def observer_count(self) -> int:
+        """Expose active subscriptions for diagnostics and leak regression tests."""
+        return len(self._observers)
+
     def get(self, object_id: str) -> GeoObject:
         """Find the current value for a UUID; missing identities raise KeyError."""
         return self._objects[object_id]

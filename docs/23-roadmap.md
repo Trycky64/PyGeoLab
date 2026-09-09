@@ -144,4 +144,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   personnalisées, transparence, métadonnées et presse-papiers Qt.
 - Section 11 terminée : raccourcis sans collision et consultables, contrôles nommés et dimensionnés,
   focus clavier visible, palettes contrastées et retours d'état explicites.
-- Les sections 12 à 16 restent planifiées dans `todo.txt`.
+- Section 12 terminée : profils reproductibles jusqu'à 10 000 objets, rendu multi-fonctions
+  optimisé, seuils de régression et nettoyage explicite des ressources Qt.
+- Les sections 13 à 16 restent planifiées dans `todo.txt`.

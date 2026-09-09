@@ -92,6 +92,12 @@ class SliderPanel(QWidget):
         self._unsubscribe = document.subscribe(self.refresh)
         self.refresh()
 
+    def dispose(self) -> None:
+        """Stop animation and release the document subscription."""
+        self._active.clear()
+        self._timer.stop()
+        self._unsubscribe()
+
     def refresh(self) -> None:
         """Synchronize controls without replacing widgets during their Qt signals."""
         objects = {obj.id: obj for obj in self._document.objects.values() if obj.kind == "number"}
