@@ -142,3 +142,17 @@ bouton **Restaurer les valeurs par défaut** réinitialise l'ensemble des contr�
 Les réglages d'affichage restent globaux et ne rendent pas le document sale. La couleur,
 l'épaisseur et la taille de point par défaut sont appliquées aux nouvelles constructions ; les
 styles chargés depuis un fichier restent inchangés.
+
+## Raccourcis et retours visuels en 1.1
+
+Le menu **Aide > Raccourcis clavier** (`F1`) ouvre une référence non modale construite depuis les
+actions réellement actives. Les raccourcis sont contrôlés automatiquement afin qu'une même
+séquence ne déclenche jamais deux commandes.
+
+Les outils principaux disposent d'une infobulle et leur action cochée indique le mode actif. La
+barre d'état annonce aussi l'outil courant et le nombre d'objets sélectionnés. Le canvas conserve
+son contour de sélection renforcé, lisible dans les palettes claire et sombre.
+
+Les champs et boutons utilisent une hauteur minimale de 28 pixels, un contour de focus visible et
+la chaîne de tabulation native de Qt. Chaque contrôle focalisable expose un nom et une description
+aux technologies d'assistance.

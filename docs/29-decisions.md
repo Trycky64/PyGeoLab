@@ -334,3 +334,15 @@ objets infinis sont ensuite clippés par le renderer à cette caméra.
 La sélection est transmise comme filtre d'UUID au même renderer, qui conserve l'accès au document
 complet pour résoudre les dépendances. PNG, SVG et presse-papiers réutilisent ainsi les mêmes
 règles de dessin, de labels et de courbes sans dupliquer le moteur géométrique.
+
+## ADR-027 — Accessibilité appliquée à l'arbre de widgets et raccourcis issus des actions
+
+La fenêtre principale complète les métadonnées accessibles de chaque contrôle focalisable après
+la construction de ses docks et barres d'outils. La même passe impose la taille minimale des
+contrôles de saisie et un contour de focus fondé sur la palette, ce qui couvre aussi les panneaux
+composés sans répéter ces règles dans chaque classe.
+
+La fenêtre d'aide reçoit directement les `QAction` de l'application et affiche leurs séquences
+effectives. La documentation visible ne peut ainsi pas diverger des raccourcis configurés. Les
+tests contrôlent leur unicité, la chaîne de focus, les métadonnées accessibles et le contraste des
+deux palettes.

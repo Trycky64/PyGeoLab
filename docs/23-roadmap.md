@@ -142,4 +142,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   autosave, avec restauration des valeurs par défaut et round-trip QSettings.
 - Section 10 terminée : export viewport, document ou sélection en PNG/SVG, dimensions et résolution
   personnalisées, transparence, métadonnées et presse-papiers Qt.
-- Les sections 11 à 16 restent planifiées dans `todo.txt`.
+- Section 11 terminée : raccourcis sans collision et consultables, contrôles nommés et dimensionnés,
+  focus clavier visible, palettes contrastées et retours d'état explicites.
+- Les sections 12 à 16 restent planifiées dans `todo.txt`.

@@ -9,14 +9,19 @@ from dataclasses import replace
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
+    QAbstractButton,
+    QAbstractSpinBox,
     QApplication,
+    QComboBox,
     QDialog,
     QDockWidget,
     QFileDialog,
+    QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
     QToolBar,
+    QWidget,
 )
 
 from pygeolab import __version__
@@ -37,6 +42,7 @@ from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
+from pygeolab.ui.dialogs.shortcuts_dialog import ShortcutsDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
 from pygeolab.ui.geometry_view import GeometryView
 from pygeolab.ui.numerical_panel import NumericalPanel
@@ -96,6 +102,7 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._build_toolbar()
         self._apply_preferences()
+        self._apply_accessibility()
         self.geometry_view.selectionChanged.connect(self._selection_from_canvas)
         self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
         self.geometry_view.interactionChanged.connect(self._update_history_actions)
@@ -289,6 +296,7 @@ class MainWindow(QMainWindow):
             self.function_overlay_actions[name] = action
 
         help_menu = self.menuBar().addMenu(self.tr("&Aide"))
+        self._add_action(help_menu, "&Raccourcis clavier…", self._show_shortcuts, "F1")
         self._add_action(help_menu, "Ouvrir le dossier des &logs", self._open_logs)
         self._add_action(help_menu, "À &propos de PyGeoLab", self._show_about)
 
@@ -318,6 +326,7 @@ class MainWindow(QMainWindow):
     ) -> QAction:
         action = QAction(self.tr(text), self)
         action.setStatusTip(self.tr(text.replace("&", "")))
+        action.setToolTip(self.tr(text.replace("&", "")))
         if shortcut is not None:
             action.setShortcut(shortcut)
         action.triggered.connect(callback)
@@ -380,6 +389,7 @@ class MainWindow(QMainWindow):
             label = self.tr(self.TOOL_LABELS[name])
             action = QAction(label, self)
             action.setStatusTip(label)
+            action.setToolTip(label)
             action.setCheckable(True)
             action.setData(name)
             if name in shortcuts:
@@ -751,15 +761,46 @@ class MainWindow(QMainWindow):
     def _selection_from_canvas(self, ids: frozenset[str]) -> None:
         self.algebra_panel.set_selected_ids(ids)
         self.properties_panel.set_selection(ids)
+        self._show_selection_status(ids)
 
     def _selection_from_algebra(self, ids: frozenset[str]) -> None:
         self.geometry_view.set_selected_ids(ids)
         self.properties_panel.set_selection(ids)
+        self._show_selection_status(ids)
 
     def _selection_from_properties(self, ids: frozenset[str]) -> None:
         self.geometry_view.set_selected_ids(ids)
         self.algebra_panel.set_selected_ids(ids)
         self.properties_panel.set_selection(ids)
+        self._show_selection_status(ids)
+
+    def _show_selection_status(self, ids: frozenset[str]) -> None:
+        if ids:
+            self.statusBar().showMessage(self.tr(f"{len(ids)} objet(s) sélectionné(s)"), 3000)
+        else:
+            self.statusBar().showMessage(self.tr("Sélection effacée"), 2000)
+
+    def _show_shortcuts(self) -> None:
+        self._shortcuts_dialog = ShortcutsDialog(self.findChildren(QAction), self)
+        self._shortcuts_dialog.show()
+
+    def _apply_accessibility(self) -> None:
+        self.setStyleSheet(
+            self.styleSheet()
+            + "\nQPushButton, QToolButton, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {"
+            " min-height: 28px; }"
+            "\nQPushButton:focus, QToolButton:focus, QComboBox:focus, QLineEdit:focus,"
+            " QSpinBox:focus, QDoubleSpinBox:focus, QTreeView:focus, QTableView:focus {"
+            " border: 2px solid palette(highlight); }"
+        )
+        for widget in self.findChildren(QWidget):
+            if isinstance(widget, (QAbstractButton, QAbstractSpinBox, QComboBox, QLineEdit)):
+                widget.setMinimumHeight(max(28, widget.minimumHeight()))
+            if widget.focusPolicy() != Qt.FocusPolicy.NoFocus and not widget.accessibleName():
+                name = widget.toolTip() or widget.whatsThis() or widget.objectName()
+                widget.setAccessibleName(name or widget.metaObject().className())
+            if widget.accessibleName() and not widget.accessibleDescription():
+                widget.setAccessibleDescription(widget.toolTip() or widget.accessibleName())
 
     def _show_cursor(self, x: float, y: float) -> None:
         tool = self.TOOL_LABELS[self.geometry_view.interaction.active_tool_name]

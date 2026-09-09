@@ -32,6 +32,6 @@ def apply_theme(application: QApplication, mode: str) -> None:
     palette.setColor(QPalette.ColorRole.Text, QColor(240, 240, 240))
     palette.setColor(QPalette.ColorRole.Button, QColor(45, 45, 48))
     palette.setColor(QPalette.ColorRole.ButtonText, QColor(240, 240, 240))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 120, 215))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 116, 208))
     palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
     application.setPalette(palette)
