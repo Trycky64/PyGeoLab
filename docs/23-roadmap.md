@@ -138,4 +138,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   résultats intégrés à l'UI et mesures dynamiques de longueur, aire et angle.
 - Section 8 terminée : fichiers récents auto-nettoyés, autosave atomique configurable et
   restauration de crash dans un fichier séparé compatible avec le format v1.
-- Les sections 9 à 16 restent planifiées dans `todo.txt`.
+- Section 9 terminée : préférences centralisées pour thème, affichage, snapping, styles, export et
+  autosave, avec restauration des valeurs par défaut et round-trip QSettings.
+- Les sections 10 à 16 restent planifiées dans `todo.txt`.

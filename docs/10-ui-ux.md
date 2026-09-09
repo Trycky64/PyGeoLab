@@ -132,3 +132,13 @@ barre de constructions continuent à créer leurs mesures depuis des points.
 **Fichier > Fichiers récents** liste les projets encore présents sur disque et permet d'effacer la
 liste. L'autosave se règle dans Préférences. Une récupération détectée au démarrage est proposée
 avant l'édition ; les erreurs de lecture sont signalées sans remplacer le document courant.
+
+## Préférences centralisées en 1.1
+
+La boîte Préférences regroupe le thème système, clair ou sombre, la grille, les axes, les labels,
+le snapping et son rayon, le style des nouveaux objets, la qualité d'export et l'autosave. Le
+bouton **Restaurer les valeurs par défaut** réinitialise l'ensemble des contrôles avant validation.
+
+Les réglages d'affichage restent globaux et ne rendent pas le document sale. La couleur,
+l'épaisseur et la taille de point par défaut sont appliquées aux nouvelles constructions ; les
+styles chargés depuis un fichier restent inchangés.

@@ -8,6 +8,7 @@ Le format de projet initial est `.pgl`, JSON versionné et validé avant reconst
 
 **Fichier → Exporter → Image PNG** rend la zone visible courante. Le facteur de résolution
 est configurable de 0,25× à 8× dans les préférences. Le fond peut être opaque ou transparent.
+Cette échelle constitue le réglage persistant de qualité d'export.
 
 ## Export SVG
 

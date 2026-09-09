@@ -135,6 +135,11 @@ class GeometryView(QWidget):
             raise ValueError("Couche d'analyse inconnue")
         self._document.set_scene_option(f"show_function_{name}", visible)
 
+    def configure_display(self, *, grid: bool, axes: bool, labels: bool) -> None:
+        """Apply non-document display preferences to the renderer."""
+        self._renderer.configure_display(grid=grid, axes=axes, labels=labels)
+        self.update()
+
     def reset_view(self) -> None:
         """Restore the default origin-centered camera while preserving widget size."""
         self._interaction.clear_snap()

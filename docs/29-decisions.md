@@ -311,3 +311,15 @@ erreur de lecture laisse la session courante intacte.
 La liste MRU contient uniquement des chemins et relève des préférences de poste. Elle reste donc
 dans `QSettings`, se borne à dix entrées et élimine les fichiers absents à chaque lecture. Aucun de
 ces ajouts ne modifie la version 1 du schéma de document.
+
+## ADR-025 — Préférences globales typées et styles par défaut tardifs
+
+Une dataclass `Preferences` validée constitue l'unique représentation des réglages persistants.
+Elle lit et écrit toutes ses valeurs dans `QSettings`, migre l'ancien booléen de thème et borne les
+valeurs numériques avant usage. Les options d'affichage configurent le renderer et le contrôleur
+d'interaction sans modifier la scène sérialisée.
+
+Le `Document` reçoit le style de création après son chargement. Il l'applique uniquement aux
+nouvelles définitions encore à leur révision initiale et portant le style neutre. Les styles d'un
+fichier existant sont donc reconstruits avant l'application des préférences et restent fidèles au
+projet enregistré.

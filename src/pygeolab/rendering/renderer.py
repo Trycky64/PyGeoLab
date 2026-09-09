@@ -36,6 +36,16 @@ class Renderer:
         self._visible_revision = -1
         self._visible_objects: tuple[GeoObject, ...] = ()
         self._function_cache: dict[tuple[object, ...], tuple[tuple[Point2D, ...], ...]] = {}
+        self.show_grid = True
+        self.show_axes = True
+        self.show_labels = True
+
+    def configure_display(self, *, grid: bool, axes: bool, labels: bool) -> None:
+        """Apply global display preferences without changing the document."""
+        if (grid, axes, labels) == (self.show_grid, self.show_axes, self.show_labels):
+            return
+        self.show_grid, self.show_axes, self.show_labels = grid, axes, labels
+        self._grid_cache.clear()
 
     def render(
         self,
@@ -63,7 +73,8 @@ class Renderer:
         for obj in visible:
             self._draw_object(painter, document, obj, viewport)
         self._draw_function_analysis(painter, document, visible, viewport, palette)
-        self._draw_labels(painter, document, visible, viewport, palette)
+        if self.show_labels:
+            self._draw_labels(painter, document, visible, viewport, palette)
         for obj in visible:
             if obj.id in selected:
                 self._draw_selection(painter, document, obj, viewport, palette)
@@ -127,17 +138,22 @@ class Renderer:
         self._function_cache.clear()
 
     def _draw_grid_and_axes(self, painter: QPainter, viewport: Viewport, palette: QPalette) -> None:
+        if not self.show_grid and not self.show_axes:
+            return
         layout = self._grid_cache.get(viewport)
-        grid_color = QColor(palette.mid().color())
-        grid_color.setAlpha(90)
-        painter.setPen(QPen(grid_color, 1.0))
-        for world_x in layout.vertical:
-            x, _ = viewport.world_to_screen(Point2D(world_x, 0.0))
-            painter.drawLine(QPointF(x, 0), QPointF(x, viewport.height))
-        for world_y in layout.horizontal:
-            _, y = viewport.world_to_screen(Point2D(0.0, world_y))
-            painter.drawLine(QPointF(0, y), QPointF(viewport.width, y))
+        if self.show_grid:
+            grid_color = QColor(palette.mid().color())
+            grid_color.setAlpha(90)
+            painter.setPen(QPen(grid_color, 1.0))
+            for world_x in layout.vertical:
+                x, _ = viewport.world_to_screen(Point2D(world_x, 0.0))
+                painter.drawLine(QPointF(x, 0), QPointF(x, viewport.height))
+            for world_y in layout.horizontal:
+                _, y = viewport.world_to_screen(Point2D(0.0, world_y))
+                painter.drawLine(QPointF(0, y), QPointF(viewport.width, y))
 
+        if not self.show_axes:
+            return
         axis_color = QColor(palette.text().color())
         axis_color.setAlpha(180)
         painter.setPen(QPen(axis_color, 1.4))

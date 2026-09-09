@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QDesktopServices, QKeySequence
@@ -23,6 +24,7 @@ from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectComman
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
 from pygeolab.model.objects import GeoObject
+from pygeolab.model.styles import Style
 from pygeolab.persistence import ProjectSession, RecoveryManager
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
@@ -85,6 +87,7 @@ class MainWindow(QMainWindow):
         self._build_docks()
         self._build_menus()
         self._build_toolbar()
+        self._apply_preferences()
         self.geometry_view.selectionChanged.connect(self._selection_from_canvas)
         self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
         self.geometry_view.interactionChanged.connect(self._update_history_actions)
@@ -226,14 +229,24 @@ class MainWindow(QMainWindow):
         self.snapping_action = self._add_action(
             view_menu,
             "&Magnétisme (maintenir Alt pour suspendre)",
-            self.geometry_view.set_snapping_enabled,
+            self._set_snapping_enabled,
             "M",
         )
         self.snapping_action.setCheckable(True)
         self.snapping_action.setChecked(True)
         theme_menu = view_menu.addMenu(self.tr("Thème"))
-        self._add_action(theme_menu, "Clair", lambda: self._apply_theme(False))
-        self._add_action(theme_menu, "Sombre", lambda: self._apply_theme(True))
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+        self.theme_actions: dict[str, QAction] = {}
+        for mode, label in (("system", "Système"), ("light", "Clair"), ("dark", "Sombre")):
+            action = self._add_action(
+                theme_menu,
+                label,
+                lambda _checked=False, value=mode: self._apply_theme(value),
+            )
+            action.setCheckable(True)
+            theme_group.addAction(action)
+            self.theme_actions[mode] = action
         function_menu = view_menu.addMenu(self.tr("Fonctions"))
         quality_menu = function_menu.addMenu(self.tr("Qualité du tracé"))
         quality_group = QActionGroup(self)
@@ -300,18 +313,41 @@ class MainWindow(QMainWindow):
         menu.addAction(action)
         return action
 
-    def _apply_theme(self, dark: bool) -> None:
+    def _apply_theme(self, mode: str) -> None:
         application = QApplication.instance()
         if isinstance(application, QApplication):
-            apply_theme(application, dark)
-            self.preferences = Preferences(
-                dark,
-                self.preferences.export_scale,
-                self.preferences.transparent_export,
-                self.preferences.autosave_enabled,
-                self.preferences.autosave_interval_minutes,
-            )
+            apply_theme(application, mode)
+            self.preferences = replace(self.preferences, theme_mode=mode)
             self.preferences.save()
+
+    def _set_snapping_enabled(self, enabled: bool) -> None:
+        self.geometry_view.set_snapping_enabled(enabled)
+        self.preferences = replace(self.preferences, snapping_enabled=enabled)
+        self.preferences.save()
+
+    def _apply_preferences(self) -> None:
+        application = QApplication.instance()
+        if isinstance(application, QApplication):
+            apply_theme(application, self.preferences.theme_mode)
+        self.geometry_view.configure_display(
+            grid=self.preferences.show_grid,
+            axes=self.preferences.show_axes,
+            labels=self.preferences.show_labels,
+        )
+        self.geometry_view.set_snapping_enabled(self.preferences.snapping_enabled)
+        self.geometry_view.interaction.set_snapping_threshold(self.preferences.snap_threshold_px)
+        self.document.default_style = Style(
+            color=self.preferences.default_color,
+            width=self.preferences.default_width,
+            point_size=self.preferences.default_point_size,
+        )
+        blocked = self.snapping_action.blockSignals(True)
+        self.snapping_action.setChecked(self.preferences.snapping_enabled)
+        self.snapping_action.blockSignals(blocked)
+        for mode, action in self.theme_actions.items():
+            blocked = action.blockSignals(True)
+            action.setChecked(mode == self.preferences.theme_mode)
+            action.blockSignals(blocked)
 
     def _build_toolbar(self) -> None:
         self.toolbar = QToolBar(self.tr("Constructions"), self)
@@ -558,9 +594,7 @@ class MainWindow(QMainWindow):
         self.preferences = dialog.preferences()
         self.preferences.save()
         self._configure_autosave()
-        application = QApplication.instance()
-        if isinstance(application, QApplication):
-            apply_theme(application, self.preferences.dark_theme)
+        self._apply_preferences()
 
     def _show_about(self) -> None:
         QMessageBox.about(
@@ -652,6 +686,7 @@ class MainWindow(QMainWindow):
         self.properties_panel.set_document(self.document)
         self.slider_panel.set_document(self.document)
         self.numerical_panel.set_document(self.document)
+        self._apply_preferences()
         self._sync_function_actions()
         self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
         self._update_history_actions()

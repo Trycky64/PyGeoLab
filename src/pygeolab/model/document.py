@@ -42,6 +42,7 @@ class Document:
         self.revision = 0
         self.last_recomputed: tuple[str, ...] = ()
         self.last_dirty: Mapping[str, DirtyFlags] = MappingProxyType({})
+        self.default_style = Style()
         self._objects: dict[str, GeoObject] = {}
         self._graph = DependencyGraph()
         self._observers: list[Callable[[], None]] = []
@@ -121,7 +122,12 @@ class Document:
 
     def restore(self, objects: Iterable[GeoObject]) -> None:
         """Atomically insert definitions, accepting parents in any input order."""
-        additions = tuple(objects)
+        additions = tuple(
+            replace(obj, style=self.default_style)
+            if obj.revision == 0 and obj.style == Style() and self.default_style != Style()
+            else obj
+            for obj in objects
+        )
         if not additions:
             return
         draft = dict(self._objects)

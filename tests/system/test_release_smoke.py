@@ -203,11 +203,11 @@ def test_preferences_and_log_directory_actions_are_noninteractive(
             return QDialog.DialogCode.Accepted
 
         def preferences(self) -> Preferences:
-            return Preferences(dark_theme=True, export_scale=2.0, transparent_export=True)
+            return Preferences(theme_mode="dark", export_scale=2.0, transparent_export=True)
 
     window = _window(qtbot, monkeypatch)
     messages = _capture_message_boxes(monkeypatch)
-    applied_themes: list[bool] = []
+    applied_themes: list[str] = []
     monkeypatch.setattr(main_window_module, "PreferencesDialog", AcceptedPreferencesDialog)
     monkeypatch.setattr(
         main_window_module,
@@ -217,8 +217,10 @@ def test_preferences_and_log_directory_actions_are_noninteractive(
 
     window._show_preferences()
 
-    assert window.preferences == Preferences(True, 2.0, True)
-    assert applied_themes == [True]
+    assert window.preferences == Preferences(
+        theme_mode="dark", export_scale=2.0, transparent_export=True
+    )
+    assert applied_themes == ["dark"]
 
     logs = tmp_path / "logs"
     opened_urls: list[QUrl] = []

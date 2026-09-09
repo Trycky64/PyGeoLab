@@ -41,7 +41,7 @@ def main() -> int:
     install_exception_handler(log_path)
     logging.getLogger(__name__).info("Démarrage de PyGeoLab %s", __version__)
     application = create_application()
-    apply_theme(application, Preferences.load().dark_theme)
+    apply_theme(application, Preferences.load().theme_mode)
     window = MainWindow()
     window.show()
     exit_code = application.exec()
