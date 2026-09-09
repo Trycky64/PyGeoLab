@@ -146,4 +146,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   focus clavier visible, palettes contrastées et retours d'état explicites.
 - Section 12 terminée : profils reproductibles jusqu'à 10 000 objets, rendu multi-fonctions
   optimisé, seuils de régression et nettoyage explicite des ressources Qt.
-- Les sections 13 à 16 restent planifiées dans `todo.txt`.
+- Section 13 terminée : diagnostics de build et de plateforme, erreurs fichier/export contextualisées,
+  copie des informations système et conservation atomique du document courant.
+- Les sections 14 à 16 restent planifiées dans `todo.txt`.

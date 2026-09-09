@@ -358,3 +358,15 @@ Le hit-testing de 10 000 objets reste de l'ordre de quelques millisecondes sur l
 référence. Aucun index spatial ni cache de hit-testing n'est donc ajouté. Les seuils automatisés
 laissent une marge importante aux runners partagés et visent les régressions d'un ordre de
 grandeur, pas les fluctuations ordinaires de charge.
+
+## ADR-029 — Diagnostic partageable et adoption atomique des documents
+
+Le diagnostic système est produit par une fonction pure commune au log de démarrage et au
+presse-papiers. L'identifiant de build vient de l'environnement de packaging ou de CI, avec une
+valeur de développement explicite. Le format de log ajoute processus et thread ; les opérations de
+fichier ajoutent document, révision et cible sans enregistrer le contenu utilisateur.
+
+Une session ne publie un document chargé qu'après validation et création de son snapshot. Les
+erreurs récupérables utilisent un message UI commun avec résumé, détail court et chemin du journal.
+Cette frontière laisse les exceptions internes au gestionnaire global avec traceback, tout en
+gardant les échecs attendus dans le flux normal de l'application.

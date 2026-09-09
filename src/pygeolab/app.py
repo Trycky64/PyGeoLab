@@ -10,6 +10,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from pygeolab import __version__
+from pygeolab.diagnostics import system_information
 from pygeolab.logging_config import configure_logging
 from pygeolab.ui.error_handler import install_exception_handler
 from pygeolab.ui.main_window import MainWindow
@@ -39,7 +40,7 @@ def main() -> int:
     """Start the desktop event loop and return Qt's process exit status."""
     log_path = configure_logging("--debug" in sys.argv)
     install_exception_handler(log_path)
-    logging.getLogger(__name__).info("Démarrage de PyGeoLab %s", __version__)
+    logging.getLogger(__name__).info("Démarrage\n%s", system_information())
     application = create_application()
     apply_theme(application, Preferences.load().theme_mode)
     window = MainWindow()

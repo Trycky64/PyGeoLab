@@ -26,13 +26,22 @@ def configure_logging(debug: bool = False) -> Path:
     path = directory / "pygeolab.log"
     root = logging.getLogger()
     root.setLevel(logging.DEBUG if debug else logging.INFO)
-    if not any(isinstance(handler, RotatingFileHandler) for handler in root.handlers):
+    target = path.resolve()
+    if not any(
+        isinstance(handler, RotatingFileHandler) and Path(handler.baseFilename).resolve() == target
+        for handler in root.handlers
+    ):
         handler = RotatingFileHandler(
             path,
             maxBytes=1_000_000,
             backupCount=3,
             encoding="utf-8",
         )
-        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)s [pid=%(process)d thread=%(threadName)s] "
+                "%(name)s: %(message)s"
+            )
+        )
         root.addHandler(handler)
     return path

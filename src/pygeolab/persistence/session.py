@@ -39,9 +39,11 @@ class ProjectSession:
 
     def open(self, path: str | Path) -> Document:
         """Load a validated project and mark its content clean."""
-        self.document = load_project(path)
+        loaded = load_project(path)
+        snapshot = serialize_document(loaded)
+        self.document = loaded
         self.path = Path(path)
-        self._saved_snapshot = serialize_document(self.document)
+        self._saved_snapshot = snapshot
         return self.document
 
     def save(self, path: str | Path | None = None) -> Path:

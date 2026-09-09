@@ -240,6 +240,11 @@ def export_svg(
         transparent,
         object_ids,
     )
+    try:
+        if not target.is_file() or target.stat().st_size == 0:
+            raise ValueError(f"Impossible d'exporter l'image SVG : {target}")
+    except OSError as exc:
+        raise ValueError(f"Impossible de vérifier l'image SVG : {target}") from exc
     return target
 
 

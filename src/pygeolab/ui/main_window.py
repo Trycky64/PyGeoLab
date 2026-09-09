@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from pygeolab import __version__
 from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectCommand
+from pygeolab.diagnostics import system_information
 from pygeolab.exporting import (
     copy_png_to_clipboard,
     copy_svg_to_clipboard,
@@ -44,6 +45,7 @@ from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
 from pygeolab.ui.dialogs.shortcuts_dialog import ShortcutsDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
+from pygeolab.ui.error_handler import operation_error_message
 from pygeolab.ui.geometry_view import GeometryView
 from pygeolab.ui.numerical_panel import NumericalPanel
 from pygeolab.ui.preferences import Preferences
@@ -299,6 +301,7 @@ class MainWindow(QMainWindow):
         help_menu = self.menuBar().addMenu(self.tr("&Aide"))
         self._add_action(help_menu, "&Raccourcis clavier…", self._show_shortcuts, "F1")
         self._add_action(help_menu, "Ouvrir le dossier des &logs", self._open_logs)
+        self._add_action(help_menu, "Copier les informations &système", self._copy_system_info)
         self._add_action(help_menu, "À &propos de PyGeoLab", self._show_about)
 
     def _set_function_quality(self, quality: str, checked: bool) -> None:
@@ -506,8 +509,12 @@ class MainWindow(QMainWindow):
         try:
             self.session.open(path)
         except ValueError as exc:
-            LOGGER.warning("Ouverture refusée pour %s: %s", path, exc)
-            QMessageBox.critical(self, self.tr("Ouverture impossible"), str(exc))
+            self._report_operation_error(
+                self.tr("Ouverture impossible"),
+                self.tr("Le projet n'a pas pu être ouvert. Le document courant a été conservé."),
+                exc,
+                path,
+            )
             return False
         self._discard_recovery()
         self.recent_files.add(path)
@@ -539,8 +546,12 @@ class MainWindow(QMainWindow):
         try:
             path = self.session.save()
         except ValueError as exc:
-            LOGGER.error("Échec d'enregistrement: %s", exc)
-            QMessageBox.critical(self, self.tr("Enregistrement impossible"), str(exc))
+            self._report_operation_error(
+                self.tr("Enregistrement impossible"),
+                self.tr("Le projet n'a pas pu être enregistré."),
+                exc,
+                str(self.session.path) if self.session.path else None,
+            )
             return False
         LOGGER.info("Projet enregistré: %s", path)
         self.recent_files.add(path)
@@ -561,8 +572,12 @@ class MainWindow(QMainWindow):
         try:
             saved = self.session.save(path)
         except ValueError as exc:
-            LOGGER.error("Échec d'enregistrement vers %s: %s", path, exc)
-            QMessageBox.critical(self, self.tr("Enregistrement impossible"), str(exc))
+            self._report_operation_error(
+                self.tr("Enregistrement impossible"),
+                self.tr("Le projet n'a pas pu être enregistré."),
+                exc,
+                path,
+            )
             return False
         LOGGER.info("Projet enregistré: %s", saved)
         self.recent_files.add(saved)
@@ -632,8 +647,12 @@ class MainWindow(QMainWindow):
                     object_ids=object_ids,
                 )
         except (OSError, ValueError) as exc:
-            LOGGER.error("Échec export %s: %s", extension.upper(), exc)
-            QMessageBox.critical(self, self.tr("Export impossible"), str(exc))
+            self._report_operation_error(
+                self.tr("Export impossible"),
+                self.tr(f"L'export {extension.upper()} n'a pas pu être créé."),
+                exc,
+                path,
+            )
             return
         LOGGER.info("Export %s: %s", extension.upper(), target)
         self.statusBar().showMessage(self.tr(f"Exporté vers {target}"), 5000)
@@ -641,17 +660,33 @@ class MainWindow(QMainWindow):
     def _copy_png(self) -> None:
         application = QApplication.instance()
         if isinstance(application, QApplication):
-            copy_png_to_clipboard(
-                application, self.document, self.geometry_view.viewport, self.palette()
-            )
+            try:
+                copy_png_to_clipboard(
+                    application, self.document, self.geometry_view.viewport, self.palette()
+                )
+            except (OSError, ValueError, RuntimeError) as exc:
+                self._report_operation_error(
+                    self.tr("Copie impossible"),
+                    self.tr("Le viewport PNG n'a pas pu être copié."),
+                    exc,
+                )
+                return
             self.statusBar().showMessage(self.tr("Viewport PNG copié"), 3000)
 
     def _copy_svg(self) -> None:
         application = QApplication.instance()
         if isinstance(application, QApplication):
-            copy_svg_to_clipboard(
-                application, self.document, self.geometry_view.viewport, self.palette()
-            )
+            try:
+                copy_svg_to_clipboard(
+                    application, self.document, self.geometry_view.viewport, self.palette()
+                )
+            except (OSError, ValueError, RuntimeError) as exc:
+                self._report_operation_error(
+                    self.tr("Copie impossible"),
+                    self.tr("Le viewport SVG n'a pas pu être copié."),
+                    exc,
+                )
+                return
             self.statusBar().showMessage(self.tr("Viewport SVG copié"), 3000)
 
     def _show_preferences(self) -> None:
@@ -677,7 +712,36 @@ class MainWindow(QMainWindow):
     def _open_logs(self) -> None:
         path = log_directory()
         path.mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            self.statusBar().showMessage(self.tr(f"Dossier des logs : {path}"), 8000)
+
+    def _copy_system_info(self) -> None:
+        application = QApplication.instance()
+        if isinstance(application, QApplication):
+            application.clipboard().setText(system_information())
+            self.statusBar().showMessage(self.tr("Informations système copiées"), 3000)
+
+    def _report_operation_error(
+        self,
+        title: str,
+        summary: str,
+        error: BaseException,
+        path: str | None = None,
+    ) -> None:
+        LOGGER.error(
+            "%s | document=%r revision=%d path=%r error=%s",
+            summary,
+            self.document.name,
+            self.document.revision,
+            path,
+            error,
+        )
+        QMessageBox.critical(
+            self,
+            title,
+            operation_error_message(summary, error, log_directory() / "pygeolab.log"),
+        )
+        self.statusBar().showMessage(title, 5000)
 
     def _confirm_discard_changes(self) -> bool:
         if not self.session.dirty:
@@ -710,8 +774,16 @@ class MainWindow(QMainWindow):
         try:
             path = self.recovery.write(self.document)
         except ValueError as exc:
-            LOGGER.error("Échec de l'autosave de récupération: %s", exc)
-            self.statusBar().showMessage(self.tr("Échec de la sauvegarde automatique"), 5000)
+            LOGGER.error(
+                "Échec autosave | document=%r revision=%d path=%r error=%s",
+                self.document.name,
+                self.document.revision,
+                str(self.recovery.path),
+                exc,
+            )
+            self.statusBar().showMessage(
+                self.tr(f"Échec de la sauvegarde automatique : {exc}"), 8000
+            )
             return
         LOGGER.info("Récupération automatique enregistrée: %s", path)
         self.statusBar().showMessage(self.tr("Sauvegarde automatique effectuée"), 3000)
@@ -732,8 +804,16 @@ class MainWindow(QMainWindow):
         try:
             self.session.recover(self.recovery.load())
         except ValueError as exc:
-            LOGGER.warning("Récupération illisible: %s", exc)
-            QMessageBox.warning(self, self.tr("Récupération impossible"), str(exc))
+            LOGGER.warning("Récupération illisible | path=%r error=%s", self.recovery.path, exc)
+            QMessageBox.warning(
+                self,
+                self.tr("Récupération impossible"),
+                operation_error_message(
+                    self.tr("La récupération est illisible et a été ignorée."),
+                    exc,
+                    log_directory() / "pygeolab.log",
+                ),
+            )
             self._discard_recovery()
             return
         self._adopt_session_document()

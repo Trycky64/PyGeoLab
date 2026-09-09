@@ -14,6 +14,12 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 ExceptionHook = Callable[[type[BaseException], BaseException, TracebackType | None], None]
 
 
+def operation_error_message(summary: str, error: BaseException, log_path: Path) -> str:
+    """Build a consistent actionable message for a recoverable operation failure."""
+    detail = str(error).strip() or error.__class__.__name__
+    return f"{summary}\n\nDétail : {detail}\n\nJournal : {log_path}"
+
+
 def install_exception_handler(log_path: Path) -> ExceptionHook:
     """Install a hook that logs uncaught exceptions and presents contextual UI feedback."""
     previous = sys.excepthook
