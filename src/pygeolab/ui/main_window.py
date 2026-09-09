@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -23,7 +23,7 @@ from pygeolab.commands import ChangeFunctionCommand, Command, CreateObjectComman
 from pygeolab.exporting import export_png, export_svg
 from pygeolab.logging_config import log_directory
 from pygeolab.model.objects import GeoObject
-from pygeolab.persistence import ProjectSession
+from pygeolab.persistence import ProjectSession, RecoveryManager
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
@@ -32,6 +32,7 @@ from pygeolab.ui.geometry_view import GeometryView
 from pygeolab.ui.numerical_panel import NumericalPanel
 from pygeolab.ui.preferences import Preferences
 from pygeolab.ui.properties_panel import PropertiesPanel
+from pygeolab.ui.recent_files import RecentFiles
 from pygeolab.ui.slider_panel import SliderPanel
 from pygeolab.ui.theme import apply_theme
 
@@ -74,6 +75,8 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
         self.setAccessibleName(self.tr("Fenêtre principale PyGeoLab"))
         self.preferences = Preferences.load()
+        self.recent_files = RecentFiles()
+        self.recovery = RecoveryManager()
         self.session = ProjectSession()
         self.document = self.session.document
         self.geometry_view = GeometryView(self.document, self)
@@ -86,10 +89,14 @@ class MainWindow(QMainWindow):
         self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
         self.geometry_view.interactionChanged.connect(self._update_history_actions)
         self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.timeout.connect(self._autosave)
+        self._configure_autosave()
         self.statusBar().setAccessibleName(self.tr("Barre d'état"))
         self.statusBar().showMessage(self.tr("Prêt"))
         self._update_history_actions()
         self._update_title()
+        self._offer_recovery()
 
     def _execute_command(self, command: Command) -> None:
         self.geometry_view.history.execute(command)
@@ -131,6 +138,8 @@ class MainWindow(QMainWindow):
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
         self._add_action(file_menu, "&Nouveau", self._new_project, QKeySequence.StandardKey.New)
         self._add_action(file_menu, "&Ouvrir…", self._open_project, QKeySequence.StandardKey.Open)
+        self.recent_menu = file_menu.addMenu(self.tr("Fichiers &récents"))
+        self.recent_menu.aboutToShow.connect(self._refresh_recent_menu)
         self.save_action = self._add_action(
             file_menu,
             "&Enregistrer",
@@ -299,6 +308,8 @@ class MainWindow(QMainWindow):
                 dark,
                 self.preferences.export_scale,
                 self.preferences.transparent_export,
+                self.preferences.autosave_enabled,
+                self.preferences.autosave_interval_minutes,
             )
             self.preferences.save()
 
@@ -416,6 +427,7 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard_changes():
             return
         self.session.new()
+        self._discard_recovery()
         self._adopt_session_document()
         LOGGER.info("Nouveau projet")
 
@@ -430,14 +442,38 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
+        self._open_path(path)
+
+    def _open_path(self, path: str) -> bool:
         try:
             self.session.open(path)
         except ValueError as exc:
             LOGGER.warning("Ouverture refusée pour %s: %s", path, exc)
             QMessageBox.critical(self, self.tr("Ouverture impossible"), str(exc))
-            return
+            return False
+        self._discard_recovery()
+        self.recent_files.add(path)
         self._adopt_session_document()
         LOGGER.info("Projet ouvert: %s", path)
+        return True
+
+    def _open_recent(self, path: str) -> None:
+        if self._confirm_discard_changes():
+            self._open_path(path)
+
+    def _refresh_recent_menu(self) -> None:
+        self.recent_menu.clear()
+        paths = self.recent_files.paths()
+        for path in paths:
+            action = self.recent_menu.addAction(str(path))
+            action.triggered.connect(
+                lambda _checked=False, value=str(path): self._open_recent(value)
+            )
+        if paths:
+            self.recent_menu.addSeparator()
+        clear = self.recent_menu.addAction(self.tr("Effacer les fichiers récents"))
+        clear.setEnabled(bool(paths))
+        clear.triggered.connect(self.recent_files.clear)
 
     def _save_project(self) -> bool:
         if self.session.path is None:
@@ -449,6 +485,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, self.tr("Enregistrement impossible"), str(exc))
             return False
         LOGGER.info("Projet enregistré: %s", path)
+        self.recent_files.add(path)
+        self._discard_recovery()
         self._update_title()
         return True
 
@@ -469,6 +507,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, self.tr("Enregistrement impossible"), str(exc))
             return False
         LOGGER.info("Projet enregistré: %s", saved)
+        self.recent_files.add(saved)
+        self._discard_recovery()
         self._update_title()
         return True
 
@@ -517,6 +557,7 @@ class MainWindow(QMainWindow):
             return
         self.preferences = dialog.preferences()
         self.preferences.save()
+        self._configure_autosave()
         application = QApplication.instance()
         if isinstance(application, QApplication):
             apply_theme(application, self.preferences.dark_theme)
@@ -554,6 +595,54 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.StandardButton.Save:
             return self._save_project()
         return True
+
+    def _configure_autosave(self) -> None:
+        self._autosave_timer.setInterval(self.preferences.autosave_interval_minutes * 60_000)
+        if self.preferences.autosave_enabled:
+            self._autosave_timer.start()
+        else:
+            self._autosave_timer.stop()
+
+    def _autosave(self) -> None:
+        if not self.preferences.autosave_enabled or not self.session.dirty:
+            return
+        try:
+            path = self.recovery.write(self.document)
+        except ValueError as exc:
+            LOGGER.error("Échec de l'autosave de récupération: %s", exc)
+            self.statusBar().showMessage(self.tr("Échec de la sauvegarde automatique"), 5000)
+            return
+        LOGGER.info("Récupération automatique enregistrée: %s", path)
+        self.statusBar().showMessage(self.tr("Sauvegarde automatique effectuée"), 3000)
+
+    def _offer_recovery(self) -> None:
+        if not self.recovery.available:
+            return
+        answer = QMessageBox.question(
+            self,
+            self.tr("Récupération disponible"),
+            self.tr("Une sauvegarde de récupération a été trouvée. La restaurer ?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Ignore,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Ignore:
+            self._discard_recovery()
+            return
+        try:
+            self.session.recover(self.recovery.load())
+        except ValueError as exc:
+            LOGGER.warning("Récupération illisible: %s", exc)
+            QMessageBox.warning(self, self.tr("Récupération impossible"), str(exc))
+            self._discard_recovery()
+            return
+        self._adopt_session_document()
+        self.statusBar().showMessage(self.tr("Document de récupération restauré"), 5000)
+
+    def _discard_recovery(self) -> None:
+        try:
+            self.recovery.discard()
+        except ValueError as exc:
+            LOGGER.warning("Nettoyage de récupération impossible: %s", exc)
 
     def _adopt_session_document(self) -> None:
         self._unsubscribe_dirty()

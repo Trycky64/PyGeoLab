@@ -126,3 +126,9 @@ affichées dans ce dock, sans boîte de dialogue modale.
 Les actions **Mesurer la longueur sélectionnée** et **Mesurer l'aire sélectionnée** créent des
 mesures dynamiques depuis un segment, un vecteur ou un polygone. Les outils Distance et Angle de la
 barre de constructions continuent à créer leurs mesures depuis des points.
+
+## Récents et récupération en 1.1
+
+**Fichier > Fichiers récents** liste les projets encore présents sur disque et permet d'effacer la
+liste. L'autosave se règle dans Préférences. Une récupération détectée au démarrage est proposée
+avant l'édition ; les erreurs de lecture sont signalées sans remplacer le document courant.

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QSpinBox,
     QWidget,
 )
 
@@ -28,6 +29,14 @@ class PreferencesDialog(QDialog):
         self._scale.setSingleStep(0.25)
         self._scale.setSuffix("×")
         self._scale.setValue(preferences.export_scale)
+        self._autosave = QCheckBox(self.tr("Activer la sauvegarde automatique"), self)
+        self._autosave.setChecked(preferences.autosave_enabled)
+        self._autosave_interval = QSpinBox(self)
+        self._autosave_interval.setRange(1, 60)
+        self._autosave_interval.setSuffix(self.tr(" min"))
+        self._autosave_interval.setValue(preferences.autosave_interval_minutes)
+        self._autosave.toggled.connect(self._autosave_interval.setEnabled)
+        self._autosave_interval.setEnabled(self._autosave.isChecked())
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -38,6 +47,8 @@ class PreferencesDialog(QDialog):
         layout.addRow(self._dark)
         layout.addRow(self.tr("Résolution export"), self._scale)
         layout.addRow(self._transparent)
+        layout.addRow(self._autosave)
+        layout.addRow(self.tr("Intervalle autosave"), self._autosave_interval)
         layout.addRow(buttons)
 
     def preferences(self) -> Preferences:
@@ -46,4 +57,6 @@ class PreferencesDialog(QDialog):
             self._dark.isChecked(),
             self._scale.value(),
             self._transparent.isChecked(),
+            self._autosave.isChecked(),
+            self._autosave_interval.value(),
         )

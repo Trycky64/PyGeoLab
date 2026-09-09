@@ -30,6 +30,13 @@ class ProjectSession:
         self._saved_snapshot = serialize_document(self.document)
         return self.document
 
+    def recover(self, document: Document) -> Document:
+        """Adopt a validated recovery document as an unsaved project."""
+        self.document = document
+        self.path = None
+        self._saved_snapshot = {}
+        return self.document
+
     def open(self, path: str | Path) -> Document:
         """Load a validated project and mark its content clean."""
         self.document = load_project(path)

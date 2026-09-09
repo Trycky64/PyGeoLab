@@ -14,6 +14,8 @@ class Preferences:
     dark_theme: bool = False
     export_scale: float = 1.0
     transparent_export: bool = False
+    autosave_enabled: bool = True
+    autosave_interval_minutes: int = 2
 
     @classmethod
     def load(cls) -> Preferences:
@@ -31,6 +33,10 @@ class Preferences:
             dark_theme=_read_bool(settings, "appearance/dark_theme", False),
             export_scale=min(8.0, max(0.25, scale)),
             transparent_export=_read_bool(settings, "export/transparent", False),
+            autosave_enabled=_read_bool(settings, "files/autosave_enabled", True),
+            autosave_interval_minutes=_read_int(
+                settings, "files/autosave_interval_minutes", 2, 1, 60
+            ),
         )
 
     def save(self) -> None:
@@ -39,6 +45,8 @@ class Preferences:
         settings.setValue("appearance/dark_theme", self.dark_theme)
         settings.setValue("export/scale", self.export_scale)
         settings.setValue("export/transparent", self.transparent_export)
+        settings.setValue("files/autosave_enabled", self.autosave_enabled)
+        settings.setValue("files/autosave_interval_minutes", self.autosave_interval_minutes)
         settings.sync()
 
 
@@ -54,3 +62,17 @@ def _read_bool(settings: QSettings, key: str, default: bool) -> bool:
         if normalized in {"0", "false", "no", "off"}:
             return False
     return default
+
+
+def _read_int(settings: QSettings, key: str, default: int, minimum: int, maximum: int) -> int:
+    """Read and clamp one integer preference."""
+    value = settings.value(key, default)
+    try:
+        parsed = (
+            int(value)
+            if isinstance(value, (int, float, str)) and not isinstance(value, bool)
+            else default
+        )
+    except (TypeError, ValueError):
+        parsed = default
+    return min(maximum, max(minimum, parsed))

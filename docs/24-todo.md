@@ -206,8 +206,8 @@ Les identifiants sont conçus pour être utilisés dans les issues et commits.
 - [x] SAVE-011 — Dirty document flag.
 - [x] SAVE-012 — Unsaved changes dialog.
 - [x] SAVE-013 — Version migration.
-- [ ] SAVE-014 — Recent files.
-- [ ] SAVE-015 — Autosave future.
+- [x] SAVE-014 — Recent files.
+- [x] SAVE-015 — Autosave et récupération.
 
 ## EXPORT
 

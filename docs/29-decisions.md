@@ -300,3 +300,14 @@ Les longueurs et aires destinées à suivre une construction sont au contraire d
 persistants. Leurs dépendances passent par le graphe normal et leur valeur est recalculée comme les
 mesures de distance et d'angle existantes. Ces deux nouveaux types utilisent la structure ouverte
 des recettes v1 et ne demandent aucune migration du format.
+
+## ADR-024 — Récupération atomique séparée et récents dans QSettings
+
+L'autosave réutilise le sérialiseur et l'écriture atomique `.pgl`, mais vise un chemin de
+récupération propre à l'application. Il ne change ni le chemin ni le snapshot enregistré de la
+session utilisateur. Une restauration adopte un document validé comme projet non enregistré ; une
+erreur de lecture laisse la session courante intacte.
+
+La liste MRU contient uniquement des chemins et relève des préférences de poste. Elle reste donc
+dans `QSettings`, se borne à dix entrées et élimine les fichiers absents à chaque lecture. Aucun de
+ces ajouts ne modifie la version 1 du schéma de document.

@@ -136,4 +136,6 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   et animation configurable avec recalcul incrémental sans historique par frame.
 - Section 7 terminée : panneau d'analyse numérique borné, gestion des domaines et discontinuités,
   résultats intégrés à l'UI et mesures dynamiques de longueur, aire et angle.
-- Les sections 8 à 16 restent planifiées dans `todo.txt`.
+- Section 8 terminée : fichiers récents auto-nettoyés, autosave atomique configurable et
+  restauration de crash dans un fichier séparé compatible avec le format v1.
+- Les sections 9 à 16 restent planifiées dans `todo.txt`.
