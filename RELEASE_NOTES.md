@@ -1,42 +1,38 @@
-# PyGeoLab 1.1.0
+# PyGeoLab 1.1.1
 
-PyGeoLab 1.1 enrichit la géométrie dynamique, le tracé de fonctions et le travail quotidien sur
-des documents complexes. Cette version conserve le format `.pgl` version 1 et ouvre directement
-les projets enregistrés avec PyGeoLab 1.0.
+[Version française](RELEASE_NOTES.fr.md)
 
-## Points forts
+PyGeoLab 1.1.1 is the polished public distribution of the 1.1 feature set. It adds a complete English interface and English-first public documentation while retaining French throughout. It also removes obsolete planning artifacts from the repository and packages both language documents.
 
-- snapping sur la grille, les points, les projections et les intersections ;
-- nouveaux outils de construction, transformations et mesures dynamiques ;
-- sélection multiple et rectangulaire avec commandes groupées et Undo/Redo ;
-- panneaux Algèbre et Propriétés filtrables, triables et éditables ;
-- fonctions éditables, courbes adaptatives et couches d'analyse optionnelles ;
-- curseurs animés et panneau d'analyse numérique ;
-- fichiers récents, autosave, récupération et préférences centralisées ;
-- exports PNG/SVG du document complet ou de la sélection ;
-- raccourcis documentés, navigation clavier et diagnostics enrichis.
+## Highlights
 
-## Compatibilité et plateformes
+- snapping to the grid, points, projections, and intersections;
+- advanced construction tools, transformations, and dynamic measurements;
+- rectangle and multiple selection with grouped commands and Undo/Redo;
+- searchable, sortable, and editable Algebra and Properties panels;
+- adaptive function curves and optional analysis overlays;
+- animated sliders and a dedicated numerical analysis panel;
+- recent files, autosave, crash recovery, and centralized preferences;
+- full-document and selection PNG/SVG exports;
+- English and French interface with automatic system language selection;
+- documented shortcuts, keyboard navigation, and improved diagnostics.
 
-- projets `.pgl` PyGeoLab 1.0 compatibles sans conversion ;
-- Python 3.12, 3.13 et 3.14 validés ;
-- archives portables Windows x64 et Linux x64 testées au démarrage avant publication.
+## Compatibility and platforms
 
-## Vérification rapide
+- `.pgl` projects from PyGeoLab 1.0 open without conversion;
+- Python 3.12, 3.13, and 3.14 are validated;
+- portable Windows x64 and Linux x64 archives are started before publication.
 
-1. lancer PyGeoLab ;
-2. ouvrir `examples/demo.pgl` ;
-3. déplacer A/B/C ou animer le curseur `a` ;
-4. vérifier le recalcul des objets, mesures et courbes ;
-5. tester la sélection multiple puis Undo/Redo ;
-6. exporter la sélection en PNG puis le document en SVG ;
-7. enregistrer et rouvrir le projet.
+## Quick verification
+
+1. Start PyGeoLab.
+2. Open `examples/demo.pgl`.
+3. Move A/B/C or animate slider `a`.
+4. Check that objects, measurements, and curves update.
+5. Try multiple selection and Undo/Redo.
+6. Export the selection to PNG and the document to SVG.
+7. Save and reopen the project.
 
 ## Distribution
 
-Le workflow GitHub `Release` produit :
-
-- `PyGeoLab-Windows-x64.zip` ;
-- `PyGeoLab-Linux-x64.tar.gz`.
-
-Le tag `v1.1.0` déclenche les deux builds et publie automatiquement ces archives sur GitHub.
+The `Release` workflow produces `PyGeoLab-Windows-x64.zip` and `PyGeoLab-Linux-x64.tar.gz`.

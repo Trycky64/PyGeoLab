@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.math_engine.numerical import derivative, extrema, find_roots, integrate, intersections
 from pygeolab.model.document import Document
+from pygeolab.ui.translations import translate_message
 
 
 class NumericalPanel(QWidget):
@@ -176,7 +177,7 @@ class NumericalPanel(QWidget):
             else:
                 self.message.setText(self.tr(f"{len(values)} résultat(s)"))
         except (ValueError, ArithmeticError, IndexError, KeyError) as exc:
-            self.message.setText(self.tr(f"Erreur : {exc}"))
+            self.message.setText(self.tr(f"Erreur : {translate_message(str(exc))}"))
 
     def _selected_function(self, combo: QComboBox) -> tuple[FunctionObject, dict[str, float]]:
         object_id = combo.currentData()

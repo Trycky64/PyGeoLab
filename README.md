@@ -1,80 +1,75 @@
 # PyGeoLab
 
-PyGeoLab 1.1 est une application desktop de **géométrie dynamique** et de **visualisation mathématique** écrite en Python et PySide6. Elle combine constructions dépendantes, fonctions paramétrées, analyse numérique et projets `.pgl` versionnés dans une interface utilisable à la souris comme au clavier.
+[Français](README.fr.md) · **English**
 
-![Espace de travail PyGeoLab 1.1](docs/screenshots/workspace-v11.png)
+PyGeoLab 1.1 is a desktop application for **dynamic geometry** and **mathematical visualization**, built with Python and PySide6. It combines dependent constructions, parameterized functions, numerical analysis, and versioned `.pgl` projects in a mouse and keyboard accessible interface.
 
-## Nouveautés 1.1
+![PyGeoLab 1.1 workspace](docs/screenshots/workspace-v11.png)
 
-- magnétisme sur la grille, les points, projections et intersections, suspendu avec `Alt` ;
-- quinze outils avancés : demi-droite, vecteur, médiatrice, bissectrice, projections, cercles, mesures et transformations ;
-- sélection rectangulaire et multiple, édition groupée, duplication, ordre d'affichage et cycle des objets superposés ;
-- panneau Algèbre filtrable et triable, propriétés numériques, dépendances et descendants ;
-- création et édition de fonctions, sampling adaptatif, racines, extrema, intersections et dérivée ;
-- curseurs éditables et animés avec vitesse, aller-retour, pause et reset ;
-- dérivée, intégrale, racines, extrema, intersections et mesures dynamiques ;
-- fichiers récents, autosave atomique et récupération après incident ;
-- préférences centralisées, thèmes contrastés, raccourcis consultables avec `F1` ;
-- export du viewport, du document ou de la sélection en PNG/SVG, plus copie presse-papiers ;
-- diagnostics partageables et release gate Windows/Linux sur Python 3.12, 3.13 et 3.14.
+## Highlights
 
-Le [guide utilisateur V1.1](docs/30-user-guide-v11.md) décrit les outils, fonctions, curseurs, raccourcis, préférences, fichiers et exports.
+- snapping to the grid, points, projections, and intersections, with temporary `Alt` suspension;
+- advanced rays, vectors, bisectors, projections, circles, measurements, and transformations;
+- rectangle and multiple selection, grouped editing, duplication, display order, and overlap cycling;
+- searchable and sortable Algebra panel with direct editing, dependencies, and descendants;
+- editable functions with adaptive sampling, roots, extrema, intersections, and derivatives;
+- editable animated sliders with speed, ping-pong playback, pause, and reset;
+- numerical derivatives, integrals, roots, extrema, intersections, and dynamic measurements;
+- recent files, atomic autosave, crash recovery, and centralized preferences;
+- light and dark themes, documented shortcuts, keyboard navigation, and shareable diagnostics;
+- viewport, full-document, or selection export to PNG/SVG and clipboard copy.
 
-## Installation développeur
+Read the [English user guide](docs/user-guide.md) or the [French user guide](docs/user-guide.fr.md).
 
-Python 3.12 à 3.14 est pris en charge.
+## Install from a release
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
+Download the archive for your platform from [GitHub Releases](https://github.com/Trycky64/PyGeoLab/releases), extract it, and run `PyGeoLab.exe` on Windows or `PyGeoLab` on Linux. The application automatically uses French on a French system and English elsewhere; the language can also be selected in Preferences.
+
+## Development
+
+PyGeoLab supports Python 3.12 through 3.14.
+
+```bash
+python -m venv .venv
 python -m pip install -e ".[dev]"
 python -m pygeolab
 ```
 
-Sous Linux :
+On Windows PowerShell, activate the environment with `.\.venv\Scripts\Activate.ps1`. On Linux and macOS, use `source .venv/bin/activate`.
+
+Run the release gate:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]'
-python -m pygeolab
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src
 ```
 
-## Vérifications
+The noninteractive suite runs with Qt offscreen on Windows and Linux under Python 3.12, 3.13, and 3.14. CI also builds both PyInstaller applications and starts each executable with `--smoke-test`.
 
-```powershell
-py -m pytest
-py -m ruff check .
-py -m ruff format --check .
-py -m mypy src
-```
+## Demo project
 
-La suite compte plus de 340 tests non interactifs. La CI les exécute avec Qt offscreen sur Windows et Linux pour Python 3.12, 3.13 et 3.14. Elle construit ensuite les deux applications PyInstaller, lance chaque exécutable avec `--smoke-test` et publie les archives du commit.
+Open [`examples/demo.pgl`](examples/demo.pgl) with **File > Open**. It demonstrates a triangle, circle, midpoint, vector, translation, dynamic measurements, animated slider `a`, and `f(x) = sin(x) + a`.
 
-## Projet de démonstration
-
-Ouvrez [`examples/demo.pgl`](examples/demo.pgl) avec **Fichier > Ouvrir**. Le projet V1.1 présente un triangle, un cercle, un milieu, un vecteur, une translation, des mesures dynamiques, le curseur animé `a` et la fonction `f(x) = sin(x) + a`.
-
-## Builds desktop
-
-Windows PowerShell 5+ :
+## Desktop builds
 
 ```powershell
 .\scripts\build-windows.ps1
 ```
 
-Linux :
-
 ```bash
 ./scripts/build-linux.sh
 ```
 
-Chaque script exécute le release gate, construit le dossier portable, vérifie son démarrage hors écran et produit l'archive de plateforme. Les tags `v*` déclenchent aussi [le workflow de release](.github/workflows/release.yml).
+Each script runs the release gate, builds a portable directory, verifies offscreen startup, and creates the platform archive. Version tags trigger the [release workflow](.github/workflows/release.yml).
 
-## Architecture et sécurité
+## Architecture and security
 
-La [documentation d'architecture](docs/README.md) couvre le modèle, le graphe de dépendances, le rendu, la persistance, les tests et les ADR. Le format `.pgl` est validé avant reconstruction et une ouverture invalide conserve le document courant. Le moteur mathématique utilise un parser fermé et n'appelle jamais `eval` ou `exec`.
+The [project documentation](docs/README.md) covers the architecture, dependency graph, renderer, persistence, tests, and ADRs. `.pgl` input is validated before reconstruction, and an invalid project cannot replace the current document. The mathematical expression engine uses a closed parser and never calls `eval` or `exec`.
 
-## Licence
+Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
-MIT — voir [LICENSE](LICENSE).
+## License
+
+MIT — see [LICENSE](LICENSE).

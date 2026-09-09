@@ -118,7 +118,7 @@ Critères :
 Les milestones 0 à 11 sont réalisés pour le périmètre 1.0. Les éléments explicitement laissés
 au backlog (snapping, édition directe des coordonnées, saisie de fonctions dédiée, fichiers
 récents, autosave, vidéo portfolio) ne bloquent pas la release et restent identifiés dans
-`docs/24-todo.md`.
+les historiques de release et les issues GitHub.
 
 ## Version 1.1 — Précision et constructions avancées
 
@@ -154,3 +154,5 @@ récents, autosave, vidéo portfolio) ne bloquent pas la release et restent iden
   ont été synchronisés avec le produit livré.
 - Section 16 terminée : version 1.1.0, métadonnées, compatibilité `.pgl` V1.0, paquets portables,
   release gate et publication GitHub ont été validés.
+- Maintenance 1.1.1 : dépôt public nettoyé, documentation bilingue et interface anglaise complète
+  avec détection de la langue système.

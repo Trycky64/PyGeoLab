@@ -1,53 +1,63 @@
 # Changelog
 
-Toutes les modifications notables de PyGeoLab sont documentées ici.
+[Version française](CHANGELOG.fr.md)
+
+All notable changes to PyGeoLab are documented in this file.
+
+## 1.1.1 — 2026-09-09
+
+### Added
+
+- complete English runtime catalogue with automatic system-language selection;
+- persistent System, English, and French language preference;
+- English README, user guide, changelog, and release notes with French counterparts;
+- public package metadata and normalized cross-platform line endings.
+
+### Changed
+
+- public documentation now uses English as its entry language;
+- Windows and Linux archives include English and French release documents.
+
+### Removed
+
+- completed internal checklist, superseded SVG mockups, and portfolio planning notes.
 
 ## 1.1.0 — 2026-09-09
 
-### Ajouté
+### Added
 
-- snapping configurable sur grille, points, projections et intersections ;
-- outils avancés : demi-droite, vecteur, médiatrice, bissectrice, projection, point sur objet,
-  cercles, transformations et mesures dynamiques ;
-- sélection rectangulaire et multiple, édition groupée, duplication et gestion de l'ordre ;
-- recherche, tri, regroupement et édition directe dans les panneaux Algèbre et Propriétés ;
-- création et édition de fonctions avec sampling adaptatif, dérivée, racines, extrema et
-  intersections optionnels ;
-- curseurs éditables et animables avec lecture aller-retour sans pollution de l'historique ;
-- panneau d'analyse numérique pour dérivées, intégrales, racines, extrema et intersections ;
-- fichiers récents, autosave atomique et récupération après incident ;
-- préférences centralisées, thèmes, accessibilité clavier et aide des raccourcis ;
-- exports du document ou de la sélection en PNG/SVG et copie vers le presse-papiers ;
-- diagnostics système, erreurs contextualisées et ouverture du dossier de logs.
+- configurable snapping to the grid, points, projections, and intersections;
+- rays, vectors, bisectors, projections, point-on-object, advanced circles, transformations, and dynamic measurements;
+- rectangle and multiple selection, grouped editing, duplication, and display ordering;
+- search, sorting, grouping, and direct editing in the Algebra and Properties panels;
+- function creation and editing with adaptive sampling and optional analysis overlays;
+- editable animated sliders with ping-pong playback and history-safe incremental updates;
+- bounded numerical analysis for derivatives, integrals, roots, extrema, and intersections;
+- recent files, atomic autosave, crash recovery, centralized preferences, and diagnostics;
+- full-document and selection PNG/SVG exports and clipboard support;
 
-### Amélioré
+### Improved
 
-- rendu des fonctions mis en cache et accéléré pour les scènes chargées ;
-- hit-testing des objets superposés et cycle de sélection ;
-- détection des discontinuités et suppression des segments à travers les asymptotes ;
-- tests de stabilité jusqu'à 10 000 objets et nettoyage des ressources Qt à la fermeture ;
-- documentation utilisateur, captures, démonstration et décisions architecturales.
+- cached function rendering and performance on large scenes;
+- hit testing and selection cycling for overlapping objects;
+- discontinuity detection and asymptote handling;
+- keyboard navigation, contrast, accessible names, and shortcut help;
+- automated stability coverage up to 10,000 objects and explicit Qt resource cleanup.
 
 ### Distribution
 
-- validation sous Python 3.12, 3.13 et 3.14 sur Windows et Linux ;
-- smoke test des exécutables PyInstaller avant archivage ;
-- métadonnées Windows et Linux, icônes, licence et notes incluses dans les paquets ;
-- compatibilité vérifiée avec les projets `.pgl` créés par PyGeoLab 1.0.
+- Windows and Linux validation on Python 3.12, 3.13, and 3.14;
+- PyInstaller executable smoke tests before archive creation;
+- Windows and Linux metadata, icons, license, and release documentation in packages;
+- verified compatibility with `.pgl` projects created by PyGeoLab 1.0.
 
 ## 1.0.0 — 2026-09-05
 
-### Ajouté
+### Added
 
-- moteur de géométrie euclidienne immutable et robuste ;
-- graphe de dépendances avec recalcul incrémental et invalidité récupérable ;
-- viewport 2D avec grille adaptative, pan, zoom et rendu Qt ;
-- outils de construction, sélection, déplacement et previews ;
-- historique Undo/Redo basé sur le Command Pattern ;
-- panneaux Algèbre, Propriétés et Curseurs ;
-- parser mathématique sécurisé sans `eval` ni `exec` ;
-- analyse numérique : dérivée, intégrale, racines, extrema et intersections ;
-- format projet `.pgl` JSON versionné avec migration et validation ;
-- export PNG et SVG, résolution configurable et fond transparent ;
-- thèmes clair/sombre, préférences persistantes, logs rotatifs et gestion globale des erreurs ;
-- builds PyInstaller Windows/Linux et workflow de release GitHub Actions.
+- immutable Euclidean geometry engine and incremental dependency graph;
+- interactive 2D viewport, construction tools, and Undo/Redo;
+- safe mathematical parser, function plotting, sliders, and numerical analysis;
+- validated and versioned `.pgl` persistence;
+- PNG/SVG export, themes, preferences, logging, and error handling;
+- Windows/Linux PyInstaller builds and GitHub release workflow.

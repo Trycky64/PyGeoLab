@@ -1,4 +1,6 @@
-# 30 — Guide utilisateur V1.1
+# Guide utilisateur — PyGeoLab 1.1
+
+**Français** · [English](user-guide.md)
 
 ## Espace de travail
 
@@ -64,6 +66,7 @@ Le format demeure en version 1 et lit les projets PyGeoLab 1.0. Un fichier corro
 
 **Édition > Préférences** centralise :
 
+- langue système, anglaise ou française (appliquée au redémarrage) ;
 - thème système, clair ou sombre ;
 - grille, axes et labels ;
 - magnétisme et rayon ;

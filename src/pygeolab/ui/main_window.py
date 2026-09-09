@@ -53,6 +53,7 @@ from pygeolab.ui.properties_panel import PropertiesPanel
 from pygeolab.ui.recent_files import RecentFiles
 from pygeolab.ui.slider_panel import SliderPanel
 from pygeolab.ui.theme import apply_theme
+from pygeolab.ui.translations import translate_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -436,7 +437,7 @@ class MainWindow(QMainWindow):
                 )
             self._execute_command(CreateObjectCommand(self.document, variable))
         except ValueError as exc:
-            QMessageBox.warning(self, self.tr("Curseur invalide"), str(exc))
+            QMessageBox.warning(self, self.tr("Curseur invalide"), translate_message(str(exc)))
 
     def _new_function(self) -> None:
         dialog = FunctionDialog(self.document, parent=self)
@@ -448,7 +449,7 @@ class MainWindow(QMainWindow):
                 raise ValueError("Ce nom est déjà utilisé")
             self._execute_command(CreateObjectCommand(self.document, function))
         except ValueError as exc:
-            QMessageBox.warning(self, self.tr("Fonction invalide"), str(exc))
+            QMessageBox.warning(self, self.tr("Fonction invalide"), translate_message(str(exc)))
 
     def _edit_function(self) -> None:
         selected = tuple(self.geometry_view.selected_ids)
@@ -469,7 +470,7 @@ class MainWindow(QMainWindow):
                 ChangeFunctionCommand(self.document, function.id, name, dependencies, params)
             )
         except ValueError as exc:
-            QMessageBox.warning(self, self.tr("Fonction invalide"), str(exc))
+            QMessageBox.warning(self, self.tr("Fonction invalide"), translate_message(str(exc)))
 
     def _measure_selected(self, kind: str) -> None:
         selected = tuple(self.geometry_view.selected_ids)
@@ -491,7 +492,7 @@ class MainWindow(QMainWindow):
         self.session.new()
         self._discard_recovery()
         self._adopt_session_document()
-        LOGGER.info("Nouveau projet")
+        LOGGER.info("New project")
 
     def _open_project(self) -> None:
         if not self._confirm_discard_changes():
@@ -520,7 +521,7 @@ class MainWindow(QMainWindow):
         self._discard_recovery()
         self.recent_files.add(path)
         self._adopt_session_document()
-        LOGGER.info("Projet ouvert: %s", path)
+        LOGGER.info("Project opened: %s", path)
         return True
 
     def _open_recent(self, path: str) -> None:
@@ -554,7 +555,7 @@ class MainWindow(QMainWindow):
                 str(self.session.path) if self.session.path else None,
             )
             return False
-        LOGGER.info("Projet enregistré: %s", path)
+        LOGGER.info("Project saved: %s", path)
         self.recent_files.add(path)
         self._discard_recovery()
         self._update_title()
@@ -580,7 +581,7 @@ class MainWindow(QMainWindow):
                 path,
             )
             return False
-        LOGGER.info("Projet enregistré: %s", saved)
+        LOGGER.info("Project saved: %s", saved)
         self.recent_files.add(saved)
         self._discard_recovery()
         self._update_title()
@@ -691,6 +692,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(self.tr("Viewport SVG copié"), 3000)
 
     def _show_preferences(self) -> None:
+        previous_language = self.preferences.language
         dialog = PreferencesDialog(self.preferences, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
@@ -698,6 +700,10 @@ class MainWindow(QMainWindow):
         self.preferences.save()
         self._configure_autosave()
         self._apply_preferences()
+        if self.preferences.language != previous_language:
+            self.statusBar().showMessage(
+                self.tr("La langue sera appliquée au prochain démarrage."), 8000
+            )
 
     def _show_about(self) -> None:
         QMessageBox.about(
@@ -776,7 +782,7 @@ class MainWindow(QMainWindow):
             path = self.recovery.write(self.document)
         except ValueError as exc:
             LOGGER.error(
-                "Échec autosave | document=%r revision=%d path=%r error=%s",
+                "Autosave failed | document=%r revision=%d path=%r error=%s",
                 self.document.name,
                 self.document.revision,
                 str(self.recovery.path),
@@ -786,7 +792,7 @@ class MainWindow(QMainWindow):
                 self.tr(f"Échec de la sauvegarde automatique : {exc}"), 8000
             )
             return
-        LOGGER.info("Récupération automatique enregistrée: %s", path)
+        LOGGER.info("Recovery autosave written: %s", path)
         self.statusBar().showMessage(self.tr("Sauvegarde automatique effectuée"), 3000)
 
     def _offer_recovery(self) -> None:
@@ -805,7 +811,7 @@ class MainWindow(QMainWindow):
         try:
             self.session.recover(self.recovery.load())
         except ValueError as exc:
-            LOGGER.warning("Récupération illisible | path=%r error=%s", self.recovery.path, exc)
+            LOGGER.warning("Unreadable recovery | path=%r error=%s", self.recovery.path, exc)
             QMessageBox.warning(
                 self,
                 self.tr("Récupération impossible"),
@@ -824,7 +830,7 @@ class MainWindow(QMainWindow):
         try:
             self.recovery.discard()
         except ValueError as exc:
-            LOGGER.warning("Nettoyage de récupération impossible: %s", exc)
+            LOGGER.warning("Could not clean recovery: %s", exc)
 
     def _adopt_session_document(self) -> None:
         self._unsubscribe_dirty()

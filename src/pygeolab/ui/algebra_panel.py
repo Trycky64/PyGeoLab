@@ -30,6 +30,7 @@ from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segme
 from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
+from pygeolab.ui.translations import translate_message
 
 
 class AlgebraPanel(QWidget):
@@ -305,31 +306,31 @@ class AlgebraPanel(QWidget):
         ).casefold()
         return query in searchable
 
-    @staticmethod
-    def _category(geometry: object) -> str:
+    def _category(self, geometry: object) -> str:
         if isinstance(geometry, Point2D):
-            return "Points"
+            return self.tr("Points")
         if isinstance(geometry, (Line2D, Segment2D, Ray2D, Vector2D)):
-            return "Lignes"
+            return self.tr("Lignes")
         if isinstance(geometry, Circle2D):
-            return "Cercles"
+            return self.tr("Cercles")
         if isinstance(geometry, Polygon2D):
-            return "Polygones"
+            return self.tr("Polygones")
         if isinstance(geometry, float):
-            return "Nombres"
+            return self.tr("Nombres")
         if isinstance(geometry, FunctionObject):
-            return "Fonctions"
-        return "Objets"
+            return self.tr("Fonctions")
+        return self.tr("Objets")
 
-    @staticmethod
-    def _format_value(obj: GeoObject) -> str:
+    def _format_value(self, obj: GeoObject) -> str:
         geometry = obj.geometry
         if not obj.valid or geometry is None:
-            return f"indéfini — {obj.error_state}" if obj.error_state else "indéfini"
+            if obj.error_state:
+                return self.tr(f"indéfini — {translate_message(obj.error_state)}")
+            return self.tr("indéfini")
         if isinstance(geometry, Point2D):
             return f"({geometry.x:.3g}, {geometry.y:.3g})"
         if isinstance(geometry, Segment2D):
-            return f"longueur {geometry.length:.3g}"
+            return self.tr(f"longueur {geometry.length:.3g}")
         if isinstance(geometry, Circle2D):
             return f"r = {geometry.radius:.3g}"
         if isinstance(geometry, Polygon2D):

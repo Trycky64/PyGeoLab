@@ -4,13 +4,34 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pygeolab"
-version = "1.1.0"
+version = "1.1.1"
 description = "Dynamic plane geometry and mathematical visualization"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 authors = [{name = "PyGeoLab contributors"}]
+keywords = ["geometry", "mathematics", "education", "visualization", "pyside6"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 dependencies = ["PySide6>=6.10,<7"]
+
+[project.urls]
+Homepage = "https://github.com/Trycky64/PyGeoLab"
+Documentation = "https://github.com/Trycky64/PyGeoLab/tree/master/docs"
+Issues = "https://github.com/Trycky64/PyGeoLab/issues"
+Releases = "https://github.com/Trycky64/PyGeoLab/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "pytest-qt>=4.4", "pytest-cov>=6", "ruff>=0.11", "mypy>=1.15", "pre-commit>=4", "pyinstaller>=6.16", "build>=1.2"]

@@ -23,6 +23,10 @@ class PreferencesDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Préférences"))
         self.setAccessibleName(self.tr("Préférences de PyGeoLab"))
+        self._language = QComboBox(self)
+        self._language.addItem(self.tr("Système"), "system")
+        self._language.addItem("English", "en")
+        self._language.addItem("Français", "fr")
         self._theme = QComboBox(self)
         self._theme.addItem(self.tr("Système"), "system")
         self._theme.addItem(self.tr("Clair"), "light")
@@ -59,6 +63,7 @@ class PreferencesDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout = QFormLayout(self)
+        layout.addRow(self.tr("Langue"), self._language)
         layout.addRow(self.tr("Thème"), self._theme)
         layout.addRow(self._grid)
         layout.addRow(self._axes)
@@ -77,6 +82,7 @@ class PreferencesDialog(QDialog):
         self._load(preferences)
 
     def _load(self, preferences: Preferences) -> None:
+        self._language.setCurrentIndex(self._language.findData(preferences.language))
         self._theme.setCurrentIndex(self._theme.findData(preferences.theme_mode))
         self._grid.setChecked(preferences.show_grid)
         self._axes.setChecked(preferences.show_axes)
@@ -97,6 +103,7 @@ class PreferencesDialog(QDialog):
         """Return validated values currently displayed."""
         return Preferences(
             theme_mode=str(self._theme.currentData()),
+            language=str(self._language.currentData()),
             show_grid=self._grid.isChecked(),
             show_axes=self._axes.isChecked(),
             show_labels=self._labels.isChecked(),

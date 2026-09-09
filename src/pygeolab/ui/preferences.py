@@ -13,6 +13,7 @@ class Preferences:
     """Validated settings for appearance, interaction, creation, export and recovery."""
 
     theme_mode: str = "system"
+    language: str = "system"
     show_grid: bool = True
     show_axes: bool = True
     show_labels: bool = True
@@ -29,6 +30,8 @@ class Preferences:
     def __post_init__(self) -> None:
         if self.theme_mode not in {"system", "light", "dark"}:
             raise ValueError("Thème inconnu")
+        if self.language not in {"system", "en", "fr"}:
+            raise ValueError("Langue inconnue")
         if not 1 <= self.snap_threshold_px <= 100:
             raise ValueError("Taille de snap invalide")
         if not 0.25 <= self.default_width <= 20:
@@ -60,6 +63,7 @@ class Preferences:
         default_color = color if isinstance(color, str) and QColor(color).isValid() else "#2563eb"
         return cls(
             theme_mode=theme_mode,
+            language=_read_choice(store, "appearance/language", "system", {"system", "en", "fr"}),
             show_grid=_read_bool(store, "display/grid", True),
             show_axes=_read_bool(store, "display/axes", True),
             show_labels=_read_bool(store, "display/labels", True),
@@ -79,6 +83,7 @@ class Preferences:
         store = settings if settings is not None else QSettings()
         values: dict[str, object] = {
             "appearance/theme": self.theme_mode,
+            "appearance/language": self.language,
             "display/grid": self.show_grid,
             "display/axes": self.show_axes,
             "display/labels": self.show_labels,
@@ -114,6 +119,11 @@ def _read_bool(settings: QSettings, key: str, default: bool) -> bool:
         if value.strip().lower() in {"0", "false", "no", "off"}:
             return False
     return default
+
+
+def _read_choice(settings: QSettings, key: str, default: str, choices: set[str]) -> str:
+    value = settings.value(key, default)
+    return value if isinstance(value, str) and value in choices else default
 
 
 def _read_float(

@@ -21,6 +21,7 @@ def test_preferences_round_trip_every_qsettings_value(tmp_path: Path) -> None:
     settings = _settings(tmp_path / "preferences.ini")
     expected = Preferences(
         theme_mode="dark",
+        language="en",
         show_grid=False,
         show_axes=False,
         show_labels=False,

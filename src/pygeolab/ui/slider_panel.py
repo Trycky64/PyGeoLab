@@ -31,6 +31,7 @@ from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.variables import slider_initial, slider_params, slider_spec
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
+from pygeolab.ui.translations import translate_message
 
 
 @dataclass(slots=True)
@@ -206,7 +207,7 @@ class SliderPanel(QWidget):
                 commands.insert(0, RenameObjectCommand(self._document, object_id, name))
             self._execute_command(commands[0] if len(commands) == 1 else CompositeCommand(commands))
         except ValueError as exc:
-            QMessageBox.warning(self, self.tr("Curseur invalide"), str(exc))
+            QMessageBox.warning(self, self.tr("Curseur invalide"), translate_message(str(exc)))
 
     def _commit_animation_options(self, object_id: str) -> None:
         if object_id not in self._rows or object_id not in self._document.objects:

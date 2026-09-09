@@ -24,6 +24,9 @@ Les informations importantes ne dépendent donc pas uniquement de la couleur.
 
 ## Internationalisation
 
-Les chaînes UI passent par `tr()` dans les widgets principaux. Le format de stockage reste
-invariant (`.` pour les nombres JSON) indépendamment de la locale. Une traduction anglaise
-complète reste une extension future.
+Les chaînes UI passent par `tr()` dans les widgets principaux. PyGeoLab fournit un catalogue
+anglais complet et conserve le français comme langue source. Le mode système choisit le français
+pour une locale française et l'anglais dans les autres cas ; l'utilisateur peut forcer l'une des
+deux langues dans Préférences. Le changement s'applique au prochain démarrage.
+
+Le format de stockage reste invariant (`.` pour les nombres JSON) indépendamment de la locale.

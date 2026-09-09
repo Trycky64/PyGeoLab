@@ -195,7 +195,7 @@ class Document:
             try:
                 callback()
             except Exception:
-                logging.getLogger(__name__).exception("Échec de notification d'un observateur")
+                logging.getLogger(__name__).exception("Observer notification failed")
 
     def unique_name(self, prefix: str) -> str:
         """Use the requested name when available, otherwise append a numeric suffix."""
@@ -240,4 +240,4 @@ class Document:
             try:
                 callback()
             except Exception:
-                logging.getLogger(__name__).exception("Échec de notification d'un observateur")
+                logging.getLogger(__name__).exception("Observer notification failed")

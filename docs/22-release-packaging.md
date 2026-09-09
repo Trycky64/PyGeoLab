@@ -6,7 +6,7 @@ Installation editable : `python -m pip install -e ".[dev]"` puis `python -m pyge
 
 ## Versioning
 
-PyGeoLab suit Semantic Versioning. La version courante est **1.1.0**.
+PyGeoLab suit Semantic Versioning. La version courante est **1.1.1**.
 
 ## Packaging 1.0
 
@@ -37,5 +37,5 @@ Release avec `RELEASE_NOTES.md`.
 
 Une release doit inclure : changelog, notes, artefacts exécutables, icône, captures et projet de
 démonstration. `CHANGELOG.md`, `assets/`, `docs/screenshots/` et `examples/demo.pgl` fournissent
-ces éléments pour 1.1.0. Les archives contiennent également la licence, le changelog, les notes
+ces éléments pour 1.1.1. Les archives contiennent également la licence, le changelog, les notes
 de release et les icônes. Le paquet Linux fournit les fichiers desktop et AppStream.
