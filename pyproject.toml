@@ -35,6 +35,7 @@ Releases = "https://github.com/Trycky64/PyGeoLab/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "pytest-qt>=4.4", "pytest-cov>=6", "ruff>=0.11", "mypy>=1.15", "pre-commit>=4", "pyinstaller>=6.16", "build>=1.2"]
+audit = ["pip-audit>=2.10,<3"]
 
 [project.gui-scripts]
 pygeolab = "pygeolab.app:main"
@@ -45,7 +46,15 @@ packages = ["src/pygeolab"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
-addopts = "-ra"
+addopts = "-ra --cov=pygeolab --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["pygeolab"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
 
 [tool.ruff]
 target-version = "py312"

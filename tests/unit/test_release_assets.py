@@ -126,7 +126,7 @@ def test_ci_release_gate_covers_supported_pythons_platforms_builds_and_artifacts
     assert "python -m pytest" in workflow
     assert "python -m PyInstaller" in workflow
     assert "--smoke-test" in workflow
-    assert "actions/upload-artifact@v4" in workflow
+    assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2" in workflow
 
 
 def test_v11_documentation_links_adrs_and_screenshot_are_coherent() -> None:
