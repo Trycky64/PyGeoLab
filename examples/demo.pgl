@@ -1,10 +1,10 @@
 {
   "document": {
     "metadata": {
-      "description": "Fonctions, curseurs, outils avancés et mesures dynamiques",
-      "release": "1.1.0"
+      "description": "Coniques, courbes paramétriques, polaires, lieux géométriques et analyse dynamique",
+      "release": "1.2.0"
     },
-    "name": "Démo PyGeoLab 1.1",
+    "name": "Démo PyGeoLab 1.2",
     "objects": [
       {
         "dependencies": [],
@@ -249,6 +249,129 @@
           "point_size": 5.0,
           "show_label": true,
           "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "90726a89-0928-4ae3-9a52-4b1e0954f532",
+          "96294a78-913b-486b-a058-5ed61db2dd4e",
+          "06a416b9-3cf9-47fc-be9c-f11552ceba5f"
+        ],
+        "id": "7af6c909-917e-4f2f-937e-bd360a36778a",
+        "kind": "ellipse",
+        "locked": false,
+        "name": "Ellipse_1",
+        "params": {},
+        "style": {
+          "color": "#10b981",
+          "width": 2.0,
+          "line_style": "solid",
+          "show_label": true
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "bbbac7f8-9618-4ad2-bea2-2cc404ae1f9b",
+        "kind": "parametric",
+        "locked": false,
+        "name": "Courbe_p",
+        "params": {
+          "x_source": "3*cos(t)",
+          "y_source": "2*sin(t)",
+          "parameter": "t",
+          "t_min": 0.0,
+          "t_max": 6.283185307179586,
+          "samples": 200
+        },
+        "style": {
+          "color": "#8b5cf6",
+          "width": 2.0,
+          "line_style": "solid",
+          "show_label": true
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "054b8fac-df34-4c25-ab07-dd0e54521d9b",
+        "kind": "polar",
+        "locked": false,
+        "name": "Rosace_r",
+        "params": {
+          "r_source": "2*cos(3*theta)",
+          "parameter": "theta",
+          "theta_min": 0.0,
+          "theta_max": 3.141592653589793,
+          "samples": 200
+        },
+        "style": {
+          "color": "#f59e0b",
+          "width": 2.0,
+          "line_style": "solid",
+          "show_label": true
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "fdfaf2ab-81af-4071-aff8-61400770d6db"
+        ],
+        "id": "7d1177a0-4963-4344-a4e3-57333a958bda",
+        "kind": "point_on",
+        "locked": false,
+        "name": "P_circ",
+        "params": {
+          "t": 0.0
+        },
+        "style": {
+          "color": "#ec4899",
+          "width": 2.0,
+          "point_size": 5.0,
+          "line_style": "solid",
+          "show_label": true
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "0332a92b-7768-4afa-b2be-3559971cc894",
+          "7d1177a0-4963-4344-a4e3-57333a958bda"
+        ],
+        "id": "5767be67-8e77-444e-84ba-90ef3524d377",
+        "kind": "midpoint",
+        "locked": false,
+        "name": "M_locus",
+        "params": {},
+        "style": {
+          "color": "#ec4899",
+          "width": 2.0,
+          "point_size": 4.0,
+          "line_style": "solid",
+          "show_label": false
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "5767be67-8e77-444e-84ba-90ef3524d377",
+          "7d1177a0-4963-4344-a4e3-57333a958bda"
+        ],
+        "id": "a4805e4a-7548-4a71-be99-d2fae917af9c",
+        "kind": "locus",
+        "locked": false,
+        "name": "Lieu_Cercle",
+        "params": {
+          "start": 0.0,
+          "end": 6.283185307179586,
+          "samples": 60
+        },
+        "style": {
+          "color": "#ec4899",
+          "width": 2.0,
+          "line_style": "dash",
+          "show_label": true
         },
         "visible": true
       }

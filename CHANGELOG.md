@@ -4,6 +4,19 @@
 
 All notable changes to PyGeoLab are documented in this file.
 
+## 1.2.0 — 2026-10-17
+
+### Added
+
+- Euclidean conics: ellipses (foci + point, center + axes), parabolas (focus + directrix), and hyperbolas (foci + point/parameter) with incremental dependency graph integration, bounding boxes, adaptive sampling, and analytical metrics (eccentricity, perimeter, area, focal parameter, directrix, asymptotes);
+- Parametric curves $x(t), y(t)$ with safe parsing, slider dependency tracking, adaptive sampling, discontinuity handling, and interactive dialog;
+- Polar curves $r(\theta)$ with angular mode selection (radians/degrees), automatic conversions, period wrapping, and custom evaluation;
+- Analytical equation editing and live inspection in the Properties and Algebra panels with direct mouse copy;
+- Geometric loci (`Locus2D`) with dependency-isolated sampling, lightweight recomputable persistence, and transient canvas traces;
+- Global multi-slider animation timeline with playback controls (Play/Pause/Stop), scrubbing, loop/ping-pong modes, duration, and FPS settings;
+- Value table panel (`ValueTablePanel`) with virtualized spreadsheet display, keyboard navigation, clipboard copy, and UTF-8 CSV export;
+- Backward compatibility verification for v1.0 and v1.1 `.pgl` document archives.
+
 ## 1.1.1 — 2026-09-09
 
 ### Added

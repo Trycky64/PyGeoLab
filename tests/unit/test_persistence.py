@@ -77,6 +77,16 @@ def test_v1_0_project_fixture_opens_without_schema_migration() -> None:
     assert all(obj.valid for obj in loaded.objects.values())
 
 
+def test_v1_1_project_fixture_opens_without_schema_migration() -> None:
+    fixture = Path(__file__).resolve().parents[1] / "fixtures" / "v1_1_project.pgl"
+    loaded = load_project(fixture)
+
+    assert loaded.name == "Démo PyGeoLab 1.1"
+    assert loaded.metadata["release"] == "1.1.0"
+    assert {obj.name for obj in loaded.objects.values()} >= {"A", "B", "C", "f", "a"}
+    assert all(obj.valid for obj in loaded.objects.values())
+
+
 def test_session_tracks_dirty_save_open_and_new(tmp_path: Path) -> None:
     session = ProjectSession()
     assert not session.dirty

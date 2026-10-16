@@ -156,3 +156,17 @@ les historiques de release et les issues GitHub.
   release gate et publication GitHub ont été validés.
 - Maintenance 1.1.1 : dépôt public nettoyé, documentation bilingue et interface anglaise complète
   avec détection de la langue système.
+
+## Version 1.2 — Coniques, courbes et timeline
+
+- Section 1 terminée : coniques euclidiennes (ellipses, paraboles, hyperboles), modèles géométriques stricts, directrices, asymptotes, métriques analytiques et fiches de propriétés.
+- Section 2 terminée : modèles analytiques coniques, calculs matriciels et quadratiques, extraction des caractéristiques géométriques.
+- Section 3 terminée : outils interactifs de tracé et d'édition de coniques sur le canvas et dans l'arbre d'algèbre.
+- Section 4 terminée : courbes paramétriques $x(t), y(t)$ avec analyse syntaxique sécurisée, échantillonnage adaptatif, isolation des singularités et dialogue dédié.
+- Section 5 terminée : courbes polaires $r(\theta)$ en radians et degrés, conversions automatiques, périodicité et dialogue dédié.
+- Section 6 terminée : édition analytique bidirectionnelle et inspection interactive des équations dans les panneaux Propriétés et Algèbre.
+- Section 7 terminée : lieux géométriques (`Locus2D`) par sous-graphe isolé, persistance légère et traces transitoires d'animation.
+- Section 8 terminée : timeline globale d'animation multi-curseurs avec barre de transport, scrubbing, modes boucle/aller-retour, durée et FPS configurables.
+- Section 9 terminée : panneau de table de valeurs virtualisé avec navigation clavier, copie presse-papiers et export CSV UTF-8.
+- Section 10 terminée : release 1.2.0, documentation bilingue, projet de démonstration enrichi, compatibilité v1.0 et v1.1 validée.
+

@@ -44,6 +44,35 @@ Dans **Propriétés**, couleur, épaisseur, taille, trait, label, visibilité et
 
 Le snapping recherche les points, intersections, projections sur objets puis la grille. Son rayon est exprimé en pixels et reste stable au zoom. `M` l'active ou le désactive ; maintenez `Alt` pour le suspendre pendant un geste. **Préférences** règle son état et son rayon de 1 à 100 px.
 
+## Coniques euclidiennes
+
+Le menu **Objets** et la barre d'outils permettent de tracer :
+- **Ellipse** : par deux foyers et un point, ou par centre et demi-axes ;
+- **Parabole** : par foyer et droite directrice ;
+- **Hyperbole** : par deux foyers et un point (ou paramètre $a$).
+
+Le panneau Propriétés affiche les fiches analytiques des coniques (équation cartésienne exacte, coordonnées des foyers, directrice, asymptotes, excentricité, périmètre et aire) avec copie directe au clic.
+
+## Courbes paramétriques et polaires
+
+**Objets > Nouvelle courbe paramétrique** trace des trajectoires $(x(t), y(t))$ sur $[t_{min}, t_{max}]$ avec détection automatique des curseurs dépendants.
+
+**Objets > Nouvelle courbe polaire** évalue $r(\theta)$ en radians ou en degrés. Les singularités et discontinuités sont automatiquement isolées pour éviter les segments d'asymptote parasites.
+
+## Lieux géométriques et traces
+
+**Objets > Nouveau lieu** génère le lieu d'un point cible piloté par un curseur ou un point sur courbe. Le calcul s'exécute sur un sous-graphe isolé sans ralentir le document.
+
+Un clic droit sur un point permet d'activer la **Trace temporaire** pour suivre son mouvement en direct sans alourdir le fichier sauvegardé. **Affichage > Effacer les traces** réinitialise le canvas.
+
+## Timeline et animation multi-curseurs
+
+Le dock inférieur **Timeline** synchronise l'ensemble des curseurs animés du document. Il propose lecture, pause, stop, scrubbing par curseur temporel, vitesse, modes boucle et aller-retour. Raccourcis : `Espace` pour lecture/pause, `Échap` pour arrêt.
+
+## Table de valeurs
+
+Le dock **Table de valeurs** tabule les fonctions cartésiennes, paramétriques ou polaires sur une plage $[start, end]$ avec un pas paramétrable. Il supporte jusqu'à 50 000 lignes avec virtualisation, copie presse-papiers et export direct au format CSV UTF-8.
+
 ## Fonctions et curseurs
 
 **Objets > Nouveau curseur** crée une variable avec valeur, minimum, maximum et pas. Le panneau Curseurs permet la saisie directe, le reset, l'édition, la vitesse d'animation, la lecture en boucle ou aller-retour et pause/reprise. Une animation recalcule seulement ses descendants et ne remplit pas l'historique Undo.

@@ -2,12 +2,18 @@
 
 **Français** · [English](README.md)
 
-PyGeoLab 1.1 est une application desktop de **géométrie dynamique** et de **visualisation mathématique** écrite en Python et PySide6. Elle combine constructions dépendantes, fonctions paramétrées, analyse numérique et projets `.pgl` versionnés dans une interface utilisable à la souris comme au clavier.
+PyGeoLab 1.2 est une application desktop de **géométrie dynamique** et de **visualisation mathématique** écrite en Python et PySide6. Elle combine constructions dépendantes, coniques euclidiennes, courbes paramétriques et polaires, timeline multi-curseurs, analyse numérique et projets `.pgl` versionnés dans une interface utilisable à la souris comme au clavier.
 
-![Espace de travail PyGeoLab 1.1](docs/screenshots/workspace-v11.png)
+![Espace de travail PyGeoLab](docs/screenshots/workspace-v11.png)
 
-## Nouveautés 1.1
+## Nouveautés 1.2
 
+- coniques euclidiennes : ellipses, paraboles et hyperboles avec calcul des foyers, directrices et asymptotes ;
+- courbes paramétriques $x(t), y(t)$ et courbes polaires $r(\theta)$ avec échantillonnage adaptatif et coupure sur singularité ;
+- édition analytique directe d'équations et inspection des propriétés mathématiques avec copie presse-papiers ;
+- lieux géométriques dynamiques (`Locus2D`) par sous-graphe isolé et traces transitoires à l'écran ;
+- timeline multi-curseurs synchronisée avec barre de transport, scrubbing, boucle et aller-retour ;
+- panneau de table de valeurs virtualisé avec navigation clavier et export CSV UTF-8 ;
 - magnétisme sur la grille, les points, projections et intersections, suspendu avec `Alt` ;
 - quinze outils avancés : demi-droite, vecteur, médiatrice, bissectrice, projections, cercles, mesures et transformations ;
 - sélection rectangulaire et multiple, édition groupée, duplication, ordre d'affichage et cycle des objets superposés ;
@@ -20,7 +26,7 @@ PyGeoLab 1.1 est une application desktop de **géométrie dynamique** et de **vi
 - export du viewport, du document ou de la sélection en PNG/SVG, plus copie presse-papiers ;
 - diagnostics partageables et release gate Windows/Linux sur Python 3.12, 3.13 et 3.14.
 
-Le [guide utilisateur V1.1](docs/user-guide.fr.md) décrit les outils, fonctions, curseurs, raccourcis, préférences, fichiers et exports. L'interface choisit automatiquement le français sur un système français et l'anglais ailleurs ; la langue peut aussi être sélectionnée dans les préférences.
+Le [guide utilisateur](docs/user-guide.fr.md) décrit les outils, fonctions, curseurs, raccourcis, préférences, fichiers et exports. L'interface choisit automatiquement le français sur un système français et l'anglais ailleurs ; la langue peut aussi être sélectionnée dans les préférences.
 
 ## Installation développeur
 

@@ -41,11 +41,36 @@ The Algebra panel supports text filtering, name/type sorting, and configurable g
 
 Properties edits names, numeric parameters, visibility, locking, color, width, point size, line style, labels, and fill opacity. It also lists parents and descendants and can select either group.
 
-## Functions
+## Functions, parametric and polar curves
 
 Create a function with **Objects > New function**. Enter its name, independent variable, expression, and optional display domain. Existing numeric sliders referenced by name become dependencies automatically.
 
-Select a function and use **Objects > Edit function** to change it. Expression errors are shown without blocking the document. **View > Functions** controls sampling quality and optional roots, extrema, intersections, and derivative overlays. Sampling adapts to zoom and separates discontinuities to avoid artificial asymptote segments.
+Create a parametric curve with **Objects > New parametric curve** by specifying $x(t)$, $y(t)$, the parameter name, and the interval $[t_{min}, t_{max}]$. Create a polar curve with **Objects > New polar curve** specifying $r(\theta)$ and angular units (radians or degrees). Discontinuities and singularities are automatically detected and rendered as disconnected branches.
+
+Select a curve and use **Objects > Edit function** to change it. Expression errors are shown without blocking the document. **View > Functions** controls sampling quality and optional roots, extrema, intersections, and derivative overlays. Sampling adapts to zoom and separates discontinuities to avoid artificial asymptote segments.
+
+## Conics
+
+Create Euclidean conics from the toolbar or the **Objects** menu:
+- **Ellipse**: defined by two foci and a point, or center and axes;
+- **Parabola**: defined by a focus point and a directrix line;
+- **Hyperbola**: defined by two foci and a point or parameter $a$.
+
+The Properties panel displays detailed analytical cards for conics: Cartesian equation, foci coordinates, eccentricity, focal parameter, directrix equation, and asymptotes. Values can be selected and copied directly to the clipboard.
+
+## Geometric loci and traces
+
+Create a locus with **Objects > New locus**, selecting a target point and a driving variable (slider or constrained point on a curve). Loci are sampled dynamically over the driver domain using an isolated dependency subgraph.
+
+Right-click any point to enable **Transient trace**. Moving the point or animating parent sliders leaves an on-screen trajectory that can be cleared with **Clear traces**.
+
+## Multi-slider timeline
+
+The bottom **Timeline** dock synchronizes multiple animated sliders. Use the transport buttons (**Play**, **Pause**, **Stop**), toggle looping or ping-pong mode, adjust duration and target FPS, and scrub dynamically across time. Shortcuts: **Space** toggles playback and **Escape** stops.
+
+## Value table
+
+The **Value table** dock evaluates Cartesian, parametric, or polar functions over regular intervals ($start$, $end$, $step$). It features a virtualized table supporting up to 50,000 rows, keyboard navigation, clipboard copying, and direct UTF-8 CSV export.
 
 ## Sliders
 

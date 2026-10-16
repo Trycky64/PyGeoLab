@@ -2,12 +2,18 @@
 
 [Français](README.fr.md) · **English**
 
-PyGeoLab 1.1 is a desktop application for **dynamic geometry** and **mathematical visualization**, built with Python and PySide6. It combines dependent constructions, parameterized functions, numerical analysis, and versioned `.pgl` projects in a mouse and keyboard accessible interface.
+PyGeoLab 1.2 is a desktop application for **dynamic geometry** and **mathematical visualization**, built with Python and PySide6. It combines dependent constructions, Euclidean conics, parametric and polar curves, animated timelines, numerical analysis, and versioned `.pgl` projects in a mouse and keyboard accessible interface.
 
-![PyGeoLab 1.1 workspace](docs/screenshots/workspace-v11.png)
+![PyGeoLab workspace](docs/screenshots/workspace-v11.png)
 
 ## Highlights
 
+- Euclidean conics: ellipses, parabolas, and hyperbolas with focus, directrix, and asymptote calculations;
+- parametric curves $x(t), y(t)$ and polar curves $r(\theta)$ with adaptive sampling and singularity handling;
+- direct analytical equation editing and instant property inspection with clipboard copy;
+- dynamic geometric loci (`Locus2D`) and transient canvas traces;
+- multi-slider transport timeline with playback controls, looping, and scrubbing;
+- virtualized value table panel with spreadsheet display and UTF-8 CSV export;
 - snapping to the grid, points, projections, and intersections, with temporary `Alt` suspension;
 - advanced rays, vectors, bisectors, projections, circles, measurements, and transformations;
 - rectangle and multiple selection, grouped editing, duplication, display order, and overlap cycling;

@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_release_version_and_demo_project() -> None:
-    assert __version__ == "1.1.1"
+    assert __version__ == "1.2.0"
     demo = load_project(ROOT / "examples" / "demo.pgl")
-    assert demo.name == "Démo PyGeoLab 1.1"
+    assert demo.name == "Démo PyGeoLab 1.2"
     assert {obj.name for obj in demo.objects.values()} >= {
         "A",
         "B",
@@ -36,6 +36,10 @@ def test_release_version_and_demo_project() -> None:
         "translate",
         "length",
         "area",
+        "ellipse",
+        "parametric",
+        "polar",
+        "locus",
     }
     slider = next(obj for obj in demo.objects.values() if obj.name == "a")
     assert {"initial", "animation_speed", "ping_pong"} <= slider.params.keys()
@@ -56,39 +60,40 @@ def test_release_build_assets_are_present() -> None:
         ROOT / "RELEASE_NOTES.fr.md",
         ROOT / "packaging" / "io.github.trycky64.PyGeoLab.metainfo.xml",
         ROOT / "tests" / "fixtures" / "v1_0_project.pgl",
+        ROOT / "tests" / "fixtures" / "v1_1_project.pgl",
     )
     assert all(path.is_file() and path.stat().st_size > 0 for path in required)
 
 
 def test_release_metadata_is_consistently_versioned() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert project["project"]["version"] == __version__ == "1.1.1"
+    assert project["project"]["version"] == __version__ == "1.2.0"
 
     windows = (ROOT / "packaging" / "version_info.txt").read_text(encoding="utf-8")
-    assert "filevers=(1, 1, 1, 0)" in windows
-    assert "prodvers=(1, 1, 1, 0)" in windows
-    assert windows.count("'1.1.1'") == 2
+    assert "filevers=(1, 2, 0, 0)" in windows
+    assert "prodvers=(1, 2, 0, 0)" in windows
+    assert windows.count("'1.2.0'") == 2
 
     metainfo_path = ROOT / "packaging" / "io.github.trycky64.PyGeoLab.metainfo.xml"
     metainfo = ET.parse(metainfo_path).getroot()
     assert metainfo.findtext("id") == "io.github.trycky64.PyGeoLab"
-    assert metainfo.find("./releases/release").attrib["version"] == "1.1.1"
+    assert metainfo.find("./releases/release").attrib["version"] == "1.2.0"
 
-    assert "## 1.1.1 — 2026-09-09" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").startswith("# PyGeoLab 1.1.1")
+    assert "## 1.2.0 — 2026-10-17" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").startswith("# PyGeoLab 1.2.0")
 
 
 def test_release_tag_validator_accepts_only_the_project_version() -> None:
     script = ROOT / "scripts" / "check-release-tag.py"
     valid = subprocess.run(
-        [sys.executable, str(script), "v1.1.1"], capture_output=True, text=True, check=False
+        [sys.executable, str(script), "v1.2.0"], capture_output=True, text=True, check=False
     )
     invalid = subprocess.run(
         [sys.executable, str(script), "v9.9.9"], capture_output=True, text=True, check=False
     )
 
-    assert valid.returncode == 0 and "matches v1.1.1" in valid.stdout
-    assert invalid.returncode == 1 and "must be 'v1.1.1'" in invalid.stderr
+    assert valid.returncode == 0 and "matches v1.2.0" in valid.stdout
+    assert invalid.returncode == 1 and "must be 'v1.2.0'" in invalid.stderr
 
 
 def test_release_workflow_and_archives_use_stable_names_and_contents() -> None:
