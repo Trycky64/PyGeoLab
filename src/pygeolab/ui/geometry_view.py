@@ -17,6 +17,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QMenu, QWidget
 
 from pygeolab.commands import CommandHistory
+from pygeolab.geometry import Point2D
 from pygeolab.interaction import InteractionController
 from pygeolab.model.document import Document
 from pygeolab.rendering.hit_test import first_hit
@@ -42,6 +43,8 @@ class GeometryView(QWidget):
         self._pan_anchor: QPointF | None = None
         self._context_menu: QMenu | None = None
         self._last_selection: frozenset[str] = frozenset()
+        self._transient_traces: dict[str, list[Point2D]] = {}
+        self._traced_object_ids: set[str] = set()
         self._unsubscribe: Callable[[], None] = self._document.subscribe(self._on_document_changed)
         self._interaction = InteractionController(
             self._document, self._viewport, on_changed=self._on_interaction_changed
@@ -144,6 +147,29 @@ class GeometryView(QWidget):
         self._renderer.configure_display(grid=grid, axes=axes, labels=labels)
         self.update()
 
+    def is_traced(self, object_id: str) -> bool:
+        """Return True if transient tracing is active for this object."""
+        return object_id in self._traced_object_ids
+
+    def toggle_trace(self, object_id: str) -> bool:
+        """Toggle transient tracing for a point. Returns new active state."""
+        if object_id in self._traced_object_ids:
+            self._traced_object_ids.remove(object_id)
+            active = False
+        else:
+            self._traced_object_ids.add(object_id)
+            active = True
+            obj = self._document.objects.get(object_id)
+            if obj and isinstance(obj.geometry, Point2D):
+                self._transient_traces.setdefault(object_id, []).append(obj.geometry)
+        self.update()
+        return active
+
+    def clear_traces(self) -> None:
+        """Clear all transient trace points."""
+        self._transient_traces.clear()
+        self.update()
+
     def reset_view(self) -> None:
         """Restore the default origin-centered camera while preserving widget size."""
         self._interaction.clear_snap()
@@ -178,6 +204,12 @@ class GeometryView(QWidget):
                 self._viewport,
                 self.palette(),
                 self._interaction.selected_ids,
+            )
+            self._renderer.render_transient_traces(
+                painter,
+                self._viewport,
+                self.palette(),
+                self._transient_traces,
             )
             self._renderer.render_preview(
                 painter,
@@ -302,6 +334,16 @@ class GeometryView(QWidget):
         lock_target = not all(item.locked for item in selected)
         lock = menu.addAction(self.tr("Verrouiller" if lock_target else "Déverrouiller"))
         lock.triggered.connect(lambda: self._interaction.set_selection_locked(lock_target))
+        if len(selected) == 1 and isinstance(selected[0].geometry, Point2D):
+            menu.addSeparator()
+            pt_id = selected[0].id
+            traced = self.is_traced(pt_id)
+            label = self.tr("Désactiver la trace" if traced else "Activer la trace")
+            trace_act = menu.addAction(label)
+            trace_act.triggered.connect(lambda _, pid=pt_id: self.toggle_trace(pid))
+        if self._transient_traces:
+            clear_traces_act = menu.addAction(self.tr("Effacer les traces"))
+            clear_traces_act.triggered.connect(self.clear_traces)
         menu.addSeparator()
         duplicate = menu.addAction(self.tr("Dupliquer"))
         duplicate.setEnabled(any(not item.dependencies for item in selected))
@@ -322,7 +364,15 @@ class GeometryView(QWidget):
         self._interaction.set_viewport(self._viewport)
 
     def _on_document_changed(self) -> None:
-        """Repaint after a commit; revision-aware renderer caches update themselves."""
+        """Repaint after a commit; update transient traces for active points."""
+        for object_id in tuple(self._traced_object_ids):
+            obj = self._document.objects.get(object_id)
+            if obj is not None and isinstance(obj.geometry, Point2D):
+                trace_list = self._transient_traces.setdefault(object_id, [])
+                if not trace_list or not trace_list[-1].almost_equals(obj.geometry, 1e-6):
+                    trace_list.append(obj.geometry)
+                    if len(trace_list) > 2000:
+                        del trace_list[:-2000]
         self.update()
 
     def _on_interaction_changed(self) -> None:

@@ -9,12 +9,11 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from uuid import UUID, uuid4
 
-from pygeolab.geometry import (
+from pygeolab.geometry.conics import Ellipse2D, Hyperbola2D, Parabola2D
+from pygeolab.geometry.locus import Locus2D
+from pygeolab.geometry.primitives import (
     Circle2D,
-    Ellipse2D,
-    Hyperbola2D,
     Line2D,
-    Parabola2D,
     Point2D,
     Polygon2D,
     Ray2D,
@@ -52,6 +51,7 @@ type Geometry = (
     | FunctionObject
     | ParametricFunctionObject
     | PolarFunctionObject
+    | Locus2D
     | float
 )
 
@@ -91,6 +91,7 @@ KINDS = frozenset(
         "point_on",
         "number",
         "function",
+        "locus",
     }
 )
 

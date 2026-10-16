@@ -15,6 +15,7 @@ from pygeolab.geometry import (
     Ellipse2D,
     Hyperbola2D,
     Line2D,
+    Locus2D,
     Parabola2D,
     Point2D,
     Polygon2D,
@@ -127,6 +128,9 @@ def fitted_viewport(
             }
             sampled = sample_polar(geometry, samples=80, variables=variables)
             for piece in sampled.segments:
+                points.extend(piece)
+        elif isinstance(geometry, Locus2D):
+            for piece in geometry.segments:
                 points.extend(piece)
         elif isinstance(geometry, Line2D):
             continue

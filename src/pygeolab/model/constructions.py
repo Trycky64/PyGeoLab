@@ -11,12 +11,14 @@ from pygeolab.geometry import (
     Ellipse2D,
     Hyperbola2D,
     Line2D,
+    Locus2D,
     Parabola2D,
     Point2D,
     Polygon2D,
     Ray2D,
     Segment2D,
     Vector2D,
+    sample_locus,
 )
 from pygeolab.geometry.intersections import intersections
 from pygeolab.geometry.transforms import (
@@ -187,6 +189,32 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
                 "Les dépendances de la courbe polaire ne correspondent pas à l'expression"
             )
         return polar
+    if kind == "locus":
+        if len(parents) < 2:
+            raise ValueError("Un lieu géométrique nécessite une cible et un pilote")
+        target_parent, driver_parent = parents[0], parents[1]
+        start = float(number(params, "start", 0.0))
+        sweep_end = float(number(params, "end", 1.0))
+        samples = int(number(params, "samples", 150))
+        # When evaluated through document recompute, document provides context via params.
+        # If segments are already cached or if context document is passed, sample_locus is used.
+        context_doc = params.get("_context_document")
+        if (
+            context_doc is not None
+            and hasattr(context_doc, "objects")
+            and hasattr(context_doc, "_graph")
+        ):
+            return sample_locus(
+                context_doc.objects,
+                context_doc._graph,
+                target_parent.id,
+                driver_parent.id,
+                start,
+                sweep_end,
+                samples=samples,
+            )
+        # Fallback: create Locus2D with empty segments if context document not provided yet
+        return Locus2D((), target_parent.id, driver_parent.id, start, sweep_end, samples=samples)
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

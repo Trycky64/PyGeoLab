@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPalette, QPen, QPolygonF
@@ -13,6 +13,7 @@ from pygeolab.geometry import (
     Ellipse2D,
     Hyperbola2D,
     Line2D,
+    Locus2D,
     Parabola2D,
     Point2D,
     Polygon2D,
@@ -308,6 +309,10 @@ class Renderer:
             return
         if isinstance(geometry, PolarFunctionObject):
             self._draw_polar(painter, document, obj, geometry, viewport)
+            return
+        if isinstance(geometry, Locus2D):
+            self._draw_locus(painter, geometry, viewport)
+            return
 
     @staticmethod
     def _draw_clipped_line(
@@ -567,6 +572,42 @@ class Renderer:
             screen_points = [viewport.world_to_screen(point) for point in piece]
             painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
 
+    @staticmethod
+    def _draw_locus(
+        painter: QPainter,
+        locus: Locus2D,
+        viewport: Viewport,
+    ) -> None:
+        for piece in locus.segments:
+            screen_points = [viewport.world_to_screen(point) for point in piece]
+            painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
+
+    @staticmethod
+    def render_transient_traces(
+        painter: QPainter,
+        viewport: Viewport,
+        palette: QPalette,
+        traces: Mapping[str, list[Point2D]],
+    ) -> None:
+        """Draw ephemeral canvas trace points and segments outside the persistent model."""
+        if not traces:
+            return
+        painter.save()
+        trace_color = QColor(palette.highlight().color())
+        trace_color.setAlpha(160)
+        pen = QPen(trace_color, 1.5, Qt.PenStyle.DotLine)
+        pen.setCosmetic(True)
+        painter.setPen(pen)
+        painter.setBrush(trace_color)
+        for points in traces.values():
+            if len(points) >= 2:
+                screen_points = [viewport.world_to_screen(p) for p in points]
+                painter.drawPolyline(QPolygonF([QPointF(*p) for p in screen_points]))
+            for pt in points:
+                sx, sy = viewport.world_to_screen(pt)
+                painter.drawEllipse(QPointF(sx, sy), 2.5, 2.5)
+        painter.restore()
+
     def _draw_function_analysis(
         self,
         painter: QPainter,
@@ -748,6 +789,11 @@ class Renderer:
                 return geometry.evaluate(geometry.theta_min, variables)
             except (ValueError, ArithmeticError):
                 return None
+        if isinstance(geometry, Locus2D):
+            for piece in geometry.segments:
+                if piece:
+                    return piece[len(piece) // 2]
+            return None
         if isinstance(geometry, Vector2D) and obj.dependencies:
             parent_geometry = document.get(obj.dependencies[0]).geometry
             if isinstance(parent_geometry, Point2D):

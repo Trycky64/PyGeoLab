@@ -14,9 +14,9 @@ from typing import TypedDict, Unpack
 from pygeolab.dependency.graph import DependencyGraph
 from pygeolab.dependency.resolver import DirtyFlags, recompute_objects
 from pygeolab.dependency.validation import validate_object_graph
-from pygeolab.geometry import Point2D
+from pygeolab.geometry import Point2D, sample_locus
 from pygeolab.model.constructions import evaluate
-from pygeolab.model.objects import GeoObject, JsonValue
+from pygeolab.model.objects import Geometry, GeoObject, JsonValue, number
 from pygeolab.model.styles import Style
 
 
@@ -230,7 +230,31 @@ class Document:
         dirty_flags: Mapping[str, DirtyFlags],
     ) -> None:
         """Recompute dirty geometry and atomically publish one validated document state."""
-        result = recompute_objects(draft, graph, geometry_dirty, evaluate)
+
+        working_draft = dict(draft)
+
+        def _doc_evaluator(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
+            if obj.kind == "locus":
+                if len(parents) < 2:
+                    raise ValueError("Un lieu géométrique nécessite une cible et un pilote")
+                target_parent, driver_parent = parents[0], parents[1]
+                start = float(number(obj.params, "start", 0.0))
+                end = float(number(obj.params, "end", 1.0))
+                samples = int(number(obj.params, "samples", 150))
+                return sample_locus(
+                    working_draft,
+                    graph,
+                    target_parent.id,
+                    driver_parent.id,
+                    start,
+                    end,
+                    samples=samples,
+                )
+            geom = evaluate(obj, parents)
+            working_draft[obj.id] = replace(obj, geometry=geom, valid=geom is not None)
+            return geom
+
+        result = recompute_objects(draft, graph, geometry_dirty, _doc_evaluator)
         self._objects = result.objects
         self._graph = graph
         self.last_recomputed = result.recomputed

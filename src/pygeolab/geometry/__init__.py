@@ -1,4 +1,4 @@
-"""Immutable Euclidean primitives independent of Qt, documents, and screen pixels."""
+"""Geometric primitives, analytical computations, conic models, and locus sampling."""
 
 from pygeolab.geometry.analytical import (
     ANGLE_EPSILON,
@@ -48,6 +48,10 @@ from pygeolab.geometry.conics import (
     Hyperbola2D,
     Parabola2D,
 )
+from pygeolab.geometry.locus import (
+    Locus2D,
+    sample_locus,
+)
 from pygeolab.geometry.primitives import (
     EPSILON,
     Circle2D,
@@ -70,6 +74,7 @@ __all__ = [
     "Hyperbola2D",
     "Line2D",
     "LineAnalyticalForm",
+    "Locus2D",
     "Parabola2D",
     "Point2D",
     "Polygon2D",
@@ -112,6 +117,7 @@ __all__ = [
     "midpoint",
     "parse_point_coordinates",
     "project_point_on_line",
+    "sample_locus",
     "squared_distance_point_to_point",
     "vector_norm",
 ]

@@ -9,6 +9,7 @@ from pygeolab.geometry import (
     Ellipse2D,
     Hyperbola2D,
     Line2D,
+    Locus2D,
     Parabola2D,
     Point2D,
     Polygon2D,
@@ -46,6 +47,7 @@ _PRIORITY = {
     Hyperbola2D: 3,
     ParametricFunctionObject: 3,
     PolarFunctionObject: 3,
+    Locus2D: 3,
     Ray2D: 4,
     Line2D: 4,
     Polygon2D: 5,
@@ -161,6 +163,9 @@ def _distance_px(document: Document, obj: GeoObject, point: Point2D, scale: floa
                 if min_d is None or d < min_d:
                     min_d = d
         return None if min_d is None else min_d * scale
+    if isinstance(geometry, Locus2D):
+        d_val = geometry.closest_distance_to(point)
+        return None if d_val is None else d_val * scale
     if isinstance(geometry, Polygon2D):
         return min(edge.closest_point(point).distance_to(point) for edge in geometry.edges) * scale
     if isinstance(geometry, Vector2D) and obj.dependencies:
@@ -234,6 +239,16 @@ def _intersects_bounds(
         ) or any(
             clip_segment(p1, p2, bounds) is not None
             for piece in sampled.segments
+            for p1, p2 in zip(piece, piece[1:], strict=False)
+        )
+    if isinstance(geometry, Locus2D):
+        return any(
+            left <= p.x <= right and bottom <= p.y <= top
+            for piece in geometry.segments
+            for p in piece
+        ) or any(
+            clip_segment(p1, p2, bounds) is not None
+            for piece in geometry.segments
             for p1, p2 in zip(piece, piece[1:], strict=False)
         )
     if isinstance(geometry, Polygon2D):

@@ -342,8 +342,25 @@ ENGLISH: dict[str, str] = {
     "θ min": "θ min",
     "θ max": "θ max",
     "Équation polaire": "Polar equation",
-    "Intervalle angulaire": "Angular interval",
     "Sélectionnez une courbe polaire à modifier": "Select a polar curve to edit",
+    "Lieux géométriques": "Geometric loci",
+    "Lieu géométrique invalide": "Invalid geometric locus",
+    "Modifier le lieu géométrique": "Edit geometric locus",
+    "Modifier le lieu géométrique…": "Edit geometric locus…",
+    "Nouveau lieu géométrique": "New geometric locus",
+    "Nouveau &lieu géométrique…": "New &geometric locus…",
+    "Point cible :": "Target point:",
+    "Variable pilote :": "Driver variable:",
+    "Échantillons :": "Samples:",
+    "Sélectionnez un lieu géométrique à modifier": "Select a geometric locus to edit",
+    "Activer la trace": "Enable trace",
+    "Désactiver la trace": "Disable trace",
+    "Effacer les traces": "Clear traces",
+    "Effacer les &traces": "Clear &traces",
+    "Début :": "Start:",
+    "Fin :": "End:",
+    "Nom :": "Name:",
+    "Intervalle angulaire": "Angular interval",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {
@@ -427,6 +444,20 @@ ERRORS_ENGLISH: dict[str, str] = {
     ),
     "Le viewport nécessite des dimensions positives": "The viewport requires positive dimensions",
     "Les bornes d'intégration doivent être finies": "The integration bounds must be finite",
+    "Les bornes du lieu géométrique doivent être finies": "Geometric locus bounds must be finite",
+    "Un lieu géométrique nécessite une cible et un pilote": (
+        "A geometric locus requires a target and a driver"
+    ),
+    "Le point cible ne dépend pas de la variable pilote": (
+        "The target point does not depend on the driver variable"
+    ),
+    "Le pilote doit être un curseur ou un point sur objet": (
+        "Driver must be a slider or a point on object"
+    ),
+    "Le nom du lieu géométrique ne peut pas être vide": "Locus name cannot be empty",
+    "Point cible et variable pilote requis": "Target point and driver variable required",
+    "La cible et le pilote doivent être distincts": "Target and driver must be distinct",
+    "L'intervalle de balayage ne peut pas être nul": "Sweep interval cannot be zero",
     "Les coordonnées doivent être finies": "Coordinates must be finite",
     "Les coordonnées écran doivent être finies": "Screen coordinates must be finite",
     "Les dimensions doivent être comprises entre 1 et 20 000 pixels": (
@@ -523,6 +554,7 @@ class EnglishTranslator(QTranslator):
             ),
             (r"^indéfini — (.+)$", r"undefined — \1"),
             (r"^longueur (.+)$", r"length \1"),
+            (r"^lieu \((\d+) pts\)$", r"locus (\1 pts)"),
         )
         for pattern, replacement in replacements:
             if re.match(pattern, source_text):

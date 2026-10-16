@@ -43,6 +43,7 @@ from pygeolab.ui.action_registry import TOOL_LABELS, ActionRegistry
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
+from pygeolab.ui.dialogs.locus_dialog import LocusDialog
 from pygeolab.ui.dialogs.parametric_dialog import ParametricFunctionDialog
 from pygeolab.ui.dialogs.polar_dialog import PolarFunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
@@ -305,6 +306,25 @@ class MainWindow(QMainWindow):
             "objects.edit_polar",
             "Modifier la courbe polaire…",
             self._edit_polar,
+            menu=objects_menu,
+        )
+        objects_menu.addSeparator()
+        self.action_registry.create_action(
+            "objects.new_locus",
+            "Nouveau &lieu géométrique…",
+            self._new_locus,
+            menu=objects_menu,
+        )
+        self.edit_locus_action = self.action_registry.create_action(
+            "objects.edit_locus",
+            "Modifier le lieu géométrique…",
+            self._edit_locus,
+            menu=objects_menu,
+        )
+        self.action_registry.create_action(
+            "objects.clear_traces",
+            "Effacer les &traces",
+            self.geometry_view.clear_traces,
             menu=objects_menu,
         )
         objects_menu.addSeparator()
@@ -621,6 +641,43 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(
                 self, self.tr("Courbe polaire invalide"), translate_message(str(exc))
+            )
+
+    def _new_locus(self) -> None:
+        dialog = LocusDialog(self.document, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            locus = dialog.object_definition()
+            if locus.name in {obj.name for obj in self.document.objects.values()}:
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(CreateObjectCommand(self.document, locus))
+        except ValueError as exc:
+            QMessageBox.warning(
+                self, self.tr("Lieu géométrique invalide"), translate_message(str(exc))
+            )
+
+    def _edit_locus(self) -> None:
+        selected = tuple(self.geometry_view.selected_ids)
+        if len(selected) != 1 or self.document.get(selected[0]).kind != "locus":
+            self.statusBar().showMessage(self.tr("Sélectionnez un lieu géométrique à modifier"))
+            return
+        obj = self.document.get(selected[0])
+        dialog = LocusDialog(self.document, obj, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            name, dependencies, params = dialog.definition()
+            if any(
+                item.name == name and item.id != obj.id for item in self.document.objects.values()
+            ):
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(
+                ChangeFunctionCommand(self.document, obj.id, name, dependencies, params)
+            )
+        except ValueError as exc:
+            QMessageBox.warning(
+                self, self.tr("Lieu géométrique invalide"), translate_message(str(exc))
             )
 
     def _measure_selected(self, kind: str) -> None:

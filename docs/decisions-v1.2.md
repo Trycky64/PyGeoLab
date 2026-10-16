@@ -133,5 +133,27 @@ La version 1.2 introduit les courbes définies en coordonnées polaires sous la 
 - Tracé fluide et précis des cardioïdes, limaçons de Pascal, roses géométriques et spirales d'Archimède.
 - Parfaite cohérence avec le graphe de dépendances, le hit-testing et l'export vectoriel.
 
+## ADR-041 : Lieux géométriques et traces dynamiques (Section 7)
+
+### Contexte
+Dans les logiciels de géométrie dynamique avancés (ex. GeoGebra, Cabri), les utilisateurs ont besoin d'étudier la trajectoire d'un point géométrique dépendant lorsqu'un point support ou un paramètre (curseur) varie de manière continue. Deux mécanismes distincts répondent à ce besoin :
+1. Les **lieux géométriques persistants** (`Locus2D` / `kind="locus"`), objets mathématiques du domaine définis par un point cible $T$ et une variable pilote $P$, recalculés dynamiquement selon un sous-graphe topologique de dépendances.
+2. Les **traces éphémères** (canvas traces), activées à la volée sur un point quelconque pour visualiser sa trajectoire lors des manipulations interactives à la souris ou des animations, sans alourdir le modèle persistant.
+
+### Décisions d'architecture
+1. **Modèle de domaine Locus2D & Persistance allégée** :
+   - `Locus2D` encapsule une séquence ordonnée de polylignes continues (`tuple[tuple[Point2D, ...], ...]`), les identifiants de cible et de pilote, ainsi que les bornes et le nombre d'échantillons.
+   - Les points échantillonnés ne sont **pas** persistés dans le fichier `.pgl` ; seuls la recette géométrique et les paramètres (`start`, `end`, `samples`) sont sauvegardés. Le document recalcule le lieu à l'ouverture et lors de la modification des ancêtres.
+2. **Échantillonnage en sous-graphe isolé** (`pygeolab.geometry.locus.sample_locus`) :
+   - Pour chaque valeur du pilote dans $[start, end]$, le sous-graphe des dépendances entre le pilote et la cible est évalué sur un clone d'état léger sans polluer le document principal.
+   - Rejet automatique des discontinuités (sauts de distance excessifs ou singularités) en créant de nouveaux segments disjoints.
+3. **Traces transitoires hors modèle** :
+   - Gérées au niveau de `GeometryView` dans une table `_transient_traces` indexée par identifiant d'objet.
+   - Aucune modification de l'historique Undo/Redo lors du traçage à l'écran, effacement instantané via l'action dédiée et le menu contextuel.
+4. **Intégration UI & Rendu** :
+   - Dialogue `LocusDialog` avec sélection guidée des cibles valides et pilotes disponibles.
+   - Prise en charge dans `AlgebraPanel` (catégorie dédiée "Lieux géométriques"), `PropertiesPanel` (édition interactive de `start`, `end`, `samples`), `Renderer` (rendu vectoriel anti-aliasé), `HitTest` et export de vue (`fitted_viewport`).
+
+
 
 

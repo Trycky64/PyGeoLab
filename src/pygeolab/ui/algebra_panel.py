@@ -34,6 +34,7 @@ from pygeolab.geometry import (
     Ellipse2D,
     Hyperbola2D,
     Line2D,
+    Locus2D,
     Parabola2D,
     Point2D,
     Polygon2D,
@@ -379,6 +380,8 @@ class AlgebraPanel(QWidget):
             return self.tr("Courbes paramétriques")
         if isinstance(geometry, PolarFunctionObject):
             return self.tr("Courbes polaires")
+        if isinstance(geometry, Locus2D):
+            return self.tr("Lieux géométriques")
         return self.tr("Objets")
 
     def _format_value(self, obj: GeoObject) -> str:
@@ -409,4 +412,6 @@ class AlgebraPanel(QWidget):
             return f"({geometry.x_source}, {geometry.y_source})"
         if isinstance(geometry, PolarFunctionObject):
             return f"r({geometry.parameter}) = {geometry.r_source}"
+        if isinstance(geometry, Locus2D):
+            return self.tr(f"lieu ({geometry.total_points} pts)")
         return type(geometry).__name__.removesuffix("2D")

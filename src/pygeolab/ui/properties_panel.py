@@ -330,6 +330,10 @@ class PropertiesPanel(QWidget):
             elif key == "index":
                 editor.setDecimals(0)
                 editor.setSingleStep(1)
+            elif obj.kind == "locus" and key == "samples":
+                editor.setDecimals(0)
+                editor.setRange(10, 500)
+                editor.setSingleStep(10)
 
             editor.setValue(float(raw_val))
             if not is_dependent and not obj.locked:
@@ -670,4 +674,5 @@ def _editable_parameter_names(kind: str) -> tuple[str, ...]:
         "scale": ("factor",),
         "ellipse_center": ("b",),
         "hyperbola": ("a",),
+        "locus": ("start", "end", "samples"),
     }.get(kind, ())
