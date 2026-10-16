@@ -346,3 +346,51 @@ def test_parametric_dialog_and_panels(qtbot) -> None:
     qtbot.addWidget(properties)
     properties.set_selection(frozenset({obj.id}))
     assert not properties._analytics_widget.isHidden()
+
+
+def test_main_window_parametric_actions(qapp: object, monkeypatch) -> None:
+    del qapp
+    from PySide6.QtWidgets import QDialog
+
+    from pygeolab.ui.main_window import MainWindow
+
+    window = MainWindow(offer_recovery=False)
+
+    created = GeoObject(
+        "parametric",
+        "c_mw",
+        (),
+        {
+            "parameter": "t",
+            "x_source": "cos(t)",
+            "y_source": "sin(t)",
+            "t_min": 0.0,
+            "t_max": 2.0 * math.pi,
+        },
+    )
+    monkeypatch.setattr(ParametricFunctionDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+    monkeypatch.setattr(ParametricFunctionDialog, "object_definition", lambda self: created)
+    monkeypatch.setattr(
+        ParametricFunctionDialog,
+        "definition",
+        lambda self: (
+            "c_edited",
+            (),
+            {
+                "parameter": "t",
+                "x_source": "2 * cos(t)",
+                "y_source": "2 * sin(t)",
+                "t_min": 0.0,
+                "t_max": 2.0 * math.pi,
+            },
+        ),
+    )
+
+    window._new_parametric()
+    assert window.document.get(created.id).kind == "parametric"
+
+    window.geometry_view.set_selected_ids({created.id})
+    window._edit_parametric()
+    assert window.document.get(created.id).name == "c_edited"
+    monkeypatch.setattr(window, "_confirm_discard_changes", lambda: True)
+    window.close()

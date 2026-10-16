@@ -330,6 +330,20 @@ ENGLISH: dict[str, str] = {
     "t max": "t max",
     "t min": "t min",
     "Équation paramétrique": "Parametric equation",
+    "Courbes polaires": "Polar curves",
+    "Courbe polaire invalide": "Invalid polar curve",
+    "Modifier la courbe polaire": "Edit polar curve",
+    "Modifier la courbe polaire…": "Edit polar curve…",
+    "Nouvelle courbe polaire": "New polar curve",
+    "Nouvelle courbe p&olaire…": "New p&olar curve…",
+    "Paramètre angulaire": "Angular parameter",
+    "Expression r(θ)": "Expression r(θ)",
+    "Saisir / afficher en degrés": "Input / display in degrees",
+    "θ min": "θ min",
+    "θ max": "θ max",
+    "Équation polaire": "Polar equation",
+    "Intervalle angulaire": "Angular interval",
+    "Sélectionnez une courbe polaire à modifier": "Select a polar curve to edit",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {
@@ -349,6 +363,23 @@ ERRORS_ENGLISH: dict[str, str] = {
     "Nom de courbe ou paramètre invalide": "Invalid curve name or parameter",
     "Le paramètre t doit être fini": "Parameter t must be finite",
     "Paramètre t hors de l'intervalle défini": "Parameter t out of defined interval",
+    "Domaine angulaire invalide : theta_min doit être strictement inférieur à theta_max": (
+        "Invalid angular domain: theta_min must be strictly less than theta_max"
+    ),
+    "Domaine angulaire invalide": "Invalid angular domain",
+    "Une courbe polaire nécessite r(theta) et un paramètre angulaire": (
+        "A polar curve requires r(theta) and an angular parameter"
+    ),
+    "Les dépendances d'une courbe polaire doivent être numériques": (
+        "Dependencies of a polar curve must be numeric"
+    ),
+    "Les dépendances de la courbe polaire ne correspondent pas à l'expression": (
+        "Polar curve dependencies do not match the expression"
+    ),
+    "Nom de courbe ou paramètre angulaire invalide": "Invalid curve name or angular parameter",
+    "L'angle theta doit être fini": "Angle theta must be finite",
+    "Angle theta hors de l'intervalle défini": "Angle theta out of defined interval",
+    "Valeur de rayon r infinie ou indéfinie": "Radius value r is infinite or undefined",
     "Aucun chemin d'enregistrement défini": "No save path is defined",
     "Au moins deux échantillons sont nécessaires": "At least two samples are required",
     "Au moins deux sous-intervalles sont nécessaires": "At least two subintervals are required",

@@ -8,7 +8,11 @@ from dataclasses import dataclass
 
 from pygeolab.geometry import Point2D
 from pygeolab.math_engine.evaluator import EvaluationError
-from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
+from pygeolab.math_engine.functions import (
+    FunctionObject,
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +150,71 @@ def sample_parametric(
 
         current.append(pt)
         previous_t = t
+        previous_pt = pt
+
+    if len(current) >= 2:
+        pieces.append(tuple(current))
+    return SampledFunction(tuple(pieces))
+
+
+def sample_polar(
+    curve: PolarFunctionObject,
+    samples: int = 400,
+    variables: Mapping[str, float] | None = None,
+    jump_factor: float = 40.0,
+) -> SampledFunction:
+    """Sample a polar curve on [theta_min, theta_max] and split on discontinuities."""
+    if samples < 2:
+        raise ValueError("Au moins deux échantillons sont nécessaires")
+    theta_min, theta_max = curve.theta_min, curve.theta_max
+    step = (theta_max - theta_min) / (samples - 1)
+    pieces: list[tuple[Point2D, ...]] = []
+    current: list[Point2D] = []
+    previous_theta: float | None = None
+    previous_pt: Point2D | None = None
+    typical_scale = 1.0
+
+    for index in range(samples):
+        theta = theta_min + index * step
+        try:
+            pt = curve.evaluate(theta, variables)
+        except (EvaluationError, ValueError, ArithmeticError):
+            if len(current) >= 2:
+                pieces.append(tuple(current))
+            current = []
+            previous_theta = None
+            previous_pt = None
+            continue
+
+        if previous_theta is not None and previous_pt is not None:
+            dist = previous_pt.distance_to(pt)
+            typical_scale = max(
+                typical_scale,
+                min(math.hypot(pt.x, pt.y), math.hypot(previous_pt.x, previous_pt.y)),
+                1.0,
+            )
+            discontinuity = dist > jump_factor * typical_scale
+            mid_theta = (previous_theta + theta) / 2.0
+            try:
+                mid_pt = curve.evaluate(mid_theta, variables)
+            except (EvaluationError, ValueError, ArithmeticError):
+                discontinuity = True
+            else:
+                endpoint_scale = max(
+                    1.0, math.hypot(previous_pt.x, previous_pt.y), math.hypot(pt.x, pt.y)
+                )
+                linear_mid_x = (previous_pt.x + pt.x) / 2.0
+                linear_mid_y = (previous_pt.y + pt.y) / 2.0
+                nonlinear_jump = math.hypot(mid_pt.x - linear_mid_x, mid_pt.y - linear_mid_y)
+                discontinuity = discontinuity or nonlinear_jump > jump_factor * endpoint_scale
+
+            if discontinuity:
+                if len(current) >= 2:
+                    pieces.append(tuple(current))
+                current = []
+
+        current.append(pt)
+        previous_theta = theta
         previous_pt = pt
 
     if len(current) >= 2:

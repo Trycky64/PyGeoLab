@@ -31,7 +31,11 @@ from pygeolab.geometry.transforms import (
     scale,
     translate,
 )
-from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
+from pygeolab.math_engine.functions import (
+    FunctionObject,
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
 from pygeolab.model.objects import Geometry, GeoObject, number
 
 
@@ -145,6 +149,44 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
                 "Les dépendances de la courbe paramétrique ne correspondent pas à l'expression"
             )
         return parametric
+    if kind == "polar":
+        r_source = params.get("r_source", params.get("r_expr", params.get("source")))
+        parameter = params.get("parameter", "theta")
+        theta_min = params.get("theta_min", 0.0)
+        theta_max = params.get("theta_max", 2.0 * math.pi)
+        use_degrees = bool(params.get("use_degrees", False))
+        domain_value = params.get("domain")
+        if (
+            domain_value is not None
+            and isinstance(domain_value, (tuple, list))
+            and len(domain_value) == 2
+        ):
+            theta_min, theta_max = domain_value[0], domain_value[1]
+        if not isinstance(r_source, str) or not isinstance(parameter, str):
+            raise ValueError("Une courbe polaire nécessite r(theta) et un paramètre angulaire")
+        if (
+            isinstance(theta_min, bool)
+            or isinstance(theta_max, bool)
+            or not isinstance(theta_min, (int, float))
+            or not isinstance(theta_max, (int, float))
+        ):
+            raise ValueError("Domaine angulaire invalide")
+        polar = PolarFunctionObject.from_source(
+            obj.name,
+            parameter,
+            r_source,
+            float(theta_min),
+            float(theta_max),
+            use_degrees=use_degrees,
+        )
+        numeric_parents = {parent.name for parent in parents if isinstance(parent.geometry, float)}
+        if len(numeric_parents) != len(parents):
+            raise ValueError("Les dépendances d'une courbe polaire doivent être numériques")
+        if polar.external_dependencies != numeric_parents:
+            raise ValueError(
+                "Les dépendances de la courbe polaire ne correspondent pas à l'expression"
+            )
+        return polar
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

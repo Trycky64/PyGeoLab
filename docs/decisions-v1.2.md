@@ -109,3 +109,29 @@ La version 1.2 introduit les courbes planes définies paramétriquement sous la 
 - Respect absolu des contraintes de sécurité et de persistance versionnée .pgl.
 
 
+## ADR-040 — Modèle dédié de courbes polaires r(θ), conversion angulaire et affichage en degrés
+
+### Contexte
+La version 1.2 introduit les courbes définies en coordonnées polaires sous la forme $r(\theta)$ pour $\theta \in [\theta_{min}, \theta_{max}]$. Le domaine géométrique impose une représentation angulaire unifiée en radians en interne, tout en autorisant optionnellement la saisie et l'affichage en degrés pour le confort de l'utilisateur.
+
+### Décision
+1. **Modèle `PolarFunctionObject`** (`pygeolab.math_engine.functions`) :
+   - Stockage immuable de l'expression $r(\theta)$, du paramètre angulaire (ex. `theta`), des bornes $[\theta_{min}, \theta_{max}]$ en radians, et d'un indicateur `use_degrees: bool` pour l'affichage UI.
+   - Conversion cartésienne dynamique : $\text{evaluate}(\theta) \to (r \cos\theta, r \sin\theta)$.
+   - Dépendances externes vers les curseurs : $\text{deps} = \text{vars}(r) \setminus \{\theta\}$.
+2. **Échantillonnage et coupures singulières** (`pygeolab.math_engine.sampling`) :
+   - Fonction `sample_polar` avec pas régulier angulaire et détection robuste des asymptotes et pôles ($r \to \infty$ ou discontinuités de signe/amplitude).
+3. **Persistance et Undo/Redo** :
+   - Type d'objet `polar` dans `GeoObject` et `KINDS`.
+   - Compatibilité totale avec `CreateObjectCommand` et `ChangeFunctionCommand`.
+4. **Interface utilisateur et panneaux** :
+   - Dialogue dédié `PolarFunctionDialog` avec bascule dynamique temps réel entre radians et degrés, validation des curseurs et aperçu de style.
+   - Catégorie "Courbes polaires" dans le panneau Algèbre et restitution analytique de l'équation et de l'intervalle angulaire dans le panneau Propriétés.
+
+### Conséquences
+- Modélisation mathématique rigoureuse (radians canoniques en interne, zéro ambiguïté dimensionnelle).
+- Tracé fluide et précis des cardioïdes, limaçons de Pascal, roses géométriques et spirales d'Archimède.
+- Parfaite cohérence avec le graphe de dépendances, le hit-testing et l'export vectoriel.
+
+
+

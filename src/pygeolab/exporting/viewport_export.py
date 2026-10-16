@@ -22,8 +22,16 @@ from pygeolab.geometry import (
     Segment2D,
     Vector2D,
 )
-from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
-from pygeolab.math_engine.sampling import sample_function, sample_parametric
+from pygeolab.math_engine.functions import (
+    FunctionObject,
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
+from pygeolab.math_engine.sampling import (
+    sample_function,
+    sample_parametric,
+    sample_polar,
+)
 from pygeolab.model.document import Document
 from pygeolab.rendering.renderer import Renderer
 from pygeolab.rendering.viewport import Viewport
@@ -109,6 +117,15 @@ def fitted_viewport(
                 if isinstance((parent := document.get(dependency_id)).geometry, float)
             }
             sampled = sample_parametric(geometry, samples=80, variables=variables)
+            for piece in sampled.segments:
+                points.extend(piece)
+        elif isinstance(geometry, PolarFunctionObject):
+            variables = {
+                parent.name: parent.geometry
+                for dependency_id in obj.dependencies
+                if isinstance((parent := document.get(dependency_id)).geometry, float)
+            }
+            sampled = sample_polar(geometry, samples=80, variables=variables)
             for piece in sampled.segments:
                 points.extend(piece)
         elif isinstance(geometry, Line2D):

@@ -104,3 +104,60 @@ class ParametricFunctionObject:
         x = evaluate(self.x_expression, scope)
         y = evaluate(self.y_expression, scope)
         return Point2D(x, y)
+
+
+@dataclass(frozen=True, slots=True)
+class PolarFunctionObject:
+    """Mathematical definition of a polar curve r(theta) plotted in Cartesian coordinates."""
+
+    name: str
+    parameter: str
+    r_source: str
+    r_expression: Expr
+    external_dependencies: frozenset[str]
+    theta_min: float
+    theta_max: float
+    use_degrees: bool = False
+
+    @classmethod
+    def from_source(
+        cls,
+        name: str,
+        parameter: str,
+        r_source: str,
+        theta_min: float,
+        theta_max: float,
+        use_degrees: bool = False,
+    ) -> PolarFunctionObject:
+        """Parse polar radius expression and derive external variable dependencies."""
+        if not name.strip() or not parameter.isidentifier():
+            raise ValueError("Nom de courbe ou paramètre angulaire invalide")
+        if not math.isfinite(theta_min) or not math.isfinite(theta_max) or theta_min >= theta_max:
+            raise ValueError(
+                "Domaine angulaire invalide : theta_min doit être strictement inférieur à theta_max"
+            )
+        r_expr = parse(r_source)
+        external = dependencies(r_expr) - {parameter}
+        return cls(
+            name=name,
+            parameter=parameter,
+            r_source=r_source,
+            r_expression=r_expr,
+            external_dependencies=frozenset(external),
+            theta_min=float(theta_min),
+            theta_max=float(theta_max),
+            use_degrees=bool(use_degrees),
+        )
+
+    def evaluate(self, theta: float, variables: Mapping[str, float] | None = None) -> Point2D:
+        """Evaluate r(theta) and return Cartesian Point2D(r*cos(theta), r*sin(theta))."""
+        if not math.isfinite(theta):
+            raise ValueError("L'angle theta doit être fini")
+        if not (self.theta_min - 1e-9 <= theta <= self.theta_max + 1e-9):
+            raise ValueError("Angle theta hors de l'intervalle défini")
+        scope = dict(variables or {})
+        scope[self.parameter] = theta
+        r = evaluate(self.r_expression, scope)
+        if not math.isfinite(r):
+            raise ValueError("Valeur de rayon r infinie ou indéfinie")
+        return Point2D(r * math.cos(theta), r * math.sin(theta))

@@ -16,8 +16,11 @@ from pygeolab.geometry import (
     Segment2D,
     Vector2D,
 )
-from pygeolab.math_engine.functions import ParametricFunctionObject
-from pygeolab.math_engine.sampling import sample_parametric
+from pygeolab.math_engine.functions import (
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
+from pygeolab.math_engine.sampling import sample_parametric, sample_polar
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.rendering.clipping import clip_line, clip_ray, clip_segment
@@ -42,6 +45,7 @@ _PRIORITY = {
     Parabola2D: 3,
     Hyperbola2D: 3,
     ParametricFunctionObject: 3,
+    PolarFunctionObject: 3,
     Ray2D: 4,
     Line2D: 4,
     Polygon2D: 5,
@@ -143,6 +147,20 @@ def _distance_px(document: Document, obj: GeoObject, point: Point2D, scale: floa
                 if min_d is None or d < min_d:
                     min_d = d
         return None if min_d is None else min_d * scale
+    if isinstance(geometry, PolarFunctionObject):
+        variables = {
+            parent.name: parent.geometry
+            for dependency_id in obj.dependencies
+            if isinstance((parent := document.get(dependency_id)).geometry, float)
+        }
+        sampled = sample_polar(geometry, samples=120, variables=variables)
+        min_d = None
+        for piece in sampled.segments:
+            for p1, p2 in zip(piece, piece[1:], strict=False):
+                d = Segment2D(p1, p2).closest_point(point).distance_to(point)
+                if min_d is None or d < min_d:
+                    min_d = d
+        return None if min_d is None else min_d * scale
     if isinstance(geometry, Polygon2D):
         return min(edge.closest_point(point).distance_to(point) for edge in geometry.edges) * scale
     if isinstance(geometry, Vector2D) and obj.dependencies:
@@ -193,6 +211,22 @@ def _intersects_bounds(
             if isinstance((parent := document.get(dependency_id)).geometry, float)
         }
         sampled = sample_parametric(geometry, samples=60, variables=variables)
+        return any(
+            left <= p.x <= right and bottom <= p.y <= top
+            for piece in sampled.segments
+            for p in piece
+        ) or any(
+            clip_segment(p1, p2, bounds) is not None
+            for piece in sampled.segments
+            for p1, p2 in zip(piece, piece[1:], strict=False)
+        )
+    if isinstance(geometry, PolarFunctionObject):
+        variables = {
+            parent.name: parent.geometry
+            for dependency_id in obj.dependencies
+            if isinstance((parent := document.get(dependency_id)).geometry, float)
+        }
+        sampled = sample_polar(geometry, samples=60, variables=variables)
         return any(
             left <= p.x <= right and bottom <= p.y <= top
             for piece in sampled.segments

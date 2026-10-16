@@ -60,7 +60,10 @@ from pygeolab.geometry import (
     project_point_on_line,
 )
 from pygeolab.geometry.intersections import IntersectionKind, line_line
-from pygeolab.math_engine.functions import ParametricFunctionObject
+from pygeolab.math_engine.functions import (
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -439,6 +442,33 @@ class PropertiesPanel(QWidget):
                     self.tr("Intervalle du paramètre"),
                     f"[{format_number(geom.t_min)}, {format_number(geom.t_max)}]",
                 )
+                if geom.external_dependencies:
+                    add_row(
+                        self.tr("Dépendances"),
+                        ", ".join(sorted(geom.external_dependencies)),
+                    )
+            elif isinstance(geom, PolarFunctionObject):
+                add_row(
+                    self.tr("Équation polaire"),
+                    f"r({geom.parameter}) = {geom.r_source}",
+                )
+                if geom.use_degrees:
+                    t_min_deg = math.degrees(geom.theta_min)
+                    t_max_deg = math.degrees(geom.theta_max)
+                    rad_min = format_number(geom.theta_min)
+                    rad_max = format_number(geom.theta_max)
+                    add_row(
+                        self.tr("Intervalle angulaire"),
+                        f"[{format_number(t_min_deg)}°, {format_number(t_max_deg)}°] "
+                        f"([{rad_min} rad, {rad_max} rad])",
+                    )
+                else:
+                    rad_min = format_number(geom.theta_min)
+                    rad_max = format_number(geom.theta_max)
+                    add_row(
+                        self.tr("Intervalle angulaire"),
+                        f"[{rad_min} rad, {rad_max} rad]",
+                    )
                 if geom.external_dependencies:
                     add_row(
                         self.tr("Dépendances"),

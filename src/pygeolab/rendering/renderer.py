@@ -20,9 +20,17 @@ from pygeolab.geometry import (
     Segment2D,
     Vector2D,
 )
-from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
+from pygeolab.math_engine.functions import (
+    FunctionObject,
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
 from pygeolab.math_engine.numerical import derivative, extrema, find_roots, intersections
-from pygeolab.math_engine.sampling import sample_function, sample_parametric
+from pygeolab.math_engine.sampling import (
+    sample_function,
+    sample_parametric,
+    sample_polar,
+)
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -297,6 +305,9 @@ class Renderer:
             return
         if isinstance(geometry, ParametricFunctionObject):
             self._draw_parametric(painter, document, obj, geometry, viewport)
+            return
+        if isinstance(geometry, PolarFunctionObject):
+            self._draw_polar(painter, document, obj, geometry, viewport)
 
     @staticmethod
     def _draw_clipped_line(
@@ -533,6 +544,29 @@ class Renderer:
             screen_points = [viewport.world_to_screen(point) for point in piece]
             painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
 
+    def _draw_polar(
+        self,
+        painter: QPainter,
+        document: Document,
+        obj: GeoObject,
+        polar: PolarFunctionObject,
+        viewport: Viewport,
+    ) -> None:
+        variables: dict[str, float] = {}
+        for dependency_id in obj.dependencies:
+            parent = document.get(dependency_id)
+            if isinstance(parent.geometry, float):
+                variables[parent.name] = parent.geometry
+        quality_name = document.scene.get("function_sampling_quality", "medium")
+        quality = {"low": 0.75, "medium": 1.5, "high": 3.0}.get(
+            quality_name if isinstance(quality_name, str) else "medium", 1.5
+        )
+        samples = min(4000, max(200, round(600 * quality)))
+        sampled = sample_polar(polar, samples=samples, variables=variables)
+        for piece in sampled.segments:
+            screen_points = [viewport.world_to_screen(point) for point in piece]
+            painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
+
     def _draw_function_analysis(
         self,
         painter: QPainter,
@@ -702,6 +736,16 @@ class Renderer:
             }
             try:
                 return geometry.evaluate(geometry.t_min, variables)
+            except (ValueError, ArithmeticError):
+                return None
+        if isinstance(geometry, PolarFunctionObject):
+            variables = {
+                parent.name: parent.geometry
+                for dependency_id in obj.dependencies
+                if isinstance((parent := document.get(dependency_id)).geometry, float)
+            }
+            try:
+                return geometry.evaluate(geometry.theta_min, variables)
             except (ValueError, ArithmeticError):
                 return None
         if isinstance(geometry, Vector2D) and obj.dependencies:

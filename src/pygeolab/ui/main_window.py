@@ -44,6 +44,7 @@ from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.parametric_dialog import ParametricFunctionDialog
+from pygeolab.ui.dialogs.polar_dialog import PolarFunctionDialog
 from pygeolab.ui.dialogs.preferences_dialog import PreferencesDialog
 from pygeolab.ui.dialogs.shortcuts_dialog import ShortcutsDialog
 from pygeolab.ui.dialogs.slider_dialog import SliderDialog
@@ -292,6 +293,18 @@ class MainWindow(QMainWindow):
             "objects.edit_parametric",
             "Modifier la courbe paramétrique…",
             self._edit_parametric,
+            menu=objects_menu,
+        )
+        self.new_polar_action = self.action_registry.create_action(
+            "objects.new_polar",
+            "Nouvelle courbe p&olaire…",
+            self._new_polar,
+            menu=objects_menu,
+        )
+        self.edit_polar_action = self.action_registry.create_action(
+            "objects.edit_polar",
+            "Modifier la courbe polaire…",
+            self._edit_polar,
             menu=objects_menu,
         )
         objects_menu.addSeparator()
@@ -571,6 +584,43 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(
                 self, self.tr("Courbe paramétrique invalide"), translate_message(str(exc))
+            )
+
+    def _new_polar(self) -> None:
+        dialog = PolarFunctionDialog(self.document, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            polar = dialog.object_definition()
+            if polar.name in {obj.name for obj in self.document.objects.values()}:
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(CreateObjectCommand(self.document, polar))
+        except ValueError as exc:
+            QMessageBox.warning(
+                self, self.tr("Courbe polaire invalide"), translate_message(str(exc))
+            )
+
+    def _edit_polar(self) -> None:
+        selected = tuple(self.geometry_view.selected_ids)
+        if len(selected) != 1 or self.document.get(selected[0]).kind != "polar":
+            self.statusBar().showMessage(self.tr("Sélectionnez une courbe polaire à modifier"))
+            return
+        obj = self.document.get(selected[0])
+        dialog = PolarFunctionDialog(self.document, obj, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            name, dependencies, params = dialog.definition()
+            if any(
+                item.name == name and item.id != obj.id for item in self.document.objects.values()
+            ):
+                raise ValueError("Ce nom est déjà utilisé")
+            self._execute_command(
+                ChangeFunctionCommand(self.document, obj.id, name, dependencies, params)
+            )
+        except ValueError as exc:
+            QMessageBox.warning(
+                self, self.tr("Courbe polaire invalide"), translate_message(str(exc))
             )
 
     def _measure_selected(self, kind: str) -> None:

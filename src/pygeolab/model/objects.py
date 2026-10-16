@@ -21,7 +21,11 @@ from pygeolab.geometry import (
     Segment2D,
     Vector2D,
 )
-from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
+from pygeolab.math_engine.functions import (
+    FunctionObject,
+    ParametricFunctionObject,
+    PolarFunctionObject,
+)
 from pygeolab.model.styles import Style
 
 type JsonValue = (
@@ -47,6 +51,7 @@ type Geometry = (
     | Hyperbola2D
     | FunctionObject
     | ParametricFunctionObject
+    | PolarFunctionObject
     | float
 )
 
@@ -54,6 +59,7 @@ KINDS = frozenset(
     {
         "point",
         "parametric",
+        "polar",
         "segment",
         "line",
         "ray",
