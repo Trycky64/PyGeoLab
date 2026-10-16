@@ -6,11 +6,14 @@ import math
 from collections.abc import Iterable
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPalette, QPen, QPolygonF
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPalette, QPen, QPolygonF
 
 from pygeolab.geometry import (
     Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
     Line2D,
+    Parabola2D,
     Point2D,
     Polygon2D,
     Ray2D,
@@ -274,6 +277,15 @@ class Renderer:
         if isinstance(geometry, Circle2D):
             self._draw_circle(painter, geometry, obj.style, viewport, fill)
             return
+        if isinstance(geometry, Ellipse2D):
+            self._draw_ellipse(painter, geometry, obj.style, viewport, fill)
+            return
+        if isinstance(geometry, Parabola2D):
+            self._draw_parabola(painter, geometry, obj.style, viewport)
+            return
+        if isinstance(geometry, Hyperbola2D):
+            self._draw_hyperbola(painter, geometry, obj.style, viewport)
+            return
         if isinstance(geometry, Polygon2D):
             self._draw_polygon(painter, geometry, obj.style, viewport, fill)
             return
@@ -319,6 +331,77 @@ class Renderer:
             painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QPointF(center_x, center_y), radius, radius)
         painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    @staticmethod
+    def _draw_ellipse(
+        painter: QPainter, ellipse: Ellipse2D, style: Style, viewport: Viewport, fill: bool
+    ) -> None:
+        b_left, b_bottom, b_right, b_top = ellipse.bounding_box
+        left, bottom, right, top = viewport.world_bounds
+        if b_right < left or b_left > right or b_top < bottom or b_bottom > top:
+            return
+        cx, cy = viewport.world_to_screen(ellipse.center)
+        rx = ellipse.a * viewport.scale
+        ry = ellipse.b * viewport.scale
+        if not math.isfinite(rx) or not math.isfinite(ry) or rx > 1e7 or ry > 1e7:
+            return
+        if fill and style.fill_opacity > 0:
+            color = QColor(style.color)
+            color.setAlphaF(style.fill_opacity)
+            painter.setBrush(color)
+        else:
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.save()
+        painter.translate(cx, cy)
+        painter.rotate(-math.degrees(ellipse.angle))
+        painter.drawEllipse(QPointF(0, 0), rx, ry)
+        painter.restore()
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    @staticmethod
+    def _draw_parabola(
+        painter: QPainter, parabola: Parabola2D, style: Style, viewport: Viewport
+    ) -> None:
+        del style
+        left, bottom, right, top = viewport.world_bounds
+        diag = math.hypot(right - left, top - bottom)
+        p = parabola.parameter
+        t_max = max(10.0, math.sqrt(max(1.0, 4.0 * p * diag)))
+        samples = parabola.sample_in_range(-t_max, t_max, num_points=120)
+        path = QPainterPath()
+        started = False
+        for pt in samples:
+            sx, sy = viewport.world_to_screen(pt)
+            if abs(sx) > 5e4 or abs(sy) > 5e4:
+                continue
+            if not started:
+                path.moveTo(sx, sy)
+                started = True
+            else:
+                path.lineTo(sx, sy)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(path)
+
+    @staticmethod
+    def _draw_hyperbola(
+        painter: QPainter, hyperbola: Hyperbola2D, style: Style, viewport: Viewport
+    ) -> None:
+        del style
+        for branch in (1, 2):
+            samples = hyperbola.sample_branch(branch, t_max=3.5, num_points=70)
+            path = QPainterPath()
+            started = False
+            for pt in samples:
+                sx, sy = viewport.world_to_screen(pt)
+                if abs(sx) > 5e4 or abs(sy) > 5e4:
+                    continue
+                if not started:
+                    path.moveTo(sx, sy)
+                    started = True
+                else:
+                    path.lineTo(sx, sy)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(path)
 
     @staticmethod
     def _draw_polygon(
@@ -564,6 +647,15 @@ class Renderer:
             return geometry.start
         if isinstance(geometry, Circle2D):
             return Point2D(geometry.center.x + geometry.radius, geometry.center.y)
+        if isinstance(geometry, Ellipse2D):
+            return Point2D(
+                geometry.center.x + geometry.a * math.cos(geometry.angle),
+                geometry.center.y + geometry.a * math.sin(geometry.angle),
+            )
+        if isinstance(geometry, Parabola2D):
+            return geometry.vertex
+        if isinstance(geometry, Hyperbola2D):
+            return geometry.vertices[1]
         if isinstance(geometry, Polygon2D):
             return geometry.centroid or geometry.vertices[0]
         if isinstance(geometry, FunctionObject):

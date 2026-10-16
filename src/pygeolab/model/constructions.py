@@ -6,7 +6,18 @@ the document turns both cases into recoverable invalid object states.
 
 import math
 
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.geometry import (
+    Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
+    Line2D,
+    Parabola2D,
+    Point2D,
+    Polygon2D,
+    Ray2D,
+    Segment2D,
+    Vector2D,
+)
 from pygeolab.geometry.intersections import intersections
 from pygeolab.geometry.transforms import (
     angle,
@@ -118,6 +129,23 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         return circumcircle(a, b, c)
     if kind == "polygon":
         return Polygon2D(tuple(_point(parent) for parent in parents))
+    if kind == "ellipse":
+        f1, f2, p = (_point(parent) for parent in parents)
+        return Ellipse2D.from_foci_and_point(f1, f2, p)
+    if kind == "ellipse_center":
+        center, a_pt = _point(parents[0]), _point(parents[1])
+        b_val: Point2D | float = _point(parents[2]) if len(parents) == 3 else number(params, "b")
+        return Ellipse2D.from_center_axes(center, a_pt, b_val)
+    if kind == "parabola":
+        f = _point(parents[0])
+        d = _line(parents[1])
+        return Parabola2D.from_focus_and_directrix(f, d)
+    if kind == "hyperbola":
+        f1, f2 = _point(parents[0]), _point(parents[1])
+        if len(parents) == 3:
+            return Hyperbola2D.from_foci_and_point(f1, f2, _point(parents[2]))
+        a_val = number(params, "a")
+        return Hyperbola2D.from_foci_and_parameter(f1, f2, a_val)
     if kind == "midpoint":
         if len(parents) == 1 and isinstance(parents[0].geometry, Segment2D):
             segment = parents[0].geometry

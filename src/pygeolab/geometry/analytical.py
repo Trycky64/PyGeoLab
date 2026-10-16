@@ -10,6 +10,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from pygeolab.geometry.conics import (
+    Ellipse2D,
+    Hyperbola2D,
+    Parabola2D,
+)
 from pygeolab.geometry.primitives import (
     EPSILON,
     Circle2D,
@@ -465,4 +470,129 @@ def analyze_ray(ray: Ray2D, precision: int = 4) -> dict[str, str | float]:
         "dy": vec.y,
         "line_equation": format_cartesian_line(line, precision) if line else "—",
         "slope_intercept": format_slope_intercept_line(line, precision) if line else "—",
+    }
+
+
+# ============================================================================
+# Conics Analytical Representation
+# ============================================================================
+
+
+def format_ellipse_equation(ellipse: Ellipse2D, precision: int = 4) -> str:
+    """Format canonical ellipse equation: (x - x0)²/a² + (y - y0)²/b² = 1."""
+    a_sq = ellipse.a * ellipse.a
+    b_sq = ellipse.b * ellipse.b
+    x0, y0 = ellipse.center.x, ellipse.center.y
+    if abs(x0) <= 10 ** (-precision):
+        x_term = "x²"
+    elif x0 > 0:
+        x_term = f"(x - {format_number(x0, precision)})²"
+    else:
+        x_term = f"(x + {format_number(abs(x0), precision)})²"
+
+    if abs(y0) <= 10 ** (-precision):
+        y_term = "y²"
+    elif y0 > 0:
+        y_term = f"(y - {format_number(y0, precision)})²"
+    else:
+        y_term = f"(y + {format_number(abs(y0), precision)})²"
+
+    a_str = format_number(a_sq, precision)
+    b_str = format_number(b_sq, precision)
+    if abs(ellipse.angle) <= 1e-4:
+        return f"{x_term}/{a_str} + {y_term}/{b_str} = 1"
+    ang_deg = math.degrees(ellipse.angle)
+    return f"{x_term}/{a_str} + {y_term}/{b_str} = 1 (rot {format_number(ang_deg, 1)}°)"
+
+
+def format_parabola_equation(parabola: Parabola2D, precision: int = 4) -> str:
+    """Format parabola canonical form: y'² = 2px."""
+    p = parabola.parameter
+    return f"y'² = 2px (p = {format_number(p, precision)})"
+
+
+def format_hyperbola_equation(hyperbola: Hyperbola2D, precision: int = 4) -> str:
+    """Format canonical hyperbola equation: (x - x0)²/a² - (y - y0)²/b² = 1."""
+    a_sq = hyperbola.a * hyperbola.a
+    b_sq = hyperbola.b * hyperbola.b
+    x0, y0 = hyperbola.center.x, hyperbola.center.y
+    if abs(x0) <= 10 ** (-precision):
+        x_term = "x²"
+    elif x0 > 0:
+        x_term = f"(x - {format_number(x0, precision)})²"
+    else:
+        x_term = f"(x + {format_number(abs(x0), precision)})²"
+
+    if abs(y0) <= 10 ** (-precision):
+        y_term = "y²"
+    elif y0 > 0:
+        y_term = f"(y - {format_number(y0, precision)})²"
+    else:
+        y_term = f"(y + {format_number(abs(y0), precision)})²"
+
+    a_str = format_number(a_sq, precision)
+    b_str = format_number(b_sq, precision)
+    if abs(hyperbola.angle) <= 1e-4:
+        return f"{x_term}/{a_str} - {y_term}/{b_str} = 1"
+    ang_deg = math.degrees(hyperbola.angle)
+    return f"{x_term}/{a_str} - {y_term}/{b_str} = 1 (rot {format_number(ang_deg, 1)}°)"
+
+
+def analyze_ellipse(ellipse: Ellipse2D, precision: int = 4) -> dict[str, str | float]:
+    """Compute complete analytical properties of an ellipse."""
+    f1, f2 = ellipse.foci
+    cx = format_number(ellipse.center.x, precision)
+    cy = format_number(ellipse.center.y, precision)
+    f1_str = f"F1({format_number(f1.x, precision)}, {format_number(f1.y, precision)})"
+    f2_str = f"F2({format_number(f2.x, precision)}, {format_number(f2.y, precision)})"
+    return {
+        "equation": format_ellipse_equation(ellipse, precision),
+        "center": f"({cx}, {cy})",
+        "a": ellipse.a,
+        "b": ellipse.b,
+        "c": ellipse.linear_eccentricity,
+        "eccentricity": ellipse.eccentricity,
+        "foci": f"{f1_str}, {f2_str}",
+        "perimeter": ellipse.perimeter,
+        "area": ellipse.area,
+    }
+
+
+def analyze_parabola(parabola: Parabola2D, precision: int = 4) -> dict[str, str | float]:
+    """Compute complete analytical properties of a parabola."""
+    v = parabola.vertex
+    f = parabola.focus
+    d_eq = format_cartesian_line(parabola.directrix, precision)
+    return {
+        "equation": format_parabola_equation(parabola, precision),
+        "vertex": f"({format_number(v.x, precision)}, {format_number(v.y, precision)})",
+        "focus": f"({format_number(f.x, precision)}, {format_number(f.y, precision)})",
+        "parameter": parabola.parameter,
+        "directrix": d_eq,
+    }
+
+
+def analyze_hyperbola(hyperbola: Hyperbola2D, precision: int = 4) -> dict[str, str | float]:
+    """Compute complete analytical properties of a hyperbola."""
+    c = hyperbola.center
+    f1, f2 = hyperbola.focus1, hyperbola.focus2
+    v1, v2 = hyperbola.vertices
+    asym1, asym2 = hyperbola.asymptotes
+    cx = format_number(c.x, precision)
+    cy = format_number(c.y, precision)
+    f1_str = f"F1({format_number(f1.x, precision)}, {format_number(f1.y, precision)})"
+    f2_str = f"F2({format_number(f2.x, precision)}, {format_number(f2.y, precision)})"
+    v1_str = f"V1({format_number(v1.x, precision)}, {format_number(v1.y, precision)})"
+    v2_str = f"V2({format_number(v2.x, precision)}, {format_number(v2.y, precision)})"
+    return {
+        "equation": format_hyperbola_equation(hyperbola, precision),
+        "center": f"({cx}, {cy})",
+        "a": hyperbola.a,
+        "b": hyperbola.b,
+        "c": hyperbola.linear_eccentricity,
+        "eccentricity": hyperbola.eccentricity,
+        "foci": f"{f1_str}, {f2_str}",
+        "vertices": f"{v1_str}, {v2_str}",
+        "asymptote1": format_cartesian_line(asym1, precision),
+        "asymptote2": format_cartesian_line(asym2, precision),
     }

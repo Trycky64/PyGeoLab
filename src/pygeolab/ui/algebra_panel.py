@@ -31,7 +31,10 @@ from pygeolab.commands import (
 )
 from pygeolab.geometry import (
     Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
     Line2D,
+    Parabola2D,
     Point2D,
     Polygon2D,
     Ray2D,
@@ -358,8 +361,10 @@ class AlgebraPanel(QWidget):
             return self.tr("Points")
         if isinstance(geometry, (Line2D, Segment2D, Ray2D, Vector2D)):
             return self.tr("Lignes")
-        if isinstance(geometry, Circle2D):
+        if isinstance(geometry, (Circle2D,)):
             return self.tr("Cercles")
+        if isinstance(geometry, (Ellipse2D, Parabola2D, Hyperbola2D)):
+            return self.tr("Coniques")
         if isinstance(geometry, Polygon2D):
             return self.tr("Polygones")
         if isinstance(geometry, float):
@@ -380,6 +385,12 @@ class AlgebraPanel(QWidget):
             return self.tr(f"longueur {geometry.length:.3g}")
         if isinstance(geometry, Circle2D):
             return f"r = {geometry.radius:.3g}"
+        if isinstance(geometry, Ellipse2D):
+            return f"a = {geometry.a:.3g}, b = {geometry.b:.3g}"
+        if isinstance(geometry, Parabola2D):
+            return f"p = {geometry.parameter:.3g}"
+        if isinstance(geometry, Hyperbola2D):
+            return f"a = {geometry.a:.3g}, b = {geometry.b:.3g}"
         if isinstance(geometry, Polygon2D):
             return f"aire = {geometry.area:.3g}"
         if isinstance(geometry, float):

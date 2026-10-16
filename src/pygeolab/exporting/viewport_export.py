@@ -10,7 +10,18 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QMimeData, QRect, QSi
 from PySide6.QtGui import QColor, QGuiApplication, QImage, QPainter, QPalette
 from PySide6.QtSvg import QSvgGenerator
 
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.geometry import (
+    Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
+    Line2D,
+    Parabola2D,
+    Point2D,
+    Polygon2D,
+    Ray2D,
+    Segment2D,
+    Vector2D,
+)
 from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.math_engine.sampling import sample_function
 from pygeolab.model.document import Document
@@ -73,6 +84,14 @@ def fitted_viewport(
                 )
             )
         elif isinstance(geometry, Polygon2D):
+            points.extend(geometry.vertices)
+        elif isinstance(geometry, Ellipse2D):
+            b_left, b_bottom, b_right, b_top = geometry.bounding_box
+            points.extend((Point2D(b_left, b_bottom), Point2D(b_right, b_top)))
+        elif isinstance(geometry, Parabola2D):
+            points.append(geometry.vertex)
+            points.append(geometry.focus)
+        elif isinstance(geometry, Hyperbola2D):
             points.extend(geometry.vertices)
         elif isinstance(geometry, Vector2D):
             points.extend((Point2D(0, 0), Point2D(geometry.x, geometry.y)))

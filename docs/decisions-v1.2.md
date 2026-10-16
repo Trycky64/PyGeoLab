@@ -53,3 +53,33 @@ La géométrie analytique requiert des calculs de représentations cartésiennes
 - Calculs géométriques purs, testables à 100 % hors interface graphique.
 - Ergonomie enrichie permettant aux étudiants et enseignants de visualiser et copier immédiatement les équations analytiques exactes.
 
+## ADR-038 — Modèles euclidiens de coniques, évaluation dynamique et rendu adaptatif
+
+### Contexte
+L'introduction des coniques (ellipses, paraboles, hyperboles) en version 1.2 nécessite de véritables modèles euclidiens géométriques dans le domaine, intégrés au graphe de dépendances incrémental, avec hit-testing réactif, styles, persistance, Undo/Redo, métriques analytiques et export sans dégrader les performances du canvas.
+
+### Décision
+1. **Modèles euclidiens immuables purs** (`pygeolab.geometry.conics`) :
+   - `Ellipse2D` : définie par centre, demi-axes $a \ge b > 0$, rotation $\theta$ ; calculs de foyers, excentricité, périmètre de Ramanujan, aire $\pi a b$ et bounding box orientée.
+   - `Parabola2D` : définie par foyer $F$ et directrice $D$ ; calcul de sommet $V$, paramètre focal $p = d(F, D)$, axe et tangente de sommet.
+   - `Hyperbola2D` : définie par deux foyers $F_1, F_2$ et demi-axe $0 < a < c$ ; calcul de centre, demi-axe conjugué $b = \sqrt{c^2 - a^2}$, sommets et asymptotes.
+   - Rejet immédiat de toute configuration dégénérée (points colinéaires, foyer sur directrice, $2a \ge 2c$) via renvoi de `None` dans les méthodes de fabrique.
+2. **Évaluation incrémentale dans le document** :
+   - Recettes : `ellipse` (2 foyers + point), `ellipse_center` (centre + direction grand axe + demi-axe $b$), `parabola` (foyer + directrice), `hyperbola` (2 foyers + point ou paramètre $a$).
+   - Propagation naturelle des invalidations et recalculs lorsque les points ou droites supports sont déplacés.
+3. **Hit-testing et rendu adaptatif** :
+   - Bounding boxes pour élimination rapide.
+   - Évaluation de distance euclidienne / écart quadratique pour hit-testing précis à la tolérance de clic.
+   - Rendu `QPainter.drawEllipse` avec rotation pour ellipses ; échantillonnage adaptatif borné au viewport pour les branches infinies de paraboles et hyperboles.
+4. **Persistance et Undo/Redo** :
+   - Sérialisation transparente des types `ellipse`, `ellipse_center`, `parabola`, `hyperbola` dans le schéma .pgl standard.
+   - Commandes Undo/Redo standard (`CreateObjectsCommand`, `ChangeParametersCommand`, `MovePointCommand`).
+5. **Panneaux Propriétés et Algèbre** :
+   - Catégorisation "Coniques" dans l'arbre d'algèbre avec affichage des paramètres caractéristiques.
+   - Restitution complète des propriétés analytiques dans le panneau Propriétés (équations, foyers, directrice, asymptotes, excentricité, sommets, paramètre).
+
+### Conséquences
+- Architecture propre et découplée, exempte de hacks à base de polylines persistées.
+- Fluidité de rendu optimale même lors de zooms et pans sur des branches ouvertes.
+- Compatibilité descendante et ascendante complète des documents .pgl.
+

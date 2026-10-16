@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.geometry import (
+    Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
+    Line2D,
+    Parabola2D,
+    Point2D,
+    Polygon2D,
+    Ray2D,
+    Segment2D,
+    Vector2D,
+)
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.rendering.clipping import clip_line, clip_ray, clip_segment
@@ -25,6 +36,9 @@ _PRIORITY = {
     Point2D: 0,
     Segment2D: 2,
     Circle2D: 3,
+    Ellipse2D: 3,
+    Parabola2D: 3,
+    Hyperbola2D: 3,
     Ray2D: 4,
     Line2D: 4,
     Polygon2D: 5,
@@ -106,6 +120,12 @@ def _distance_px(document: Document, obj: GeoObject, point: Point2D, scale: floa
         return geometry.distance(point) * scale
     if isinstance(geometry, Circle2D):
         return abs(geometry.center.distance_to(point) - geometry.radius) * scale
+    if isinstance(geometry, Ellipse2D):
+        return geometry.distance_to(point) * scale
+    if isinstance(geometry, Parabola2D):
+        return geometry.distance_to(point) * scale
+    if isinstance(geometry, Hyperbola2D):
+        return geometry.distance_to(point) * scale
     if isinstance(geometry, Polygon2D):
         return min(edge.closest_point(point).distance_to(point) for edge in geometry.edges) * scale
     if isinstance(geometry, Vector2D) and obj.dependencies:
@@ -139,6 +159,16 @@ def _intersects_bounds(
             geometry.center.distance_to(Point2D(x, y)) for x in (left, right) for y in (bottom, top)
         )
         return minimum <= geometry.radius <= maximum
+    if isinstance(geometry, Ellipse2D):
+        b_left, b_bottom, b_right, b_top = geometry.bounding_box
+        return not (b_right < left or b_left > right or b_top < bottom or b_bottom > top)
+    if isinstance(geometry, Parabola2D):
+        samples = geometry.sample_in_range(-50.0, 50.0, 60)
+        return any(left <= p.x <= right and bottom <= p.y <= top for p in samples)
+    if isinstance(geometry, Hyperbola2D):
+        s1 = geometry.sample_branch(1, t_max=3.0, num_points=30)
+        s2 = geometry.sample_branch(2, t_max=3.0, num_points=30)
+        return any(left <= p.x <= right and bottom <= p.y <= top for p in s1 + s2)
     if isinstance(geometry, Polygon2D):
         return any(
             left <= vertex.x <= right and bottom <= vertex.y <= top for vertex in geometry.vertices

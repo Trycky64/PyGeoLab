@@ -34,13 +34,19 @@ from pygeolab.commands import (
 from pygeolab.geometry import (
     EPSILON,
     Circle2D,
+    Ellipse2D,
+    Hyperbola2D,
     Line2D,
+    Parabola2D,
     Point2D,
     Ray2D,
     Segment2D,
     Vector2D,
     analyze_circle,
+    analyze_ellipse,
+    analyze_hyperbola,
     analyze_line,
+    analyze_parabola,
     analyze_ray,
     analyze_segment,
     angle_between_lines,
@@ -310,7 +316,7 @@ class PropertiesPanel(QWidget):
                 editor.setEnabled(False)
                 editor.setToolTip(self.tr("Objet verrouillé"))
 
-            if key == "radius":
+            if key in ("radius", "a", "b"):
                 editor.setMinimum(1e-6)
             elif obj.kind == "number" and key == "value":
                 minimum = obj.params.get("minimum", -1e9)
@@ -377,6 +383,35 @@ class PropertiesPanel(QWidget):
                 add_row(self.tr("Rayon"), format_number(geom.radius))
                 add_row(self.tr("Périmètre"), format_number(geom.perimeter))
                 add_row(self.tr("Aire"), format_number(geom.area))
+            elif isinstance(geom, Ellipse2D):
+                e_res = analyze_ellipse(geom)
+                add_row(self.tr("Équation"), str(e_res["equation"]))
+                add_row(self.tr("Centre"), str(e_res["center"]))
+                add_row(self.tr("Demi-grand axe a"), format_number(float(e_res["a"])))
+                add_row(self.tr("Demi-petit axe b"), format_number(float(e_res["b"])))
+                add_row(self.tr("Distance focale c"), format_number(float(e_res["c"])))
+                add_row(self.tr("Excentricité"), format_number(float(e_res["eccentricity"])))
+                add_row(self.tr("Foyers"), str(e_res["foci"]))
+                add_row(self.tr("Périmètre"), format_number(float(e_res["perimeter"])))
+                add_row(self.tr("Aire"), format_number(float(e_res["area"])))
+            elif isinstance(geom, Parabola2D):
+                p_res = analyze_parabola(geom)
+                add_row(self.tr("Équation"), str(p_res["equation"]))
+                add_row(self.tr("Sommet"), str(p_res["vertex"]))
+                add_row(self.tr("Foyer"), str(p_res["focus"]))
+                add_row(self.tr("Paramètre p"), format_number(float(p_res["parameter"])))
+                add_row(self.tr("Directrice"), str(p_res["directrix"]))
+            elif isinstance(geom, Hyperbola2D):
+                h_res = analyze_hyperbola(geom)
+                add_row(self.tr("Équation"), str(h_res["equation"]))
+                add_row(self.tr("Centre"), str(h_res["center"]))
+                add_row(self.tr("Demi-axe a"), format_number(float(h_res["a"])))
+                add_row(self.tr("Demi-axe b"), format_number(float(h_res["b"])))
+                add_row(self.tr("Excentricité"), format_number(float(h_res["eccentricity"])))
+                add_row(self.tr("Foyers"), str(h_res["foci"]))
+                add_row(self.tr("Sommets"), str(h_res["vertices"]))
+                add_row(self.tr("Asymptote 1"), str(h_res["asymptote1"]))
+                add_row(self.tr("Asymptote 2"), str(h_res["asymptote2"]))
             elif isinstance(geom, Segment2D):
                 s_analysis = analyze_segment(geom)
                 add_row(self.tr("Longueur"), format_number(float(s_analysis["length"])))
@@ -508,6 +543,8 @@ class PropertiesPanel(QWidget):
 
         if obj.kind == "circle_radius" and key == "radius" and value <= 0:
             return
+        if obj.kind in ("ellipse_center", "hyperbola") and key in ("a", "b") and value <= 0:
+            return
         if obj.kind == "scale" and key == "factor" and value == 0:
             return
 
@@ -586,4 +623,6 @@ def _editable_parameter_names(kind: str) -> tuple[str, ...]:
         "point_on": ("t",),
         "rotate": ("angle",),
         "scale": ("factor",),
+        "ellipse_center": ("b",),
+        "hyperbola": ("a",),
     }.get(kind, ())
