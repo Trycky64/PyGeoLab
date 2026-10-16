@@ -42,7 +42,7 @@ from pygeolab.geometry import (
     Vector2D,
     parse_point_coordinates,
 )
-from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.ui.translations import translate_message
@@ -371,6 +371,8 @@ class AlgebraPanel(QWidget):
             return self.tr("Nombres")
         if isinstance(geometry, FunctionObject):
             return self.tr("Fonctions")
+        if isinstance(geometry, ParametricFunctionObject):
+            return self.tr("Courbes paramétriques")
         return self.tr("Objets")
 
     def _format_value(self, obj: GeoObject) -> str:
@@ -397,4 +399,6 @@ class AlgebraPanel(QWidget):
             return f"{geometry:.6g}"
         if isinstance(geometry, FunctionObject):
             return f"{geometry.name}({geometry.variable})"
+        if isinstance(geometry, ParametricFunctionObject):
+            return f"({geometry.x_source}, {geometry.y_source})"
         return type(geometry).__name__.removesuffix("2D")

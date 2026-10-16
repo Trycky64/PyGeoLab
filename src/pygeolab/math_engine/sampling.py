@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from pygeolab.geometry import Point2D
 from pygeolab.math_engine.evaluator import EvaluationError
-from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +82,72 @@ def sample_function(
         current.append(Point2D(x, y))
         previous_x = x
         previous_y = y
+    if len(current) >= 2:
+        pieces.append(tuple(current))
+    return SampledFunction(tuple(pieces))
+
+
+def sample_parametric(
+    curve: ParametricFunctionObject,
+    *,
+    samples: int = 800,
+    variables: Mapping[str, float] | None = None,
+    jump_factor: float = 40.0,
+) -> SampledFunction:
+    """Sample a parametric curve on [t_min, t_max] and split on discontinuities."""
+    if samples < 2:
+        raise ValueError("Au moins deux échantillons sont nécessaires")
+    t_min, t_max = curve.t_min, curve.t_max
+    step = (t_max - t_min) / (samples - 1)
+    pieces: list[tuple[Point2D, ...]] = []
+    current: list[Point2D] = []
+    previous_t: float | None = None
+    previous_pt: Point2D | None = None
+    typical_scale = 1.0
+
+    for index in range(samples):
+        t = t_min + index * step
+        try:
+            pt = curve.evaluate(t, variables)
+        except (EvaluationError, ValueError, ArithmeticError):
+            if len(current) >= 2:
+                pieces.append(tuple(current))
+            current = []
+            previous_t = None
+            previous_pt = None
+            continue
+
+        if previous_t is not None and previous_pt is not None:
+            dist = previous_pt.distance_to(pt)
+            typical_scale = max(
+                typical_scale,
+                min(math.hypot(pt.x, pt.y), math.hypot(previous_pt.x, previous_pt.y)),
+                1.0,
+            )
+            discontinuity = dist > jump_factor * typical_scale
+            mid_t = (previous_t + t) / 2.0
+            try:
+                mid_pt = curve.evaluate(mid_t, variables)
+            except (EvaluationError, ValueError, ArithmeticError):
+                discontinuity = True
+            else:
+                endpoint_scale = max(
+                    1.0, math.hypot(previous_pt.x, previous_pt.y), math.hypot(pt.x, pt.y)
+                )
+                linear_mid_x = (previous_pt.x + pt.x) / 2.0
+                linear_mid_y = (previous_pt.y + pt.y) / 2.0
+                nonlinear_jump = math.hypot(mid_pt.x - linear_mid_x, mid_pt.y - linear_mid_y)
+                discontinuity = discontinuity or nonlinear_jump > jump_factor * endpoint_scale
+
+            if discontinuity:
+                if len(current) >= 2:
+                    pieces.append(tuple(current))
+                current = []
+
+        current.append(pt)
+        previous_t = t
+        previous_pt = pt
+
     if len(current) >= 2:
         pieces.append(tuple(current))
     return SampledFunction(tuple(pieces))

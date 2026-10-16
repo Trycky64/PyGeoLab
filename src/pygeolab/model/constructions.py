@@ -31,7 +31,7 @@ from pygeolab.geometry.transforms import (
     scale,
     translate,
 )
-from pygeolab.math_engine.functions import FunctionObject
+from pygeolab.math_engine.functions import FunctionObject, ParametricFunctionObject
 from pygeolab.model.objects import Geometry, GeoObject, number
 
 
@@ -108,6 +108,43 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         if function.external_dependencies != numeric_parents:
             raise ValueError("Les dépendances de la fonction ne correspondent pas à l'expression")
         return function
+    if kind == "parametric":
+        x_source = params.get("x_source", params.get("x_expr"))
+        y_source = params.get("y_source", params.get("y_expr"))
+        parameter = params.get("parameter", "t")
+        t_min = params.get("t_min", 0.0)
+        t_max = params.get("t_max", 2.0 * math.pi)
+        domain_value = params.get("domain")
+        if (
+            domain_value is not None
+            and isinstance(domain_value, (tuple, list))
+            and len(domain_value) == 2
+        ):
+            t_min, t_max = domain_value[0], domain_value[1]
+        if (
+            not isinstance(x_source, str)
+            or not isinstance(y_source, str)
+            or not isinstance(parameter, str)
+        ):
+            raise ValueError("Une courbe paramétrique nécessite x(t), y(t) et un paramètre")
+        if (
+            isinstance(t_min, bool)
+            or isinstance(t_max, bool)
+            or not isinstance(t_min, (int, float))
+            or not isinstance(t_max, (int, float))
+        ):
+            raise ValueError("Domaine paramétrique invalide")
+        parametric = ParametricFunctionObject.from_source(
+            obj.name, parameter, x_source, y_source, float(t_min), float(t_max)
+        )
+        numeric_parents = {parent.name for parent in parents if isinstance(parent.geometry, float)}
+        if len(numeric_parents) != len(parents):
+            raise ValueError("Les dépendances d'une courbe paramétrique doivent être numériques")
+        if parametric.external_dependencies != numeric_parents:
+            raise ValueError(
+                "Les dépendances de la courbe paramétrique ne correspondent pas à l'expression"
+            )
+        return parametric
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

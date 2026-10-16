@@ -83,3 +83,29 @@ L'introduction des coniques (ellipses, paraboles, hyperboles) en version 1.2 né
 - Fluidité de rendu optimale même lors de zooms et pans sur des branches ouvertes.
 - Compatibilité descendante et ascendante complète des documents .pgl.
 
+## ADR-039 — Modèle dédié de courbes paramétriques x(t), y(t), sampling adaptatif et discontinuités
+
+### Contexte
+La version 1.2 introduit les courbes planes définies paramétriquement sous la forme $(x(t), y(t))$ pour $t \in [t_{min}, t_{max}]$. Ces objets requièrent une gestion sécurisée des expressions, la détection des variables externes (curseurs), un échantillonnage préservant la fidélité visuelle sans lier artificiellement les branches disjointes lors de singularités, et une intégration complète avec l'UI, le rendu, l'export et la persistance.
+
+### Décision
+1. **Modèle explicite `ParametricFunctionObject`** (`pygeolab.math_engine.functions`) :
+   - Objet immuable distinct de `FunctionObject` stockant les deux arbres d'expressions syntaxiques $x(t)$ et $y(t)$, le nom du paramètre $t$ et les bornes fermées $[t_{min}, t_{max}]$.
+   - Extraction automatique des dépendances externes vers les curseurs : $\text{deps} = (\text{vars}(x) \cup \text{vars}(y)) \setminus \{t\}$.
+   - Évaluation sécurisée via le moteur d'expressions sans `eval()` ni `exec()`.
+2. **Échantillonnage et coupure sur discontinuité** (`pygeolab.math_engine.sampling`) :
+   - Fonction `sample_parametric` évaluant la trajectoire par pas régulier de paramètre.
+   - Détection des singularités par analyse de distance euclidienne et écart non-linéaire au point médian, isolant les asymptotes en polylignes disjointes (`SampledFunction`).
+3. **Persistance et Undo/Redo** :
+   - Type d'objet `parametric` dans `GeoObject` et `KINDS`.
+   - Compatibilité totale avec `CreateObjectCommand` et `ChangeFunctionCommand`.
+4. **Interface utilisateur** :
+   - Dialogue dédié `ParametricFunctionDialog` pour la saisie et modification des expressions et du domaine.
+   - Entrées dans le menu Objets, section "Courbes paramétriques" dans le panneau Algèbre et restitution analytique dans le panneau Propriétés.
+
+### Conséquences
+- Modèle mathématique robuste et explicite, découplé du moteur de rendu.
+- Visualisation fidèle des spirales, cycloïdes, courbes de Lissajous et coniques paramétrées sans artefacts visuels.
+- Respect absolu des contraintes de sécurité et de persistance versionnée .pgl.
+
+

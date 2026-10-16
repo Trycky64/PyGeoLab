@@ -316,9 +316,39 @@ ENGLISH: dict[str, str] = {
     "Demi-axe b": "Semi-axis b",
     "Asymptote 1": "Asymptote 1",
     "Asymptote 2": "Asymptote 2",
+    "Courbe paramétrique invalide": "Invalid parametric curve",
+    "Courbes paramétriques": "Parametric curves",
+    "Expression x(t)": "Expression x(t)",
+    "Expression y(t)": "Expression y(t)",
+    "Intervalle du paramètre": "Parameter interval",
+    "Modifier la courbe paramétrique": "Edit parametric curve",
+    "Modifier la courbe paramétrique…": "Edit parametric curve…",
+    "Nouvelle courbe paramétrique": "New parametric curve",
+    "Nouvelle courbe &paramétrique…": "New &parametric curve…",
+    "Paramètre": "Parameter",
+    "Sélectionnez une courbe paramétrique à modifier": "Select a parametric curve to edit",
+    "t max": "t max",
+    "t min": "t min",
+    "Équation paramétrique": "Parametric equation",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {
+    "Domaine paramétrique invalide : t_min doit être strictement inférieur à t_max": (
+        "Invalid parametric domain: t_min must be strictly less than t_max"
+    ),
+    "Domaine paramétrique invalide": "Invalid parametric domain",
+    "Une courbe paramétrique nécessite x(t), y(t) et un paramètre": (
+        "A parametric curve requires x(t), y(t) and a parameter"
+    ),
+    "Les dépendances d'une courbe paramétrique doivent être numériques": (
+        "Dependencies of a parametric curve must be numeric"
+    ),
+    "Les dépendances de la courbe paramétrique ne correspondent pas à l'expression": (
+        "Curve dependencies do not match the expression"
+    ),
+    "Nom de courbe ou paramètre invalide": "Invalid curve name or parameter",
+    "Le paramètre t doit être fini": "Parameter t must be finite",
+    "Paramètre t hors de l'intervalle défini": "Parameter t out of defined interval",
     "Aucun chemin d'enregistrement défini": "No save path is defined",
     "Au moins deux échantillons sont nécessaires": "At least two samples are required",
     "Au moins deux sous-intervalles sont nécessaires": "At least two subintervals are required",

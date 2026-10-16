@@ -60,6 +60,7 @@ from pygeolab.geometry import (
     project_point_on_line,
 )
 from pygeolab.geometry.intersections import IntersectionKind, line_line
+from pygeolab.math_engine.functions import ParametricFunctionObject
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -429,6 +430,20 @@ class PropertiesPanel(QWidget):
                     f"{format_number(float(r_analysis['origin_y']))})",
                 )
                 add_row(self.tr("Droite support"), str(r_analysis["line_equation"]))
+            elif isinstance(geom, ParametricFunctionObject):
+                add_row(
+                    self.tr("Équation paramétrique"),
+                    f"x({geom.parameter}) = {geom.x_source}, y({geom.parameter}) = {geom.y_source}",
+                )
+                add_row(
+                    self.tr("Intervalle du paramètre"),
+                    f"[{format_number(geom.t_min)}, {format_number(geom.t_max)}]",
+                )
+                if geom.external_dependencies:
+                    add_row(
+                        self.tr("Dépendances"),
+                        ", ".join(sorted(geom.external_dependencies)),
+                    )
 
         elif len(objects) == 2:
             g1, g2 = objects[0].geometry, objects[1].geometry
