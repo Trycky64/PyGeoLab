@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLineEdit,
     QMainWindow,
-    QMenu,
     QMessageBox,
     QToolBar,
     QWidget,
@@ -35,10 +34,12 @@ from pygeolab.exporting import (
     fitted_viewport,
 )
 from pygeolab.logging_config import log_directory
+from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
 from pygeolab.persistence import ProjectSession, RecoveryManager
 from pygeolab.rendering.viewport import Viewport
+from pygeolab.ui.action_registry import TOOL_LABELS, ActionRegistry
 from pygeolab.ui.algebra_panel import AlgebraPanel
 from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
@@ -49,8 +50,10 @@ from pygeolab.ui.error_handler import operation_error_message
 from pygeolab.ui.geometry_view import GeometryView
 from pygeolab.ui.numerical_panel import NumericalPanel
 from pygeolab.ui.preferences import Preferences
+from pygeolab.ui.project_controller import ProjectController
 from pygeolab.ui.properties_panel import PropertiesPanel
 from pygeolab.ui.recent_files import RecentFiles
+from pygeolab.ui.selection_coordinator import SelectionCoordinator
 from pygeolab.ui.slider_panel import SliderPanel
 from pygeolab.ui.theme import apply_theme
 from pygeolab.ui.translations import translate_message
@@ -61,33 +64,7 @@ LOGGER = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     """Own desktop layout and route actions to domain, history and persistence services."""
 
-    TOOL_LABELS = {
-        "select": "Sélection",
-        "point": "Point",
-        "segment": "Segment",
-        "line": "Droite",
-        "circle": "Cercle",
-        "polygon": "Polygone",
-        "midpoint": "Milieu",
-        "intersection": "Intersection",
-        "parallel": "Parallèle",
-        "perpendicular": "Perpendiculaire",
-        "ray": "Demi-droite",
-        "vector": "Vecteur",
-        "perpendicular_bisector": "Médiatrice",
-        "angle_bisector": "Bissectrice",
-        "projection": "Projection",
-        "point_on": "Point sur objet",
-        "circle_radius": "Cercle centre-rayon",
-        "circumcircle": "Cercle circonscrit",
-        "distance": "Distance",
-        "angle": "Angle",
-        "translate": "Translation",
-        "rotate": "Rotation",
-        "reflect_point": "Symétrie centrale",
-        "reflect_line": "Symétrie axiale",
-        "scale": "Homothétie",
-    }
+    TOOL_LABELS = TOOL_LABELS
 
     def __init__(self, *, offer_recovery: bool = True) -> None:
         super().__init__()
@@ -98,28 +75,72 @@ class MainWindow(QMainWindow):
         self.recent_files = RecentFiles()
         self.recovery = RecoveryManager()
         self.session = ProjectSession()
-        self.document = self.session.document
+        self.document: Document = self.session.document
+
+        self.project_controller = ProjectController(
+            self.preferences,
+            recent_files=self.recent_files,
+            recovery=self.recovery,
+            session=self.session,
+            parent=self,
+        )
+
+        self.action_registry = ActionRegistry(self)
+        self.selection_coordinator = SelectionCoordinator(self)
+
         self.geometry_view = GeometryView(self.document, self)
         self.geometry_view.setAccessibleName(self.tr("Zone de géométrie dynamique"))
         self.setCentralWidget(self.geometry_view)
+
         self._build_docks()
         self._build_menus()
         self._build_toolbar()
+        self._bind_coordinators()
         self._apply_preferences()
         self._apply_accessibility()
-        self.geometry_view.selectionChanged.connect(self._selection_from_canvas)
-        self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
-        self.geometry_view.interactionChanged.connect(self._update_history_actions)
-        self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
+
         self._autosave_timer = QTimer(self)
         self._autosave_timer.timeout.connect(self._autosave)
         self._configure_autosave()
+
         self.statusBar().setAccessibleName(self.tr("Barre d'état"))
         self.statusBar().showMessage(self.tr("Prêt"))
         self._update_history_actions()
         self._update_title()
+
         if offer_recovery:
             self._offer_recovery()
+
+    def _bind_coordinators(self) -> None:
+        self.selection_coordinator.register_listener("canvas", self.geometry_view.set_selected_ids)
+        self.selection_coordinator.register_listener("algebra", self.algebra_panel.set_selected_ids)
+        self.selection_coordinator.register_listener(
+            "properties", self.properties_panel.set_selection
+        )
+
+        self.geometry_view.selectionChanged.connect(
+            lambda ids: self._on_selection_from_source(ids, "canvas")
+        )
+        self.algebra_panel.selectionChanged.connect(
+            lambda ids: self._on_selection_from_source(ids, "algebra")
+        )
+        self.properties_panel.selectionRequested.connect(
+            lambda ids: self._on_selection_from_source(ids, "properties")
+        )
+
+        self.geometry_view.cursorWorldChanged.connect(self._show_cursor)
+        self.geometry_view.interactionChanged.connect(self._update_history_actions)
+
+        self.project_controller.documentAdopted.connect(self._on_document_adopted)
+        self.project_controller.titleChanged.connect(self._update_title)
+        self.project_controller.statusMessageRequested.connect(
+            lambda msg, timeout: self.statusBar().showMessage(self.tr(msg), timeout)
+        )
+        self.project_controller.errorReported.connect(self._report_operation_error)
+
+    def _on_selection_from_source(self, ids: frozenset[str], source: str) -> None:
+        self.selection_coordinator.set_selection(ids, source=source)
+        self._show_selection_status(ids)
 
     def _execute_command(self, command: Command) -> None:
         self.geometry_view.history.execute(command)
@@ -127,7 +148,6 @@ class MainWindow(QMainWindow):
 
     def _build_docks(self) -> None:
         self.algebra_panel = AlgebraPanel(self.document, self._execute_command, self)
-        self.algebra_panel.selectionChanged.connect(self._selection_from_algebra)
         self.algebra_panel.sliderCreationRequested.connect(self._new_slider)
         self.algebra_dock = QDockWidget(self.tr("Algèbre"), self)
         self.algebra_dock.setObjectName("algebraDock")
@@ -136,7 +156,6 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.algebra_dock)
 
         self.properties_panel = PropertiesPanel(self.document, self._execute_command, self)
-        self.properties_panel.selectionRequested.connect(self._selection_from_properties)
         self.properties_dock = QDockWidget(self.tr("Propriétés"), self)
         self.properties_dock.setObjectName("propertiesDock")
         self.properties_dock.setAccessibleName(self.tr("Panneau Propriétés"))
@@ -159,88 +178,121 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
-        self._add_action(file_menu, "&Nouveau", self._new_project, QKeySequence.StandardKey.New)
-        self._add_action(file_menu, "&Ouvrir…", self._open_project, QKeySequence.StandardKey.Open)
+        self.action_registry.create_action(
+            "file.new", "&Nouveau", self._new_project, QKeySequence.StandardKey.New, menu=file_menu
+        )
+        self.action_registry.create_action(
+            "file.open",
+            "&Ouvrir…",
+            self._open_project,
+            QKeySequence.StandardKey.Open,
+            menu=file_menu,
+        )
         self.recent_menu = file_menu.addMenu(self.tr("Fichiers &récents"))
         self.recent_menu.aboutToShow.connect(self._refresh_recent_menu)
-        self.save_action = self._add_action(
-            file_menu,
+        self.save_action = self.action_registry.create_action(
+            "file.save",
             "&Enregistrer",
             self._save_project,
             QKeySequence.StandardKey.Save,
+            menu=file_menu,
         )
-        self._add_action(
-            file_menu,
+        self.action_registry.create_action(
+            "file.save_as",
             "Enregistrer &sous…",
             self._save_project_as,
             QKeySequence.StandardKey.SaveAs,
+            menu=file_menu,
         )
         export_menu = file_menu.addMenu(self.tr("&Exporter"))
-        self._add_action(export_menu, "Image &PNG…", self._export_png)
-        self._add_action(export_menu, "Image &SVG…", self._export_svg)
+        self.action_registry.create_action(
+            "export.png", "Image &PNG…", self._export_png, menu=export_menu
+        )
+        self.action_registry.create_action(
+            "export.svg", "Image &SVG…", self._export_svg, menu=export_menu
+        )
         export_menu.addSeparator()
-        self._add_action(export_menu, "Copier le viewport en PNG", self._copy_png)
-        self._add_action(export_menu, "Copier le viewport en SVG", self._copy_svg)
+        self.action_registry.create_action(
+            "export.copy_png", "Copier le viewport en PNG", self._copy_png, menu=export_menu
+        )
+        self.action_registry.create_action(
+            "export.copy_svg", "Copier le viewport en SVG", self._copy_svg, menu=export_menu
+        )
         file_menu.addSeparator()
-        self._add_action(file_menu, "&Quitter", self.close, QKeySequence.StandardKey.Quit)
+        self.action_registry.create_action(
+            "file.quit", "&Quitter", self.close, QKeySequence.StandardKey.Quit, menu=file_menu
+        )
 
         edit_menu = self.menuBar().addMenu(self.tr("&Édition"))
-        self.undo_action = self._add_action(
-            edit_menu,
-            "&Annuler",
-            self._undo,
-            QKeySequence.StandardKey.Undo,
+        self.undo_action = self.action_registry.create_action(
+            "undo", "&Annuler", self._undo, QKeySequence.StandardKey.Undo, menu=edit_menu
         )
-        self.redo_action = self._add_action(
-            edit_menu,
-            "&Rétablir",
-            self._redo,
-            QKeySequence.StandardKey.Redo,
+        self.redo_action = self.action_registry.create_action(
+            "redo", "&Rétablir", self._redo, QKeySequence.StandardKey.Redo, menu=edit_menu
         )
-        self._add_action(
-            edit_menu,
+        self.action_registry.create_action(
+            "edit.delete",
             "&Supprimer",
             self._delete_selection,
             QKeySequence.StandardKey.Delete,
+            menu=edit_menu,
         )
         edit_menu.addSeparator()
-        self.select_all_action = self._add_action(
-            edit_menu,
+        self.select_all_action = self.action_registry.create_action(
+            "edit.select_all",
             "Tout &sélectionner",
             self.geometry_view.select_all,
             QKeySequence.StandardKey.SelectAll,
+            menu=edit_menu,
         )
-        self.clear_selection_action = self._add_action(
-            edit_menu,
+        self.clear_selection_action = self.action_registry.create_action(
+            "edit.clear_selection",
             "Effacer la sélection",
             self.geometry_view.clear_selection,
             "Ctrl+Shift+A",
+            menu=edit_menu,
         )
-        self.duplicate_action = self._add_action(
-            edit_menu,
+        self.duplicate_action = self.action_registry.create_action(
+            "edit.duplicate",
             "&Dupliquer",
             self.geometry_view.duplicate_selection,
             "Ctrl+D",
+            menu=edit_menu,
         )
         edit_menu.addSeparator()
-        self._add_action(edit_menu, "&Préférences…", self._show_preferences)
+        self.action_registry.create_action(
+            "edit.preferences", "&Préférences…", self._show_preferences, menu=edit_menu
+        )
 
         objects_menu = self.menuBar().addMenu(self.tr("&Objets"))
-        self._add_action(objects_menu, "Nouveau &curseur…", self._new_slider)
-        self.new_function_action = self._add_action(
-            objects_menu, "Nouvelle &fonction…", self._new_function, "Ctrl+F"
+        self.action_registry.create_action(
+            "objects.new_slider", "Nouveau &curseur…", self._new_slider, menu=objects_menu
         )
-        self.edit_function_action = self._add_action(
-            objects_menu, "&Modifier la fonction…", self._edit_function
+        self.new_function_action = self.action_registry.create_action(
+            "objects.new_function",
+            "Nouvelle &fonction…",
+            self._new_function,
+            "Ctrl+F",
+            menu=objects_menu,
+        )
+        self.edit_function_action = self.action_registry.create_action(
+            "objects.edit_function",
+            "&Modifier la fonction…",
+            self._edit_function,
+            menu=objects_menu,
         )
         objects_menu.addSeparator()
-        self._add_action(
-            objects_menu,
+        self.action_registry.create_action(
+            "objects.measure_length",
             "Mesurer la &longueur sélectionnée",
             lambda: self._measure_selected("length"),
+            menu=objects_menu,
         )
-        self._add_action(
-            objects_menu, "Mesurer l'&aire sélectionnée", lambda: self._measure_selected("area")
+        self.action_registry.create_action(
+            "objects.measure_area",
+            "Mesurer l'&aire sélectionnée",
+            lambda: self._measure_selected("area"),
+            menu=objects_menu,
         )
 
         view_menu = self.menuBar().addMenu(self.tr("&Affichage"))
@@ -248,63 +300,97 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.properties_dock.toggleViewAction())
         view_menu.addAction(self.slider_dock.toggleViewAction())
         view_menu.addAction(self.numerical_dock.toggleViewAction())
-        self._add_action(view_menu, "Réinitialiser la vue", self.geometry_view.reset_view, "Home")
-        self.snapping_action = self._add_action(
-            view_menu,
+        self.action_registry.create_action(
+            "view.reset",
+            "Réinitialiser la vue",
+            self.geometry_view.reset_view,
+            "Home",
+            menu=view_menu,
+        )
+        self.snapping_action = self.action_registry.create_action(
+            "view.snapping",
             "&Magnétisme (maintenir Alt pour suspendre)",
             self._set_snapping_enabled,
             "M",
+            checkable=True,
+            checked=True,
+            menu=view_menu,
         )
-        self.snapping_action.setCheckable(True)
-        self.snapping_action.setChecked(True)
+
         theme_menu = view_menu.addMenu(self.tr("Thème"))
-        theme_group = QActionGroup(self)
-        theme_group.setExclusive(True)
-        self.theme_actions: dict[str, QAction] = {}
         for mode, label in (("system", "Système"), ("light", "Clair"), ("dark", "Sombre")):
-            action = self._add_action(
-                theme_menu,
-                label,
-                lambda _checked=False, value=mode: self._apply_theme(value),
-            )
-            action.setCheckable(True)
-            theme_group.addAction(action)
-            self.theme_actions[mode] = action
+            action = self.action_registry.register_theme_action(mode, label, self._apply_theme)
+            theme_menu.addAction(action)
+
         function_menu = view_menu.addMenu(self.tr("Fonctions"))
         quality_menu = function_menu.addMenu(self.tr("Qualité du tracé"))
-        quality_group = QActionGroup(self)
-        quality_group.setExclusive(True)
-        self.function_quality_actions: dict[str, QAction] = {}
         for quality, label in (("low", "Basse"), ("medium", "Normale"), ("high", "Haute")):
-            action = QAction(self.tr(label), self)
-            action.setCheckable(True)
-            action.setChecked(quality == "medium")
-            action.triggered.connect(
-                lambda checked=False, value=quality: self._set_function_quality(value, checked)
+            action = self.action_registry.register_function_quality_action(
+                quality, label, self._set_function_quality
             )
-            quality_group.addAction(action)
             quality_menu.addAction(action)
-            self.function_quality_actions[quality] = action
-        self.function_overlay_actions: dict[str, QAction] = {}
+
+        def make_overlay_callback(feature: str) -> Callable[[bool], None]:
+            return lambda checked: self.geometry_view.set_function_overlay(feature, checked)
+
         for name, label in (
             ("roots", "Afficher les racines"),
             ("extrema", "Afficher les extrema"),
             ("intersections", "Afficher les intersections"),
             ("derivative", "Afficher la dérivée"),
         ):
-            action = QAction(self.tr(label), self)
-            action.setCheckable(True)
-            action.toggled.connect(
-                lambda checked, value=name: self.geometry_view.set_function_overlay(value, checked)
+            action = self.action_registry.register_function_overlay_action(
+                name,
+                label,
+                make_overlay_callback(name),
             )
             function_menu.addAction(action)
-            self.function_overlay_actions[name] = action
 
         help_menu = self.menuBar().addMenu(self.tr("&Aide"))
-        self._add_action(help_menu, "&Raccourcis clavier…", self._show_shortcuts, "F1")
-        self._add_action(help_menu, "Ouvrir le dossier des &logs", self._open_logs)
-        self._add_action(help_menu, "Copier les informations &système", self._copy_system_info)
-        self._add_action(help_menu, "À &propos de PyGeoLab", self._show_about)
+        self.action_registry.create_action(
+            "help.shortcuts",
+            "&Raccourcis clavier…",
+            self._show_shortcuts,
+            "F1",
+            menu=help_menu,
+        )
+        self.action_registry.create_action(
+            "help.logs", "Ouvrir le dossier des &logs", self._open_logs, menu=help_menu
+        )
+        self.action_registry.create_action(
+            "help.system_info",
+            "Copier les informations &système",
+            self._copy_system_info,
+            menu=help_menu,
+        )
+        self.action_registry.create_action(
+            "help.about", "À &propos de PyGeoLab", self._show_about, menu=help_menu
+        )
+
+    @property
+    def theme_actions(self) -> dict[str, QAction]:
+        """Return registered theme action map."""
+        return self.action_registry.theme_actions
+
+    @property
+    def function_quality_actions(self) -> dict[str, QAction]:
+        """Return registered function quality action map."""
+        return self.action_registry.function_quality_actions
+
+    @property
+    def function_overlay_actions(self) -> dict[str, QAction]:
+        """Return registered function overlay action map."""
+        return self.action_registry.function_overlay_actions
+
+    @property
+    def tool_actions(self) -> dict[str, QAction]:
+        """Return registered construction tool action map."""
+        return self.action_registry.tool_actions
+
+    @property
+    def tool_action_group(self) -> QActionGroup:
+        """Return construction tool exclusive action group."""
+        return self.action_registry.tool_action_group
 
     def _set_function_quality(self, quality: str, checked: bool) -> None:
         if checked:
@@ -322,22 +408,6 @@ class MainWindow(QMainWindow):
             blocked = action.blockSignals(True)
             action.setChecked(self.document.scene.get(f"show_function_{name}", False) is True)
             action.blockSignals(blocked)
-
-    def _add_action(
-        self,
-        menu: QMenu,
-        text: str,
-        callback: Callable[..., object],
-        shortcut: QKeySequence.StandardKey | str | None = None,
-    ) -> QAction:
-        action = QAction(self.tr(text), self)
-        action.setStatusTip(self.tr(text.replace("&", "")))
-        action.setToolTip(self.tr(text.replace("&", "")))
-        if shortcut is not None:
-            action.setShortcut(shortcut)
-        action.triggered.connect(callback)
-        menu.addAction(action)
-        return action
 
     def _apply_theme(self, mode: str) -> None:
         application = QApplication.instance()
@@ -380,35 +450,16 @@ class MainWindow(QMainWindow):
         self.toolbar.setObjectName("constructionToolbar")
         self.toolbar.setAccessibleName(self.tr("Outils de construction"))
         self.addToolBar(self.toolbar)
-        self.tool_action_group = QActionGroup(self)
-        self.tool_action_group.setExclusive(True)
-        self.tool_actions: dict[str, QAction] = {}
-        shortcuts = {
-            "select": "S",
-            "point": "P",
-            "segment": "G",
-            "line": "D",
-            "circle": "C",
-            "polygon": "Y",
-        }
+
         for name in self.geometry_view.interaction.tool_names:
-            label = self.tr(self.TOOL_LABELS[name])
-            action = QAction(label, self)
-            action.setStatusTip(label)
-            action.setToolTip(label)
-            action.setCheckable(True)
-            action.setData(name)
-            if name in shortcuts:
-                action.setShortcut(shortcuts[name])
-            action.triggered.connect(lambda checked=False, tool=name: self._activate_tool(tool))
-            self.tool_action_group.addAction(action)
+            action = self.action_registry.register_tool_action(name, self._activate_tool)
             self.toolbar.addAction(action)
-            self.tool_actions[name] = action
         self.tool_actions["select"].setChecked(True)
 
     def _activate_tool(self, name: str) -> None:
         self.geometry_view.activate_tool(name)
-        self.statusBar().showMessage(self.tr(self.TOOL_LABELS[name]))
+        raw_label = self.TOOL_LABELS.get(name, name)
+        self.statusBar().showMessage(self.tr(raw_label))
 
     def _undo(self) -> None:
         self.geometry_view.interaction.undo()
@@ -489,10 +540,7 @@ class MainWindow(QMainWindow):
     def _new_project(self) -> None:
         if not self._confirm_discard_changes():
             return
-        self.session.new()
-        self._discard_recovery()
-        self._adopt_session_document()
-        LOGGER.info("New project")
+        self.project_controller.new_project()
 
     def _open_project(self) -> None:
         if not self._confirm_discard_changes():
@@ -508,21 +556,7 @@ class MainWindow(QMainWindow):
         self._open_path(path)
 
     def _open_path(self, path: str) -> bool:
-        try:
-            self.session.open(path)
-        except ValueError as exc:
-            self._report_operation_error(
-                self.tr("Ouverture impossible"),
-                self.tr("Le projet n'a pas pu être ouvert. Le document courant a été conservé."),
-                exc,
-                path,
-            )
-            return False
-        self._discard_recovery()
-        self.recent_files.add(path)
-        self._adopt_session_document()
-        LOGGER.info("Project opened: %s", path)
-        return True
+        return self.project_controller.open_path(path)
 
     def _open_recent(self, path: str) -> None:
         if self._confirm_discard_changes():
@@ -545,21 +579,7 @@ class MainWindow(QMainWindow):
     def _save_project(self) -> bool:
         if self.session.path is None:
             return self._save_project_as()
-        try:
-            path = self.session.save()
-        except ValueError as exc:
-            self._report_operation_error(
-                self.tr("Enregistrement impossible"),
-                self.tr("Le projet n'a pas pu être enregistré."),
-                exc,
-                str(self.session.path) if self.session.path else None,
-            )
-            return False
-        LOGGER.info("Project saved: %s", path)
-        self.recent_files.add(path)
-        self._discard_recovery()
-        self._update_title()
-        return True
+        return self.project_controller.save_project()
 
     def _save_project_as(self) -> bool:
         suggested = self.session.path.name if self.session.path else f"{self.document.name}.pgl"
@@ -571,21 +591,7 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return False
-        try:
-            saved = self.session.save(path)
-        except ValueError as exc:
-            self._report_operation_error(
-                self.tr("Enregistrement impossible"),
-                self.tr("Le projet n'a pas pu être enregistré."),
-                exc,
-                path,
-            )
-            return False
-        LOGGER.info("Project saved: %s", saved)
-        self.recent_files.add(saved)
-        self._discard_recovery()
-        self._update_title()
-        return True
+        return self.project_controller.save_project_to(path)
 
     def _export_png(self) -> None:
         self._export("png")
@@ -698,6 +704,7 @@ class MainWindow(QMainWindow):
             return
         self.preferences = dialog.preferences()
         self.preferences.save()
+        self.project_controller.preferences = self.preferences
         self._configure_autosave()
         self._apply_preferences()
         if self.preferences.language != previous_language:
@@ -732,21 +739,23 @@ class MainWindow(QMainWindow):
         self,
         title: str,
         summary: str,
-        error: BaseException,
-        path: str | None = None,
+        error: object,
+        path: object = None,
     ) -> None:
+        exc = error if isinstance(error, BaseException) else Exception(str(error))
+        path_str = str(path) if path is not None else None
         LOGGER.error(
             "%s | document=%r revision=%d path=%r error=%s",
             summary,
             self.document.name,
             self.document.revision,
-            path,
-            error,
+            path_str,
+            exc,
         )
         QMessageBox.critical(
             self,
             title,
-            operation_error_message(summary, error, log_directory() / "pygeolab.log"),
+            operation_error_message(summary, exc, log_directory() / "pygeolab.log"),
         )
         self.statusBar().showMessage(title, 5000)
 
@@ -776,24 +785,7 @@ class MainWindow(QMainWindow):
             self._autosave_timer.stop()
 
     def _autosave(self) -> None:
-        if not self.preferences.autosave_enabled or not self.session.dirty:
-            return
-        try:
-            path = self.recovery.write(self.document)
-        except ValueError as exc:
-            LOGGER.error(
-                "Autosave failed | document=%r revision=%d path=%r error=%s",
-                self.document.name,
-                self.document.revision,
-                str(self.recovery.path),
-                exc,
-            )
-            self.statusBar().showMessage(
-                self.tr(f"Échec de la sauvegarde automatique : {exc}"), 8000
-            )
-            return
-        LOGGER.info("Recovery autosave written: %s", path)
-        self.statusBar().showMessage(self.tr("Sauvegarde automatique effectuée"), 3000)
+        self.project_controller.autosave()
 
     def _offer_recovery(self) -> None:
         if not self.recovery.available:
@@ -808,33 +800,13 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.StandardButton.Ignore:
             self._discard_recovery()
             return
-        try:
-            self.session.recover(self.recovery.load())
-        except ValueError as exc:
-            LOGGER.warning("Unreadable recovery | path=%r error=%s", self.recovery.path, exc)
-            QMessageBox.warning(
-                self,
-                self.tr("Récupération impossible"),
-                operation_error_message(
-                    self.tr("La récupération est illisible et a été ignorée."),
-                    exc,
-                    log_directory() / "pygeolab.log",
-                ),
-            )
-            self._discard_recovery()
-            return
-        self._adopt_session_document()
-        self.statusBar().showMessage(self.tr("Document de récupération restauré"), 5000)
+        self.project_controller.recover()
 
     def _discard_recovery(self) -> None:
-        try:
-            self.recovery.discard()
-        except ValueError as exc:
-            LOGGER.warning("Could not clean recovery: %s", exc)
+        self.project_controller.discard_recovery()
 
-    def _adopt_session_document(self) -> None:
-        self._unsubscribe_dirty()
-        self.document = self.session.document
+    def _on_document_adopted(self, doc: Document) -> None:
+        self.document = doc
         self.geometry_view.set_document(self.document)
         self.algebra_panel.set_document(self.document)
         self.properties_panel.set_document(self.document)
@@ -842,25 +814,20 @@ class MainWindow(QMainWindow):
         self.numerical_panel.set_document(self.document)
         self._apply_preferences()
         self._sync_function_actions()
-        self._unsubscribe_dirty = self.document.subscribe(self._document_changed)
         self._update_history_actions()
         self._update_title()
 
+    def _adopt_session_document(self) -> None:
+        self._on_document_adopted(self.session.document)
+
     def _selection_from_canvas(self, ids: frozenset[str]) -> None:
-        self.algebra_panel.set_selected_ids(ids)
-        self.properties_panel.set_selection(ids)
-        self._show_selection_status(ids)
+        self._on_selection_from_source(ids, "canvas")
 
     def _selection_from_algebra(self, ids: frozenset[str]) -> None:
-        self.geometry_view.set_selected_ids(ids)
-        self.properties_panel.set_selection(ids)
-        self._show_selection_status(ids)
+        self._on_selection_from_source(ids, "algebra")
 
     def _selection_from_properties(self, ids: frozenset[str]) -> None:
-        self.geometry_view.set_selected_ids(ids)
-        self.algebra_panel.set_selected_ids(ids)
-        self.properties_panel.set_selection(ids)
-        self._show_selection_status(ids)
+        self._on_selection_from_source(ids, "properties")
 
     def _show_selection_status(self, ids: frozenset[str]) -> None:
         if ids:
@@ -869,7 +836,8 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(self.tr("Sélection effacée"), 2000)
 
     def _show_shortcuts(self) -> None:
-        self._shortcuts_dialog = ShortcutsDialog(self.findChildren(QAction), self)
+        actions = self.action_registry.all_actions() or self.findChildren(QAction)
+        self._shortcuts_dialog = ShortcutsDialog(actions, self)
         self._shortcuts_dialog.show()
 
     def _apply_accessibility(self) -> None:
@@ -891,12 +859,10 @@ class MainWindow(QMainWindow):
                 widget.setAccessibleDescription(widget.toolTip() or widget.accessibleName())
 
     def _show_cursor(self, x: float, y: float) -> None:
-        tool = self.TOOL_LABELS[self.geometry_view.interaction.active_tool_name]
+        tool_name = self.geometry_view.interaction.active_tool_name
+        tool = self.TOOL_LABELS.get(tool_name, tool_name)
         zoom = self.geometry_view.viewport.scale
         self.statusBar().showMessage(f"{tool} · x={x:.3f}, y={y:.3f} · zoom {zoom:.1f}px/u")
-
-    def _document_changed(self) -> None:
-        self._update_title()
 
     def _update_title(self) -> None:
         name = self.session.path.name if self.session.path else self.document.name
@@ -904,8 +870,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{name}{marker} — PyGeoLab")
 
     def _update_history_actions(self) -> None:
-        self.undo_action.setEnabled(self.geometry_view.history.can_undo)
-        self.redo_action.setEnabled(self.geometry_view.history.can_redo)
+        can_undo = self.geometry_view.history.can_undo
+        can_redo = self.geometry_view.history.can_redo
+        self.action_registry.update_history_state(can_undo, can_redo)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Prompt for unsaved changes before allowing the window to close."""
@@ -920,7 +887,7 @@ class MainWindow(QMainWindow):
             return
         self._disposed = True
         self._autosave_timer.stop()
-        self._unsubscribe_dirty()
+        self.project_controller.dispose()
         self.geometry_view.dispose()
         self.algebra_panel.dispose()
         self.properties_panel.dispose()

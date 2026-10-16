@@ -62,7 +62,10 @@ Outils actifs, hit-testing, drag, sélection.
 
 ### `ui`
 
-Fenêtres, panneaux et widgets Qt.
+Fenêtres, panneaux et widgets Qt, orchestrés par des contrôleurs légers :
+- `ActionRegistry` : centralisation et synchronisation d'état des `QAction` ;
+- `SelectionCoordinator` : synchronisation découplée de la sélection multi-panneaux ;
+- `ProjectController` : gestion du cycle de vie des sessions de documents et de persistance.
 
 ### `persistence`
 
