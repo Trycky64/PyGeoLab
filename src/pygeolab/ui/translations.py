@@ -68,6 +68,7 @@ ENGLISH: dict[str, str] = {
     "Copier les informations &système": "Copy &system information",
     "Couleur": "Color",
     "Couleur par défaut": "Default color",
+    "Coordonnée analytique": "Analytical coordinate",
     "Curseur invalide": "Invalid slider",
     "Curseurs": "Sliders",
     "Demi-droite": "Ray",
@@ -159,6 +160,8 @@ ENGLISH: dict[str, str] = {
     "Nouvelle fonction…": "New function…",
     "Nouvelle &fonction…": "New &function…",
     "Objet": "Object",
+    "Objet dépendant : calculé automatiquement": "Dependent object: calculated automatically",
+    "Objet verrouillé": "Locked object",
     "Objets": "Objects",
     "Opacité du remplissage": "Fill opacity",
     "Options d'export": "Export options",
@@ -257,6 +260,7 @@ ENGLISH: dict[str, str] = {
     "À propos de PyGeoLab": "About PyGeoLab",
     "À &propos de PyGeoLab": "&About PyGeoLab",
     "Échantillons": "Samples",
+    "Édition analytique disponible": "Analytical editing available",
     "Épaisseur": "Width",
     "Épaisseur par défaut": "Default width",
     "indéfini": "undefined",
@@ -358,6 +362,10 @@ ERRORS_ENGLISH: dict[str, str] = {
     "Version .pgl plus récente que cette application": (
         "The .pgl version is newer than this application"
     ),
+    "Format de coordonnées invalide, attendu : (x, y)": (
+        "Invalid coordinate format, expected: (x, y)"
+    ),
+    "Les coordonnées doivent être des nombres réels": "Coordinates must be real numbers",
     "Zoom de viewport invalide": "Invalid viewport zoom",
     "Épaisseur attendue entre 0.5 et 20": "Width must be between 0.5 and 20",
     "Épaisseur par défaut invalide": "Invalid default width",

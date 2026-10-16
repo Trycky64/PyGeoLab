@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
@@ -20,13 +21,16 @@ from PySide6.QtWidgets import (
 
 from pygeolab.commands import (
     ChangeLockCommand,
+    ChangeNumberValueCommand,
     ChangeParametersCommand,
     ChangeStyleCommand,
     ChangeVisibilityCommand,
     Command,
     CompositeCommand,
+    MovePointCommand,
     RenameObjectCommand,
 )
+from pygeolab.geometry import Point2D
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -246,17 +250,40 @@ class PropertiesPanel(QWidget):
         if obj is None:
             self._parameters_widget.setEnabled(False)
             return
-        editable = _editable_parameter_names(obj.kind)
+
+        point_geom = obj.geometry if isinstance(obj.geometry, Point2D) else None
+        editable: tuple[str, ...]
+        if point_geom is not None and not obj.params:
+            editable = ("x", "y")
+        else:
+            editable = _editable_parameter_names(obj.kind)
+
         for key in editable:
-            value = obj.params.get(key)
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raw_val = obj.params.get(key)
+            if key in ("x", "y") and point_geom is not None:
+                raw_val = point_geom.x if key == "x" else point_geom.y
+            if isinstance(raw_val, bool) or not isinstance(raw_val, (int, float)):
                 continue
+            if not math.isfinite(raw_val):
+                continue
+
             editor = QDoubleSpinBox(self._parameters_widget)
             editor.setDecimals(6)
             editor.setRange(-1e9, 1e9)
             editor.setSingleStep(0.1)
+
+            # A parameter is dependent if it is point coordinate on a dependent object
+            is_dependent = bool(obj.dependencies) and key in ("x", "y")
+
+            if is_dependent:
+                editor.setEnabled(False)
+                editor.setToolTip(self.tr("Objet dépendant : calculé automatiquement"))
+            elif obj.locked:
+                editor.setEnabled(False)
+                editor.setToolTip(self.tr("Objet verrouillé"))
+
             if key == "radius":
-                editor.setMinimum(0)
+                editor.setMinimum(1e-6)
             elif obj.kind == "number" and key == "value":
                 minimum = obj.params.get("minimum", -1e9)
                 maximum = obj.params.get("maximum", 1e9)
@@ -265,10 +292,12 @@ class PropertiesPanel(QWidget):
             elif key == "index":
                 editor.setDecimals(0)
                 editor.setSingleStep(1)
-            editor.setValue(float(value))
-            editor.valueChanged.connect(
-                lambda new_value, parameter=key: self._change_parameter(parameter, new_value)
-            )
+
+            editor.setValue(float(raw_val))
+            if not is_dependent and not obj.locked:
+                editor.valueChanged.connect(
+                    lambda new_value, parameter=key: self._change_parameter(parameter, new_value)
+                )
             self._parameters_form.addRow(key, editor)
             self._parameter_editors[key] = editor
         self._parameters_widget.setEnabled(bool(self._parameter_editors))
@@ -276,7 +305,46 @@ class PropertiesPanel(QWidget):
     def _change_parameter(self, key: str, value: float) -> None:
         if self._updating or self._object_id is None:
             return
+        if not math.isfinite(value):
+            return
         obj = self._document.get(self._object_id)
+        if obj.locked:
+            return
+        if key in ("x", "y") and obj.dependencies:
+            return
+
+        if obj.kind == "point":
+            raw_x = obj.params.get("x", 0.0)
+            raw_y = obj.params.get("y", 0.0)
+            cur_x = float(raw_x) if isinstance(raw_x, (int, float)) else 0.0
+            cur_y = float(raw_y) if isinstance(raw_y, (int, float)) else 0.0
+            new_x = float(value) if key == "x" else cur_x
+            new_y = float(value) if key == "y" else cur_y
+            if not (math.isfinite(new_x) and math.isfinite(new_y)):
+                return
+            before = Point2D(cur_x, cur_y)
+            after = Point2D(new_x, new_y)
+            if before != after:
+                self._changing_parameter = True
+                try:
+                    self._execute_command(MovePointCommand(self._document, obj.id, before, after))
+                finally:
+                    self._changing_parameter = False
+            return
+
+        if obj.kind == "circle_radius" and key == "radius" and value <= 0:
+            return
+        if obj.kind == "scale" and key == "factor" and value == 0:
+            return
+
+        if obj.kind == "number" and key == "value":
+            self._changing_parameter = True
+            try:
+                self._execute_command(ChangeNumberValueCommand(self._document, obj.id, value))
+            finally:
+                self._changing_parameter = False
+            return
+
         params = dict(obj.params)
         params[key] = int(value) if key == "index" else value
         if params != dict(obj.params):

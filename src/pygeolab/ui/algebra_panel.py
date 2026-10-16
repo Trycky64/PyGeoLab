@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Iterator, Sequence
 
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
@@ -20,13 +21,24 @@ from PySide6.QtWidgets import (
 
 from pygeolab.commands import (
     ChangeLockCommand,
+    ChangeNumberValueCommand,
     ChangeVisibilityCommand,
     Command,
     CompositeCommand,
     DeleteObjectsCommand,
+    MovePointCommand,
     RenameObjectCommand,
 )
-from pygeolab.geometry import Circle2D, Line2D, Point2D, Polygon2D, Ray2D, Segment2D, Vector2D
+from pygeolab.geometry import (
+    Circle2D,
+    Line2D,
+    Point2D,
+    Polygon2D,
+    Ray2D,
+    Segment2D,
+    Vector2D,
+    parse_point_coordinates,
+)
 from pygeolab.math_engine.functions import FunctionObject
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
@@ -167,6 +179,10 @@ class AlgebraPanel(QWidget):
         elif not obj.visible:
             for column in range(2):
                 item.setForeground(column, self.palette().mid())
+        if obj.dependencies:
+            item.setToolTip(1, self.tr("Objet dépendant : calculé automatiquement"))
+        elif obj.kind in ("point", "number") and not obj.locked:
+            item.setToolTip(1, self.tr("Édition analytique disponible"))
         return item
 
     def _emit_selection(self) -> None:
@@ -183,6 +199,37 @@ class AlgebraPanel(QWidget):
             name = item.text(0).strip()
             if name and name != obj.name:
                 command = RenameObjectCommand(self._document, object_id, name)
+        elif column == 1:
+            if obj.locked or obj.dependencies:
+                self.refresh()
+                return
+            if obj.kind == "point":
+                try:
+                    target_pt = parse_point_coordinates(item.text(1))
+                    raw_x = obj.params.get("x", 0.0)
+                    raw_y = obj.params.get("y", 0.0)
+                    cur_x = float(raw_x) if isinstance(raw_x, (int, float)) else 0.0
+                    cur_y = float(raw_y) if isinstance(raw_y, (int, float)) else 0.0
+                    cur_pt = Point2D(cur_x, cur_y)
+                    if cur_pt != target_pt:
+                        command = MovePointCommand(self._document, object_id, cur_pt, target_pt)
+                except ValueError:
+                    self.refresh()
+                    return
+            elif obj.kind == "number":
+                try:
+                    val = float(item.text(1).strip())
+                    if math.isfinite(val):
+                        command = ChangeNumberValueCommand(self._document, object_id, val)
+                    else:
+                        self.refresh()
+                        return
+                except ValueError:
+                    self.refresh()
+                    return
+            else:
+                self.refresh()
+                return
         elif column == 2:
             visible = item.checkState(2) == Qt.CheckState.Checked
             if visible != obj.visible:
@@ -197,7 +244,7 @@ class AlgebraPanel(QWidget):
                 self._execute_command(command)
             finally:
                 self._handling_item_change = False
-        elif column == 1 or (column == 0 and item.text(0) != obj.name):
+        else:
             self.refresh()
 
     def _show_context_menu(self, position: QPoint) -> None:

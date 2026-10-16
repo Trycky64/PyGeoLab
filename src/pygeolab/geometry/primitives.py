@@ -37,6 +37,23 @@ class Point2D:
         return self.distance_to(other) <= tolerance
 
 
+def parse_point_coordinates(text: str) -> Point2D:
+    """Parse text formatted as (x, y), x, y or x; y into a validated Point2D."""
+    cleaned = text.strip()
+    if cleaned.startswith("(") and cleaned.endswith(")"):
+        cleaned = cleaned[1:-1].strip()
+    delimiter = ";" if ";" in cleaned else ("," if "," in cleaned else None)
+    parts = cleaned.split(delimiter) if delimiter else cleaned.split()
+    if len(parts) != 2:
+        raise ValueError("Format de coordonnées invalide, attendu : (x, y)")
+    try:
+        x = float(parts[0].strip())
+        y = float(parts[1].strip())
+    except ValueError as exc:
+        raise ValueError("Les coordonnées doivent être des nombres réels") from exc
+    return Point2D(x, y)
+
+
 @dataclass(frozen=True, slots=True)
 class Vector2D:
     """A finite displacement, independent of any origin."""

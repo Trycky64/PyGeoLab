@@ -9,6 +9,7 @@ from pygeolab.geometry.primitives import (
     Ray2D,
     Segment2D,
     Vector2D,
+    parse_point_coordinates,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "Ray2D",
     "Segment2D",
     "Vector2D",
+    "parse_point_coordinates",
 ]
