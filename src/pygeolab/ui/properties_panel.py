@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import replace
+from typing import cast
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -30,7 +31,29 @@ from pygeolab.commands import (
     MovePointCommand,
     RenameObjectCommand,
 )
-from pygeolab.geometry import Point2D
+from pygeolab.geometry import (
+    EPSILON,
+    Circle2D,
+    Line2D,
+    Point2D,
+    Ray2D,
+    Segment2D,
+    Vector2D,
+    analyze_circle,
+    analyze_line,
+    analyze_ray,
+    analyze_segment,
+    angle_between_lines,
+    are_lines_orthogonal,
+    are_lines_parallel,
+    are_points_collinear,
+    distance_point_to_line,
+    distance_point_to_point,
+    format_number,
+    midpoint,
+    project_point_on_line,
+)
+from pygeolab.geometry.intersections import IntersectionKind, line_line
 from pygeolab.model.document import Document
 from pygeolab.model.objects import GeoObject
 from pygeolab.model.styles import Style
@@ -79,6 +102,9 @@ class PropertiesPanel(QWidget):
         self._parameters_form = QFormLayout(self._parameters_widget)
         self._parameters_form.setContentsMargins(0, 0, 0, 0)
         self._parameter_editors: dict[str, QDoubleSpinBox] = {}
+        self._analytics_widget = QWidget(self)
+        self._analytics_form = QFormLayout(self._analytics_widget)
+        self._analytics_form.setContentsMargins(0, 0, 0, 0)
         form = QFormLayout(self)
         form.addRow(self._empty)
         form.addRow(self.tr("Nom"), self._name)
@@ -95,6 +121,7 @@ class PropertiesPanel(QWidget):
         form.addRow(self.tr("Descendants"), self._descendants)
         form.addRow(self._select_descendants_button)
         form.addRow(self.tr("Paramètres"), self._parameters_widget)
+        form.addRow(self.tr("Propriétés analytiques"), self._analytics_widget)
         self._name.editingFinished.connect(self._rename)
         self._visible.toggled.connect(self._change_visibility)
         self._locked.toggled.connect(self._change_locked)
@@ -166,6 +193,7 @@ class PropertiesPanel(QWidget):
         self._select_parents_button.setEnabled(bool(parent_ids))
         self._select_descendants_button.setEnabled(bool(descendant_ids))
         self._refresh_parameters(obj if single else None)
+        self._refresh_analytics(objects)
         if obj is None:
             return
         self._updating = True
@@ -301,6 +329,152 @@ class PropertiesPanel(QWidget):
             self._parameters_form.addRow(key, editor)
             self._parameter_editors[key] = editor
         self._parameters_widget.setEnabled(bool(self._parameter_editors))
+
+    def _refresh_analytics(self, objects: Sequence[GeoObject]) -> None:
+        while self._analytics_form.rowCount():
+            self._analytics_form.removeRow(0)
+
+        if not objects:
+            self._analytics_widget.setVisible(False)
+            return
+
+        def add_row(label: str, value: str) -> None:
+            val_lbl = QLabel(value, self._analytics_widget)
+            val_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self._analytics_form.addRow(label, val_lbl)
+
+        if len(objects) == 1:
+            geom = objects[0].geometry
+            if isinstance(geom, Point2D):
+                add_row(
+                    self.tr("Coordonnées"),
+                    f"({format_number(geom.x)}, {format_number(geom.y)})",
+                )
+                r = math.hypot(geom.x, geom.y)
+                theta_deg = math.degrees(math.atan2(geom.y, geom.x))
+                add_row(
+                    self.tr("Coordonnées polaires"),
+                    f"r = {format_number(r)}, θ = {format_number(theta_deg)}°",
+                )
+            elif isinstance(geom, Line2D):
+                analysis = analyze_line(geom)
+                add_row(self.tr("Équation cartésienne"), analysis.cartesian_equation)
+                add_row(self.tr("Équation réduite"), analysis.slope_intercept_equation)
+                slope_str = (
+                    format_number(analysis.slope)
+                    if analysis.slope is not None
+                    else self.tr("Indéfinie (droite verticale)")
+                )
+                add_row(self.tr("Pente"), slope_str)
+                add_row(
+                    self.tr("Vecteur directeur"),
+                    f"({format_number(-geom.b)}, {format_number(geom.a)})",
+                )
+            elif isinstance(geom, Circle2D):
+                c_analysis = analyze_circle(geom)
+                add_row(self.tr("Équation canonique"), c_analysis.canonical_equation)
+                add_row(self.tr("Équation générale"), c_analysis.general_equation)
+                add_row(self.tr("Rayon"), format_number(geom.radius))
+                add_row(self.tr("Périmètre"), format_number(geom.perimeter))
+                add_row(self.tr("Aire"), format_number(geom.area))
+            elif isinstance(geom, Segment2D):
+                s_analysis = analyze_segment(geom)
+                add_row(self.tr("Longueur"), format_number(float(s_analysis["length"])))
+                add_row(
+                    self.tr("Milieu"),
+                    f"({format_number(float(s_analysis['midpoint_x']))}, "
+                    f"{format_number(float(s_analysis['midpoint_y']))})",
+                )
+                add_row(self.tr("Droite support"), str(s_analysis["line_equation"]))
+            elif isinstance(geom, Ray2D):
+                r_analysis = analyze_ray(geom)
+                add_row(
+                    self.tr("Origine"),
+                    f"({format_number(float(r_analysis['origin_x']))}, "
+                    f"{format_number(float(r_analysis['origin_y']))})",
+                )
+                add_row(self.tr("Droite support"), str(r_analysis["line_equation"]))
+
+        elif len(objects) == 2:
+            g1, g2 = objects[0].geometry, objects[1].geometry
+            if isinstance(g1, Point2D) and isinstance(g2, Point2D):
+                dist = distance_point_to_point(g1, g2)
+                mid = midpoint(g1, g2)
+                vec = Vector2D.between(g1, g2)
+                add_row(self.tr("Distance"), format_number(dist))
+                add_row(
+                    self.tr("Milieu"),
+                    f"({format_number(mid.x)}, {format_number(mid.y)})",
+                )
+                add_row(
+                    self.tr("Vecteur"),
+                    f"({format_number(vec.x)}, {format_number(vec.y)})",
+                )
+            elif (isinstance(g1, Point2D) and isinstance(g2, Line2D)) or (
+                isinstance(g2, Point2D) and isinstance(g1, Line2D)
+            ):
+                pt = g1 if isinstance(g1, Point2D) else cast(Point2D, g2)
+                line = g2 if isinstance(g2, Line2D) else cast(Line2D, g1)
+                dist = distance_point_to_line(pt, line)
+                proj = project_point_on_line(pt, line)
+                add_row(self.tr("Distance"), format_number(dist))
+                add_row(
+                    self.tr("Projection"),
+                    f"({format_number(proj.x)}, {format_number(proj.y)})",
+                )
+            elif isinstance(g1, Line2D) and isinstance(g2, Line2D):
+                ang = angle_between_lines(g1, g2)
+                ang_deg = math.degrees(ang)
+                add_row(
+                    self.tr("Angle"),
+                    f"{format_number(ang_deg)}° ({format_number(ang)} rad)",
+                )
+                is_par = are_lines_parallel(g1, g2)
+                is_ortho = are_lines_orthogonal(g1, g2)
+                add_row(
+                    self.tr("Parallèles"),
+                    self.tr("Oui") if is_par else self.tr("Non"),
+                )
+                add_row(
+                    self.tr("Orthogonales"),
+                    self.tr("Oui") if is_ortho else self.tr("Non"),
+                )
+                res = line_line(g1, g2)
+                if res.kind == IntersectionKind.ONE and res.points:
+                    inter_pt = res.points[0]
+                    add_row(
+                        self.tr("Intersection"),
+                        f"({format_number(inter_pt.x)}, {format_number(inter_pt.y)})",
+                    )
+                else:
+                    add_row(self.tr("Intersection"), self.tr("Aucune (parallèles)"))
+            elif (isinstance(g1, Point2D) and isinstance(g2, Circle2D)) or (
+                isinstance(g2, Point2D) and isinstance(g1, Circle2D)
+            ):
+                pt = g1 if isinstance(g1, Point2D) else cast(Point2D, g2)
+                circ = g2 if isinstance(g2, Circle2D) else cast(Circle2D, g1)
+                dist_center = distance_point_to_point(pt, circ.center)
+                add_row(self.tr("Distance au centre"), format_number(dist_center))
+                if abs(dist_center - circ.radius) <= EPSILON:
+                    pos = self.tr("Sur le cercle")
+                elif dist_center < circ.radius:
+                    pos = self.tr("Intérieur")
+                else:
+                    pos = self.tr("Extérieur")
+                add_row(self.tr("Position"), pos)
+
+        elif len(objects) == 3:
+            if all(isinstance(o.geometry, Point2D) for o in objects):
+                p1 = cast(Point2D, objects[0].geometry)
+                p2 = cast(Point2D, objects[1].geometry)
+                p3 = cast(Point2D, objects[2].geometry)
+                col = are_points_collinear(p1, p2, p3)
+                add_row(
+                    self.tr("Colinéaires"),
+                    self.tr("Oui") if col else self.tr("Non"),
+                )
+
+        self._analytics_widget.setVisible(self._analytics_form.rowCount() > 0)
 
     def _change_parameter(self, key: str, value: float) -> None:
         if self._updating or self._object_id is None:

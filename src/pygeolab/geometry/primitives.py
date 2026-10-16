@@ -228,6 +228,16 @@ class Circle2D:
         if self.radius < 0:
             raise ValueError("Le rayon doit être positif ou nul")
 
+    @property
+    def perimeter(self) -> float:
+        """Circumference 2 * pi * R."""
+        return 2.0 * math.pi * self.radius
+
+    @property
+    def area(self) -> float:
+        """Disk area pi * R^2."""
+        return math.pi * self.radius * self.radius
+
 
 @dataclass(frozen=True, slots=True)
 class Polygon2D:

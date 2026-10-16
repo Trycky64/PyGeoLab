@@ -192,8 +192,7 @@ def test_algebra_panel_inline_edit_dependent_point_is_rejected(qapp: QApplicatio
 
     algebra = AlgebraPanel(doc, history.execute)
     items = {
-        item.data(0, int(Qt.ItemDataRole.UserRole)): item
-        for item in algebra._iter_object_items()
+        item.data(0, int(Qt.ItemDataRole.UserRole)): item for item in algebra._iter_object_items()
     }
     mid_item = items[mid.id]
 
