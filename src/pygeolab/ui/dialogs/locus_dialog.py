@@ -62,7 +62,8 @@ class LocusDialog(QDialog):
         self.samples_spin.setRange(10, 500)
         self.samples_spin.setSingleStep(10)
         raw_samples = params.get("samples", 150)
-        self.samples_spin.setValue(int(raw_samples) if isinstance(raw_samples, (int, float, str)) else 150)
+        samples_val = int(raw_samples) if isinstance(raw_samples, (int, float, str)) else 150
+        self.samples_spin.setValue(samples_val)
 
         # Pre-select existing or sensible defaults
         if locus is not None and len(locus.dependencies) >= 2:
@@ -75,8 +76,10 @@ class LocusDialog(QDialog):
                 self.driver_combo.setCurrentIndex(idx_d)
             raw_start = params.get("start", 0.0)
             raw_end = params.get("end", 1.0)
-            self.start_spin.setValue(float(raw_start) if isinstance(raw_start, (int, float, str)) else 0.0)
-            self.end_spin.setValue(float(raw_end) if isinstance(raw_end, (int, float, str)) else 1.0)
+            start_val = float(raw_start) if isinstance(raw_start, (int, float, str)) else 0.0
+            end_val = float(raw_end) if isinstance(raw_end, (int, float, str)) else 1.0
+            self.start_spin.setValue(start_val)
+            self.end_spin.setValue(end_val)
         else:
             if self.target_combo.count() > 0 and self.driver_combo.count() > 0:
                 # If the first items happen to be the same object, pick another driver or target

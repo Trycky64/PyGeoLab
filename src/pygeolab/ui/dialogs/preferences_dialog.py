@@ -52,6 +52,13 @@ class PreferencesDialog(QDialog):
         self._autosave_interval = QSpinBox(self)
         self._autosave_interval.setRange(1, 60)
         self._autosave_interval.setSuffix(self.tr(" min"))
+        self._timeline_fps = QSpinBox(self)
+        self._timeline_fps.setRange(10, 120)
+        self._timeline_fps.setSuffix(" fps")
+        self._timeline_speed = QDoubleSpinBox(self)
+        self._timeline_speed.setRange(0.1, 10.0)
+        self._timeline_speed.setSingleStep(0.1)
+        self._timeline_speed.setSuffix("×")
         self._snapping.toggled.connect(self._snap_size.setEnabled)
         self._autosave.toggled.connect(self._autosave_interval.setEnabled)
         self._defaults = QPushButton(self.tr("Restaurer les valeurs par défaut"), self)
@@ -77,6 +84,8 @@ class PreferencesDialog(QDialog):
         layout.addRow(self._transparent)
         layout.addRow(self._autosave)
         layout.addRow(self.tr("Intervalle autosave"), self._autosave_interval)
+        layout.addRow(self.tr("FPS de l'animation"), self._timeline_fps)
+        layout.addRow(self.tr("Vitesse globale de l'animation"), self._timeline_speed)
         layout.addRow(self._defaults)
         layout.addRow(buttons)
         self._load(preferences)
@@ -96,6 +105,8 @@ class PreferencesDialog(QDialog):
         self._transparent.setChecked(preferences.transparent_export)
         self._autosave.setChecked(preferences.autosave_enabled)
         self._autosave_interval.setValue(preferences.autosave_interval_minutes)
+        self._timeline_fps.setValue(preferences.timeline_fps)
+        self._timeline_speed.setValue(preferences.timeline_speed)
         self._snap_size.setEnabled(self._snapping.isChecked())
         self._autosave_interval.setEnabled(self._autosave.isChecked())
 
@@ -116,4 +127,6 @@ class PreferencesDialog(QDialog):
             transparent_export=self._transparent.isChecked(),
             autosave_enabled=self._autosave.isChecked(),
             autosave_interval_minutes=self._autosave_interval.value(),
+            timeline_fps=self._timeline_fps.value(),
+            timeline_speed=self._timeline_speed.value(),
         )

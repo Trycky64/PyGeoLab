@@ -154,6 +154,23 @@ Dans les logiciels de géométrie dynamique avancés (ex. GeoGebra, Cabri), les 
    - Dialogue `LocusDialog` avec sélection guidée des cibles valides et pilotes disponibles.
    - Prise en charge dans `AlgebraPanel` (catégorie dédiée "Lieux géométriques"), `PropertiesPanel` (édition interactive de `start`, `end`, `samples`), `Renderer` (rendu vectoriel anti-aliasé), `HitTest` et export de vue (`fitted_viewport`).
 
+## ADR-042 : Timeline et animation multi-sliders synchronisée (Section 8)
+
+### Contexte
+L'animation indépendante slider par slider ne permettait pas de synchroniser des constructions complexes (ex. mécanismes articulés avec plusieurs degrés de liberté, visualisations physiques temporelles, balayages paramétriques conjoints). Une timeline globale avec barre de transport (Play, Pause, Stop), scrubbing instantané, marqueurs de boucle et interpolation déterministe était requise.
+
+### Décisions d'architecture
+1. **Contrôleur métier découplé `TimelineController`** :
+   - Encapsule l'état d'animation temporel : durée, tête de lecture (`current_time` / `normalized_time`), FPS, vitesse globale, mode boucle, mode ping-pong, marqueurs de début et de fin.
+   - Fournit une méthode `advance(delta_seconds)` pure et déterministe pour des tests unitaires rapides et fiables sans dépendance temporelle aux timers Qt.
+   - Gère la capture d'état initial (`save_initial_state`) et la restauration optionnelle sans pollution de l'historique Undo/Redo.
+2. **Interface utilisateur `TimelineWidget` et Dock dédié** :
+   - Panneau dockable en bas de l'écran avec boutons de transport, affichage numérique du temps ($s$), slider de scrubbing fluide (1 000 crans), cases à cocher pour boucle et aller-retour, et spinboxes de précision pour marqueurs, durée et vitesse.
+   - Raccourcis clavier globaux : `Space` pour Lecture / Pause, `Escape` pour Arrêter l'animation.
+3. **Préférences applicatives et configuration centralisée** :
+   - Nouveaux paramètres persistants `timeline_fps` (10 à 120 FPS) et `timeline_speed` (0.1× à 10.0×), configurables via `PreferencesDialog` et restaurables par défaut.
+
+
 
 
 

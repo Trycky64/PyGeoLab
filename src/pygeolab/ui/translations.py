@@ -361,6 +361,22 @@ ENGLISH: dict[str, str] = {
     "Fin :": "End:",
     "Nom :": "Name:",
     "Intervalle angulaire": "Angular interval",
+    "FPS de l'animation": "Animation FPS",
+    "Vitesse globale de l'animation": "Global animation speed",
+    "Timeline multi-curseurs": "Multi-slider timeline",
+    "Panneau Timeline": "Timeline Panel",
+    "Lecture": "Play",
+    "Pause": "Pause",
+    "Arrêter": "Stop",
+    "Boucle": "Loop",
+    "Aller-retour": "Ping-pong",
+    "Vitesse :": "Speed:",
+    "Durée :": "Duration:",
+    "Restaurer l'état initial à l'arrêt": "Restore initial state on stop",
+    "Jouer / Pause l'animation": "Play / Pause animation",
+    "Arrêter l'animation": "Stop animation",
+    "Jouer / &Pause": "Play / &Pause",
+    "&Arrêter l'animation": "&Stop animation",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {
@@ -458,6 +474,8 @@ ERRORS_ENGLISH: dict[str, str] = {
     "Point cible et variable pilote requis": "Target point and driver variable required",
     "La cible et le pilote doivent être distincts": "Target and driver must be distinct",
     "L'intervalle de balayage ne peut pas être nul": "Sweep interval cannot be zero",
+    "FPS timeline invalide": "Invalid timeline FPS",
+    "Vitesse timeline invalide": "Invalid timeline speed",
     "Les coordonnées doivent être finies": "Coordinates must be finite",
     "Les coordonnées écran doivent être finies": "Screen coordinates must be finite",
     "Les dimensions doivent être comprises entre 1 et 20 000 pixels": (

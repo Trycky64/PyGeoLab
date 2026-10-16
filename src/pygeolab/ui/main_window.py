@@ -59,6 +59,7 @@ from pygeolab.ui.recent_files import RecentFiles
 from pygeolab.ui.selection_coordinator import SelectionCoordinator
 from pygeolab.ui.slider_panel import SliderPanel
 from pygeolab.ui.theme import apply_theme
+from pygeolab.ui.timeline_widget import TimelineWidget
 from pygeolab.ui.translations import translate_message
 
 LOGGER = logging.getLogger(__name__)
@@ -178,6 +179,15 @@ class MainWindow(QMainWindow):
         self.numerical_dock.setAccessibleName(self.tr("Panneau Analyse numérique"))
         self.numerical_dock.setWidget(self.numerical_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.numerical_dock)
+
+        self.timeline_widget = TimelineWidget(
+            self.document, preferences=self.preferences, parent=self
+        )
+        self.timeline_dock = QDockWidget(self.tr("Timeline multi-curseurs"), self)
+        self.timeline_dock.setObjectName("timelineDock")
+        self.timeline_dock.setAccessibleName(self.tr("Panneau Timeline"))
+        self.timeline_dock.setWidget(self.timeline_widget)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.timeline_dock)
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
@@ -346,6 +356,23 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.properties_dock.toggleViewAction())
         view_menu.addAction(self.slider_dock.toggleViewAction())
         view_menu.addAction(self.numerical_dock.toggleViewAction())
+        view_menu.addAction(self.timeline_dock.toggleViewAction())
+        view_menu.addSeparator()
+        self.action_registry.create_action(
+            "animation.toggle_play",
+            "Jouer / &Pause",
+            self.timeline_widget.controller.toggle_play,
+            "Space",
+            menu=view_menu,
+        )
+        self.action_registry.create_action(
+            "animation.stop",
+            "&Arrêter l'animation",
+            self.timeline_widget.controller.stop,
+            "Escape",
+            menu=view_menu,
+        )
+        view_menu.addSeparator()
         self.action_registry.create_action(
             "view.reset",
             "Réinitialiser la vue",
@@ -969,6 +996,7 @@ class MainWindow(QMainWindow):
         self.properties_panel.set_document(self.document)
         self.slider_panel.set_document(self.document)
         self.numerical_panel.set_document(self.document)
+        self.timeline_widget.set_document(self.document)
         self._apply_preferences()
         self._sync_function_actions()
         self._update_history_actions()

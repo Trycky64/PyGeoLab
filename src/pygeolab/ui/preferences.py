@@ -26,6 +26,8 @@ class Preferences:
     transparent_export: bool = False
     autosave_enabled: bool = True
     autosave_interval_minutes: int = 2
+    timeline_fps: int = 30
+    timeline_speed: float = 1.0
 
     def __post_init__(self) -> None:
         if self.theme_mode not in {"system", "light", "dark"}:
@@ -44,6 +46,10 @@ class Preferences:
             raise ValueError("Qualité d'export invalide")
         if not 1 <= self.autosave_interval_minutes <= 60:
             raise ValueError("Intervalle d'autosave invalide")
+        if not 10 <= self.timeline_fps <= 120:
+            raise ValueError("FPS timeline invalide")
+        if not 0.1 <= self.timeline_speed <= 10.0:
+            raise ValueError("Vitesse timeline invalide")
 
     @property
     def dark_theme(self) -> bool:
@@ -76,6 +82,8 @@ class Preferences:
             transparent_export=_read_bool(store, "export/transparent", False),
             autosave_enabled=_read_bool(store, "files/autosave_enabled", True),
             autosave_interval_minutes=_read_int(store, "files/autosave_interval_minutes", 2, 1, 60),
+            timeline_fps=_read_int(store, "animation/timeline_fps", 30, 10, 120),
+            timeline_speed=_read_float(store, "animation/timeline_speed", 1.0, 0.1, 10.0),
         )
 
     def save(self, settings: QSettings | None = None) -> None:
@@ -96,6 +104,8 @@ class Preferences:
             "export/transparent": self.transparent_export,
             "files/autosave_enabled": self.autosave_enabled,
             "files/autosave_interval_minutes": self.autosave_interval_minutes,
+            "animation/timeline_fps": self.timeline_fps,
+            "animation/timeline_speed": self.timeline_speed,
         }
         for key, value in values.items():
             store.setValue(key, value)
