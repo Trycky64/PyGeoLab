@@ -170,6 +170,23 @@ L'animation indépendante slider par slider ne permettait pas de synchroniser de
 3. **Préférences applicatives et configuration centralisée** :
    - Nouveaux paramètres persistants `timeline_fps` (10 à 120 FPS) et `timeline_speed` (0.1× à 10.0×), configurables via `PreferencesDialog` et restaurables par défaut.
 
+## ADR-043 : Panneau de tables de valeurs avec modèle tabulaire virtualisé (Section 9)
+
+### Contexte
+L'étude des fonctions analytiques cartésiennes, paramétriques et polaires nécessite un outil tabulaire d'évaluation discrète permettant de calculer des valeurs à pas régulier, d'afficher les indéterminations ou erreurs d'évaluation proprement sans blocage, de copier les données ou de les exporter vers des tableurs au format CSV.
+
+### Décisions d'architecture
+1. **Modèle de données tabulaire `ValueTableModel` (`QAbstractTableModel`)** :
+   - Prise en charge universelle des fonctions cartésiennes ($x \mapsto f(x)$), courbes paramétriques ($t \mapsto (x(t), y(t))$) et polaires ($\theta \mapsto r(\theta)$ ou $(\theta, x, y)$).
+   - Génération dynamique et virtualisée jusqu'à 50 000 lignes (`MAX_ROWS`) à partir des paramètres de début, fin et pas.
+   - Formatage adaptatif des nombres réels et affichage clair des singularités (`ND`, `NaN`, `Inf`, `Div/0`).
+2. **Interface utilisateur `ValueTablePanel` et Docking** :
+   - Intégration en dock inférieur tabifié avec la Timeline (`value_table_dock`).
+   - Commandes interactives pour définir la plage ($start$, $end$, $step$) avec validation en direct (rejet des pas nuls ou bornes inversées).
+   - Copie presse-papiers tabulée compatible tableurs (Excel, LibreOffice Calc) et export direct en fichier `.csv` encodé en UTF-8.
+   - Nettoyage propre lors de la fermeture ou du changement de document (`dispose`).
+
+
 
 
 

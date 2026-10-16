@@ -27,7 +27,7 @@ def _paint(renderer: Renderer, document: Document) -> None:
         painter.end()
 
 
-def test_function_sampling_cache_survives_unrelated_document_changes(monkeypatch) -> None:
+def test_function_sampling_cache_survives_unrelated_document_changes(qapp, monkeypatch) -> None:
     document = Document()
     slider = GeoObject("number", "a", params={"value": 1.0})
     function = GeoObject(
@@ -78,7 +78,7 @@ def test_main_window_close_stops_timers_and_releases_document_observers(
     window = MainWindow()
     qtbot.addWidget(window)
     document = window.document
-    assert document.observer_count == 6
+    assert document.observer_count == 7
     assert QApplication.activeModalWidget() is None
 
     window.show()

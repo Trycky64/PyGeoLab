@@ -61,6 +61,7 @@ from pygeolab.ui.slider_panel import SliderPanel
 from pygeolab.ui.theme import apply_theme
 from pygeolab.ui.timeline_widget import TimelineWidget
 from pygeolab.ui.translations import translate_message
+from pygeolab.ui.value_table_panel import ValueTablePanel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -188,6 +189,14 @@ class MainWindow(QMainWindow):
         self.timeline_dock.setAccessibleName(self.tr("Panneau Timeline"))
         self.timeline_dock.setWidget(self.timeline_widget)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.timeline_dock)
+
+        self.value_table_panel = ValueTablePanel(self.document, self)
+        self.value_table_dock = QDockWidget(self.tr("Table de valeurs"), self)
+        self.value_table_dock.setObjectName("valueTableDock")
+        self.value_table_dock.setAccessibleName(self.tr("Panneau Table de valeurs"))
+        self.value_table_dock.setWidget(self.value_table_panel)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.value_table_dock)
+        self.tabifyDockWidget(self.timeline_dock, self.value_table_dock)
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
@@ -357,6 +366,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.slider_dock.toggleViewAction())
         view_menu.addAction(self.numerical_dock.toggleViewAction())
         view_menu.addAction(self.timeline_dock.toggleViewAction())
+        view_menu.addAction(self.value_table_dock.toggleViewAction())
         view_menu.addSeparator()
         self.action_registry.create_action(
             "animation.toggle_play",
@@ -997,6 +1007,7 @@ class MainWindow(QMainWindow):
         self.slider_panel.set_document(self.document)
         self.numerical_panel.set_document(self.document)
         self.timeline_widget.set_document(self.document)
+        self.value_table_panel.set_document(self.document)
         self._apply_preferences()
         self._sync_function_actions()
         self._update_history_actions()
@@ -1078,3 +1089,5 @@ class MainWindow(QMainWindow):
         self.properties_panel.dispose()
         self.slider_panel.dispose()
         self.numerical_panel.dispose()
+        self.timeline_widget.controller.stop()
+        self.value_table_panel.dispose()
