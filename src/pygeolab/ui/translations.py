@@ -402,6 +402,11 @@ ENGLISH: dict[str, str] = {
     "Colonnes": "Columns",
     "Dimensions": "Dimensions",
     "Métadonnées": "Metadata",
+    "Moyenne": "Mean",
+    "Médiane": "Median",
+    "Étendue": "Range",
+    "Écart-type": "Standard deviation",
+    "Quartiles [Q1, Q3]": "Quartiles [Q1, Q3]",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {

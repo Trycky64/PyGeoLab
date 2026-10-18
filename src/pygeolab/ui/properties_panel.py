@@ -491,6 +491,27 @@ class PropertiesPanel(QWidget):
                 if geom.metadata:
                     meta_str = ", ".join(f"{k}: {v}" for k, v in geom.metadata.items())
                     add_row(self.tr("Métadonnées"), meta_str)
+                if geom.row_count > 0:
+                    try:
+                        stats = geom.descriptive_stats(0)
+                        add_row(self.tr("Moyenne"), format_number(stats.mean))
+                        add_row(self.tr("Médiane"), format_number(stats.median))
+                        add_row(
+                            self.tr("Étendue"),
+                            f"[{format_number(stats.min)}, {format_number(stats.max)}]",
+                        )
+                        stdev_disp = (
+                            format_number(stats.stdev_sample)
+                            if stats.stdev_sample is not None
+                            else format_number(stats.stdev_population)
+                        )
+                        add_row(self.tr("Écart-type"), stdev_disp)
+                        add_row(
+                            self.tr("Quartiles [Q1, Q3]"),
+                            f"[{format_number(stats.q1)}, {format_number(stats.q3)}]",
+                        )
+                    except Exception:
+                        pass
 
         elif len(objects) == 2:
             g1, g2 = objects[0].geometry, objects[1].geometry

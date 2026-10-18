@@ -43,3 +43,26 @@ La version 1.3 introduit les données, les statistiques et la modélisation dans
 - Élimination des régressions sur la manipulation du graphe de dépendances et la persistance.
 - Base solide pour les calculs de statistiques descriptives, bivariées et régressions (sections suivantes).
 
+---
+
+## ADR-045 : Moteur de statistiques descriptives déterministe et haute précision
+
+### Contexte
+La version 1.3 nécessite le calcul de résumés statistiques descriptifs complets sur les séries numériques (effectif, somme, moyenne, médiane, extrêmes, étendue, variance de population et d'échantillon, écarts-types, quartiles, écart interquartile IQR, percentiles quelconques et détection des valeurs aberrantes). Ces opérations doivent être mathématiquement rigoureuses, déterministes, sans dépendance tierce complexe, et tolérantes aux cas limites (série vide, singleton, valeurs constantes).
+
+### Décisions d'architecture
+1. **Module métier `pygeolab.data.statistics`** :
+   - Fonctions pures et déterministes :
+     - `percentile(values, p)` : calcul de percentile par interpolation linéaire continue standard (équivalent NumPy `linear` / Excel `PERCENTILE.INC`).
+     - `quartiles(values)` : retourne $(Q_1, Q_2, Q_3)$ via `percentile` à 25%, 50% et 75%.
+     - `detect_outliers(values, k=1.5)` : identification des valeurs aberrantes selon les barrières de Tukey ($x < Q_1 - k \cdot \text{IQR}$ ou $x > Q_3 + k \cdot \text{IQR}$).
+     - `compute_descriptive_stats(values)` : calcule l'ensemble des grandeurs et retourne un conteneur immuable `@dataclass(frozen=True) DescriptiveStats`.
+2. **Gestion rigoureuse des cas limites** :
+   - Ensemble vide : levée explicite de `ValueError` descriptive.
+   - Singleton ($N = 1$) : moyenne = médiane = min = max = valeur, étendue = 0, variance population = 0, variance échantillon = `None` ($N-1 = 0$), aucun outlier.
+   - Série constante : variance population = variance échantillon = étendue = IQR = 0.
+   - Rejet immédiat de toute valeur non finie (`NaN`, $\pm\infty$) avec indication de l'indice en faute.
+3. **Intégration au modèle `DatasetObject` et aux panneaux UI** :
+   - Méthode `DatasetObject.descriptive_stats(col=0)` permettant une extraction directe des métriques de n'importe quelle colonne par index ou nom.
+   - Affichage synthétique automatique dans le panneau Propriétés (`PropertiesPanel`) dès qu'un dataset contenant des lignes est sélectionné.
+

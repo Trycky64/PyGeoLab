@@ -131,6 +131,13 @@ class DatasetObject:
         """Convert paired (X, Y) series to immutable Point2D instances."""
         return tuple(Point2D(x, y) for x, y in zip(self.x_values, self.y_values, strict=False))
 
+    def descriptive_stats(self, col: int | str = 0) -> Any:
+        """Compute comprehensive descriptive statistics for a specific column."""
+        from pygeolab.data.statistics import compute_descriptive_stats
+
+        vals = self.column(col)
+        return compute_descriptive_stats(vals)
+
     def with_rows(self, new_rows: Sequence[Sequence[float]]) -> DatasetObject:
         """Return a copy with updated rows, keeping name, columns, and metadata."""
         return DatasetObject(
