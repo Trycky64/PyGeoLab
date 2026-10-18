@@ -505,8 +505,13 @@ def test_security_symlink_rejection(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     except OSError:
         return  # Skip if symlink creation is not permitted on host
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    debug_dir = tmp_path / "PyGeoLab" / "debug"
+    if sys.platform == "win32":
+        monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+        debug_dir = tmp_path / "PyGeoLab" / "debug"
+    else:
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        debug_dir = tmp_path / "pygeolab" / "debug"
+
     debug_dir.parent.mkdir(parents=True, exist_ok=True)
     try:
         debug_dir.symlink_to(real_dir, target_is_directory=True)
