@@ -8,6 +8,7 @@ import os
 import socket
 import sys
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -33,6 +34,7 @@ from pygeolab.debug.protocol import (
     RequestEnvelope,
     build_error_response,
     build_response,
+    read_bounded_frame,
 )
 from pygeolab.geometry import Point2D
 from pygeolab.model.document import Document
@@ -120,10 +122,44 @@ def test_protocol_response_builders() -> None:
     assert err_data["error"]["data"] == {"details": "foo"}
     assert err_data["id"] == 42
 
-    generic_err = build_error_response(ValueError("Something bad"), 42)
+    generic_err = build_error_response(ValueError("SuperSecretLeak1234"), 42)
     gen_data = json.loads(generic_err.decode())
     assert gen_data["error"]["code"] == -32603
-    assert "Something bad" in gen_data["error"]["message"]
+    assert gen_data["error"]["message"] == "Internal server error"
+    assert "SuperSecretLeak1234" not in gen_data["error"]["message"]
+
+
+def test_read_bounded_frame_limits() -> None:
+    import io
+
+    # Valid frame
+    stream = io.BytesIO(b'{"jsonrpc": "2.0", "method": "ping"}\n')
+    frame = read_bounded_frame(stream)
+    assert frame == b'{"jsonrpc": "2.0", "method": "ping"}'
+
+    # Incomplete frame (no newline)
+    stream_incomplete = io.BytesIO(b'{"jsonrpc": "2.0"')
+    with pytest.raises(ProtocolError) as exc_info:
+        read_bounded_frame(stream_incomplete)
+    assert exc_info.value.code == -32700  # PARSE_ERROR
+
+    # Payload exceeding 1 MB
+    huge_payload = b"x" * (MAX_MESSAGE_BYTES + 50) + b"\n"
+    stream_huge = io.BytesIO(huge_payload)
+    with pytest.raises(ProtocolError) as exc_info:
+        read_bounded_frame(stream_huge)
+    assert exc_info.value.code == PAYLOAD_TOO_LARGE
+
+    # Empty stream at EOF
+    stream_eof = io.BytesIO(b"")
+    with pytest.raises(EOFError):
+        read_bounded_frame(stream_eof)
+
+    # Response builder payload too large
+    huge_data = {"key": "x" * (MAX_MESSAGE_BYTES + 10)}
+    with pytest.raises(ProtocolError) as exc_info:
+        build_response(huge_data, 1)
+    assert exc_info.value.code == PAYLOAD_TOO_LARGE
 
 
 def test_snapshot_serializer() -> None:
@@ -345,23 +381,137 @@ def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
         assert snap_data["pid"] == os.getpid()
         assert snap_data["connected"] is True
         assert snap_data["document"]["objects_count"] == 0
+        assert snap_data["document"]["dirty"] is False
 
-        # 6. Ping method test
-        stream.write(json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 5}).encode() + b"\n")
+        # 6. Real mutation in PyGeoLab and snapshot verification over authentic IPC
+        from pygeolab.commands.create import CreateObjectCommand
+        from pygeolab.model.objects import GeoObject
+
+        obj = GeoObject(
+            kind="point",
+            name="P_MUT",
+            params={"x": 10.0, "y": 20.0},
+            geometry=Point2D(10.0, 20.0),
+        )
+        cmd = CreateObjectCommand(window.document, obj)
+        window._execute_command(cmd)
+
+        req_snap2 = (
+            json.dumps({"jsonrpc": "2.0", "method": "runtime_snapshot", "id": 5}).encode() + b"\n"
+        )
+        stream.write(req_snap2)
+        for _ in range(50):
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+            time.sleep(0.01)
+
+        snap_line2 = stream.readline()
+        snap_resp2 = json.loads(snap_line2.decode())
+        assert "result" in snap_resp2
+        snap_data2 = snap_resp2["result"]
+        assert snap_data2["document"]["objects_count"] == 1
+        assert snap_data2["document"]["dirty"] is True
+
+        # 7. Ping method test
+        stream.write(json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 6}).encode() + b"\n")
         ping_line = stream.readline()
         ping_resp = json.loads(ping_line.decode())
         assert ping_resp["result"]["pong"] is True
 
-        # 7. Unknown method rejected
+        # 8. Unknown method rejected
         stream.write(
-            json.dumps({"jsonrpc": "2.0", "method": "non_existent_method", "id": 6}).encode()
+            json.dumps({"jsonrpc": "2.0", "method": "non_existent_method", "id": 7}).encode()
             + b"\n"
         )
         unk_line = stream.readline()
         unk_resp = json.loads(unk_line.decode())
         assert unk_resp["error"]["code"] == METHOD_NOT_FOUND
 
+        # 9. Oversized payload over authentic IPC rejected
+        stream.write(b"x" * (MAX_MESSAGE_BYTES + 50) + b"\n")
+        over_line = stream.readline()
+        over_resp = json.loads(over_line.decode())
+        assert over_resp["error"]["code"] == PAYLOAD_TOO_LARGE
+
     finally:
         helper.close()
         server.stop()
-        assert not server.info_file_path.exists()
+        window._confirm_discard_changes = lambda: True  # Prevent modal QMessageBox
+        window.close()
+        assert server.info_file_path is not None and not server.info_file_path.exists()
+
+
+def test_server_stop_during_active_connection(qtbot: QtBot) -> None:
+    """Verify that stopping the server while a client is connected finishes promptly."""
+    window = MainWindow(offer_recovery=False)
+    qtbot.addWidget(window)
+    server = DebugBridgeServer(window)
+    server.start()
+
+    helper = _ClientStreamHelper(server.endpoint_address)
+    stream = helper.connect()
+
+    start_stop = time.time()
+    try:
+        # Perform handshake to establish connection
+        valid_hs = (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "handshake",
+                    "params": {"token": server.auth_token, "version": PROTOCOL_VERSION},
+                    "id": 1,
+                }
+            ).encode()
+            + b"\n"
+        )
+        stream.write(valid_hs)
+        stream.readline()
+    finally:
+        server.stop()
+        helper.close()
+        window.close()
+        duration = time.time() - start_stop
+        assert duration < 3.0  # Server stop must unblock and terminate promptly
+        assert server.info_file_path is not None and not server.info_file_path.exists()
+
+
+def test_security_stale_session_cleanup(tmp_path: Path) -> None:
+    """Verify that abandoned session files from dead PIDs are cleanly removed."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+    session_dir = tmp_path / "PyGeoLab" / "debug"
+    session_dir.mkdir(parents=True)
+
+    # Fake dead session file (PID 99999999)
+    stale_file = session_dir / "session_99999999.json"
+    stale_file.write_text('{"endpoint": "old", "token": "old"}', encoding="utf-8")
+
+    server._cleanup_stale_sessions(session_dir)
+    assert not stale_file.exists()
+
+
+def test_security_symlink_rejection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that symlinked or reparse point session directory is rejected."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+
+    real_dir = tmp_path / "real_dir"
+    real_dir.mkdir()
+    sym_dir = tmp_path / "sym_dir"
+    try:
+        sym_dir.symlink_to(real_dir, target_is_directory=True)
+    except OSError:
+        return  # Skip if symlink creation is not permitted on host
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    debug_dir = tmp_path / "PyGeoLab" / "debug"
+    debug_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        debug_dir.symlink_to(real_dir, target_is_directory=True)
+    except OSError:
+        return
+
+    with pytest.raises(PermissionError, match="untrusted symlink"):
+        server._get_session_dir()

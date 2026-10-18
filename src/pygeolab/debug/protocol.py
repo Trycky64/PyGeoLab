@@ -84,26 +84,72 @@ class RequestEnvelope:
         return cls(method=method, params=dict(params), id=req_id)
 
 
+def read_bounded_frame(stream: Any, max_bytes: int = MAX_MESSAGE_BYTES) -> bytes:
+    """Read a single newline-terminated frame from stream bounded by max_bytes.
+
+    Returns the stripped frame bytes (without trailing newline).
+
+    Raises:
+        EOFError: if stream is at EOF before any bytes are read.
+        ProtocolError(PAYLOAD_TOO_LARGE): if frame exceeds max_bytes.
+        ProtocolError(PARSE_ERROR): if stream reaches EOF before encountering newline.
+    """
+    chunk: bytes = stream.readline(max_bytes + 1)
+    if not chunk:
+        raise EOFError("Connection closed")
+
+    if not chunk.endswith(b"\n"):
+        if len(chunk) >= max_bytes:
+            raise ProtocolError(
+                PAYLOAD_TOO_LARGE,
+                f"Message exceeds maximum size limit of {max_bytes} bytes",
+            )
+        raise ProtocolError(
+            PARSE_ERROR,
+            "Incomplete frame: stream closed before newline delimiter",
+        )
+
+    if len(chunk) > max_bytes:
+        raise ProtocolError(
+            PAYLOAD_TOO_LARGE,
+            f"Message exceeds maximum size limit of {max_bytes} bytes",
+        )
+
+    return chunk[:-1]
+
+
 def build_response(result: Any, req_id: str | int | None) -> bytes:
-    """Build a JSON-RPC success response terminated by newline."""
+    """Build a JSON-RPC success response terminated by newline, enforcing payload limit."""
     payload = {
         "jsonrpc": "2.0",
         "result": result,
         "id": req_id,
     }
-    return json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8") + b"\n"
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8") + b"\n"
+    if len(raw) > MAX_MESSAGE_BYTES:
+        raise ProtocolError(
+            PAYLOAD_TOO_LARGE,
+            f"Response payload exceeds maximum limit of {MAX_MESSAGE_BYTES} bytes",
+        )
+    return raw
 
 
 def build_error_response(error: ProtocolError | Exception, req_id: str | int | None) -> bytes:
-    """Build a JSON-RPC error response terminated by newline."""
+    """Build a sanitized JSON-RPC error response terminated by newline."""
     if isinstance(error, ProtocolError):
         err_dict = error.to_dict()
     else:
-        err_dict = {"code": INTERNAL_ERROR, "message": str(error)}
+        # Never leak raw internal exception strings or tracebacks over IPC
+        err_dict = {"code": INTERNAL_ERROR, "message": "Internal server error"}
 
     payload = {
         "jsonrpc": "2.0",
         "error": err_dict,
         "id": req_id,
     }
-    return json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8") + b"\n"
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8") + b"\n"
+    if len(raw) > MAX_MESSAGE_BYTES:
+        return (
+            b'{"jsonrpc":"2.0","error":{"code":-32002,"message":"Payload too large"},"id":null}\n'
+        )
+    return raw
