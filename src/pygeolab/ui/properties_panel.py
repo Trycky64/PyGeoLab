@@ -512,6 +512,19 @@ class PropertiesPanel(QWidget):
                         )
                     except Exception:
                         pass
+                if geom.is_2d and geom.row_count >= 2:
+                    try:
+                        reg = geom.linear_regression(0, 1)
+                        add_row(self.tr("Covariance"), format_number(reg.covariance))
+                        add_row(self.tr("Corrélation (r)"), format_number(reg.r))
+                        add_row(self.tr("R²"), format_number(reg.r_squared))
+                        sign = "+" if reg.intercept >= 0 else "-"
+                        slope_str = format_number(reg.slope)
+                        inter_str = format_number(abs(reg.intercept))
+                        eq = f"y = {slope_str}·x {sign} {inter_str}"
+                        add_row(self.tr("Régression"), eq)
+                    except Exception:
+                        pass
 
         elif len(objects) == 2:
             g1, g2 = objects[0].geometry, objects[1].geometry

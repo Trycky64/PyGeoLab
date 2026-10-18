@@ -138,6 +138,24 @@ class DatasetObject:
         vals = self.column(col)
         return compute_descriptive_stats(vals)
 
+    def covariance(self, col_x: int | str = 0, col_y: int | str = 1, sample: bool = True) -> float:
+        """Compute covariance between two columns."""
+        from pygeolab.data.bivariate import covariance
+
+        return covariance(self.column(col_x), self.column(col_y), sample=sample)
+
+    def correlation(self, col_x: int | str = 0, col_y: int | str = 1) -> float:
+        """Compute Pearson correlation coefficient r between two columns."""
+        from pygeolab.data.bivariate import pearson_correlation
+
+        return pearson_correlation(self.column(col_x), self.column(col_y))
+
+    def linear_regression(self, col_x: int | str = 0, col_y: int | str = 1) -> Any:
+        """Compute OLS linear regression between two columns."""
+        from pygeolab.data.bivariate import linear_regression
+
+        return linear_regression(self.column(col_x), self.column(col_y))
+
     def with_rows(self, new_rows: Sequence[Sequence[float]]) -> DatasetObject:
         """Return a copy with updated rows, keeping name, columns, and metadata."""
         return DatasetObject(

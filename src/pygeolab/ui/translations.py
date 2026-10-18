@@ -407,6 +407,10 @@ ENGLISH: dict[str, str] = {
     "Étendue": "Range",
     "Écart-type": "Standard deviation",
     "Quartiles [Q1, Q3]": "Quartiles [Q1, Q3]",
+    "Covariance": "Covariance",
+    "Corrélation (r)": "Correlation (r)",
+    "R²": "R²",
+    "Régression": "Regression",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {

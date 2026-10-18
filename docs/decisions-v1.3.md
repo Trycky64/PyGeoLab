@@ -66,3 +66,26 @@ La version 1.3 nécessite le calcul de résumés statistiques descriptifs comple
    - Méthode `DatasetObject.descriptive_stats(col=0)` permettant une extraction directe des métriques de n'importe quelle colonne par index ou nom.
    - Affichage synthétique automatique dans le panneau Propriétés (`PropertiesPanel`) dès qu'un dataset contenant des lignes est sélectionné.
 
+---
+
+## ADR-046 : Statistiques bivariées, corrélation de Pearson et régression linéaire OLS
+
+### Contexte
+La version 1.3 apporte l'analyse bivariée de séries appariées : covariance de population et d'échantillon, coefficient de corrélation linéaire de Pearson ($r$), régression par moindres carrés ordinaires ($y = ax + b$), coefficient de détermination ($R^2$), analyse des résidus et prédiction sur de nouvelles abscisses.
+
+### Décisions d'architecture
+1. **Module métier déterministe `pygeolab.data.bivariate`** :
+   - Structure immuable `@dataclass(frozen=True) LinearRegressionResult` contenant `slope`, `intercept`, `r`, `r_squared`, `covariance`, `residuals`, et `count`.
+   - Méthode d'évaluation `predict(x)` validant strictement la finitude de la variable explicative.
+   - Fonction `covariance(x, y, sample=True)` calculant la covariance non biaisée (ou de population).
+   - Fonction `pearson_correlation(x, y)` avec clamp strict dans $[-1.0, 1.0]$.
+   - Fonction `linear_regression(x, y)` calculant les paramètres OLS, le vecteur des résidus $e_i = y_i - (\hat{a} x_i + \hat{b})$ et la variance expliquée $R^2$.
+2. **Robustesse et validation stricte** :
+   - Séries de tailles différentes ou vides : rejet immédiat avec exception explicite `ValueError`.
+   - Série $X$ à variance nulle (droite verticale) : levée d'erreur car pente infinie.
+   - Série $Y$ à variance nulle (droite horizontale) : pente $= 0$, ordonnée $= \bar{y}$, $r = 0$, $R^2 = 1.0$.
+3. **Intégration au domaine et à l'interface** :
+   - Méthodes directes sur `DatasetObject` : `covariance(col_x, col_y)`, `correlation(col_x, col_y)`, `linear_regression(col_x, col_y)`.
+   - Affichage synthétique automatique de la covariance, de la corrélation, du $R^2$ et de l'équation de la droite dans `PropertiesPanel` pour les jeux de données 2D comportant au moins 2 lignes.
+
+
