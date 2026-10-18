@@ -45,6 +45,21 @@ def test_release_version_and_demo_project() -> None:
     assert {"initial", "animation_speed", "ping_pong"} <= slider.params.keys()
 
 
+def test_stats_modeling_example_project() -> None:
+    stats_proj = load_project(ROOT / "examples" / "stats_modeling.pgl")
+    assert stats_proj.name == "Exemple Statistiques et Modélisation"
+    assert {obj.kind for obj in stats_proj.objects.values()} >= {"point", "dataset", "line"}
+    assert {obj.name for obj in stats_proj.objects.values()} >= {
+        "P1",
+        "NuageMobile",
+        "G_moyen",
+        "Droite_OLS",
+        "MesuresParabole",
+    }
+    ds = next(obj for obj in stats_proj.objects.values() if obj.name == "NuageMobile")
+    assert ds.valid
+
+
 def test_release_build_assets_are_present() -> None:
     required = (
         ROOT / "packaging" / "pygeolab.spec",

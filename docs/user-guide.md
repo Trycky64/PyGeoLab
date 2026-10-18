@@ -76,6 +76,34 @@ The **Value table** dock evaluates Cartesian, parametric, or polar functions ove
 
 Create a slider from the Algebra panel or **Objects > New slider**. Set its value, minimum, maximum, and step. The Sliders panel supports direct entry, reset, keyboard adjustment, play/pause, speed, and ping-pong playback. Animation recomputes only descendants and does not add one Undo command per frame.
 
+## Data, statistics, and modeling
+
+PyGeoLab 1.3 provides a complete toolset for statistical analysis and tabular data workflows:
+
+### Datasets (`DatasetObject`) and Spreadsheet Panel
+- **Data Table Panel**: The dockable *Data* panel (tabified at the bottom of the window) provides a virtualized spreadsheet to view and edit observations. Add or delete rows and columns, copy and paste tabular ranges via TSV/CSV clipboard formats, and change the statistical plot mode.
+- **CSV Import and Export**: Automatic delimiter sniffing (comma, semicolon, tab, space), UTF-8 encoding support with or without BOM, locale-aware decimal separator handling, and configurable missing value policies (error, skip, or fill).
+
+### Descriptive and Bivariate Statistics
+- **Univariate Metrics**: Selecting any dataset in the workspace immediately displays in the *Properties* panel its sample size, sum, mean, median, minimum, maximum, range, population and sample variance, standard deviation, quartiles $Q_1$ and $Q_3$, interquartile range (IQR), and Tukey outlier fences ($1.5 \times \text{IQR}$).
+- **Bivariate Metrics**: For $(X, Y)$ paired series, PyGeoLab automatically calculates covariance, Pearson correlation coefficient $r$, coefficient of determination $R^2$, and the slope and intercept of the ordinary least squares (OLS) regression line.
+
+### Statistical Visualizations
+Choose from multiple rendering modes in the Data panel or the Properties panel:
+- **Scatter plot**: Observation points with configurable disk radius, stroke color, and translucent fill opacity.
+- **Regression line**: Overlaid points with the fitted continuous least-squares line clipped to the mathematical viewport.
+- **Histogram**: Frequency distribution across regular intervals plotted on the horizontal axis.
+- **Box plot**: Five-number summary box $[Q_1, Q_3]$, median line, whiskers connecting to non-outlier extremes, and highlighted outlier points.
+- **Bar chart**: Discrete vertical columns proportional to observation values.
+
+### Curve Fitting and Non-linear Regressions
+- **Regression Models**: Fit polynomial regressions from degree 1 to 5, exponential curves ($y = a \cdot e^{b \cdot x}$), logarithmic curves ($y = a + b \cdot \ln(x)$), and power curves.
+- **Dynamic Functions**: Any fitted regression result can be converted into a `FunctionObject` ready to be plotted or referenced in mathematical expressions safely without `eval()` or `exec()`.
+
+### Geometric Integration and Dependency Graph
+- **Dataset Generated from Objects**: Datasets can dynamically depend on a group of canvas points, polygon vertices, locus samples, or timeline sliders.
+- **Objects Derived from Datasets**: Geometric points can follow dataset rows or the dataset centroid $(\bar{x}, \bar{y})$, and regression lines update reactively as parent points are dragged on the canvas.
+
 ## Numerical analysis and measurements
 
 The Numerical Analysis panel computes derivatives, integrals, roots, extrema, and function intersections over a bounded interval. Configure tolerance and sample count before calculating. Results are limited to a safe count, and invalid domains or discontinuities produce a readable message.

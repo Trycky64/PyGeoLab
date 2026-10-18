@@ -79,6 +79,34 @@ Le dock **Table de valeurs** tabule les fonctions cartésiennes, paramétriques 
 
 **Objets > Nouvelle fonction** accepte une expression, une variable indépendante et un domaine optionnel. Les autres identifiants de l'expression sont reliés automatiquement aux curseurs de même nom. Les erreurs restent visibles dans la boîte et dans Algèbre. **Affichage > Fonctions** règle la qualité du sampling et les couches racines, extrema, intersections et dérivée.
 
+## Données, statistiques et modélisation
+
+PyGeoLab 1.3 intègre une suite complète d'outils statistiques et de gestion de données tabulaires :
+
+### Jeux de données (`DatasetObject`) et Tableur
+- **Tableau de données** : Le panneau ancrable *Données* (tabifié au bas de la fenêtre) permet de visualiser et d'éditer les observations sous forme de tableur. Vous pouvez ajouter/supprimer des lignes et colonnes, copier/coller des plages de cellules au format tabulaire (TSV/CSV) et ajuster le mode de rendu graphique.
+- **Importation et exportation CSV** : Détection automatique des séparateurs (virgule, point-virgule, tabulation, espace), gestion des encodages UTF-8 avec ou sans BOM, détection de la virgule décimale locale et politiques configurables pour les valeurs manquantes (rejet, exclusion ou remplissage).
+
+### Statistiques descriptives et bivariées
+- **Métriques univariées** : Dès qu'un jeu de données est sélectionné, le panneau *Propriétés* affiche instantanément l'effectif total, la moyenne, la médiane, le minimum, le maximum, l'étendue, la variance (population et échantillon), l'écart-type, les quartiles $Q_1$, $Q_3$, l'intervalle interquartile (IQR) et les valeurs aberrantes selon les barrières de Tukey ($1.5 \times \text{IQR}$).
+- **Métriques bivariées** : Pour les séries $(X, Y)$, calcul automatique de la covariance, du coefficient de corrélation de Pearson $r$, du coefficient de détermination $R^2$, ainsi que de la pente et de l'ordonnée à l'origine de la droite de régression des moindres carrés (OLS).
+
+### Visualisations statistiques
+Plusieurs modes de tracé sont disponibles via le sélecteur du panneau Données ou dans Propriétés :
+- **Nuage de points (*Scatter plot*)** : Représentation ponctuelle classique avec taille, couleur et transparence de remplissage éditables.
+- **Droite de régression** : Superposition des points d'observation et de la droite d'ajustement linéaire calculée.
+- **Histogramme** : Répartition des fréquences en classes d'amplitudes régulières tracées le long de l'axe des abscisses.
+- **Boîte à moustaches (*Box plot*)** : Tracé du rectangle $[Q_1, Q_3]$, de la ligne médiane, des moustaches raccordées aux valeurs extrêmes non aberrantes, et mise en évidence des outliers isolés.
+- **Diagramme en barres (*Bar chart*)** : Colonnes discrètes proportionnelles aux amplitudes des observations.
+
+### Modélisation et ajustements (Fitting)
+- **Régressions non-linéaires** : Ajustement de polynômes de degré 1 à 5, modèles exponentiels ($y = a \cdot e^{b \cdot x}$), logarithmiques ($y = a + b \cdot \ln(x)$) et puissances.
+- **Création de fonctions dynamiques** : Tout modèle ajusté peut être converti directement en objet `FunctionObject` traçable et réutilisable dans le moteur d'expressions sans code arbitraire (`eval` / `exec`).
+
+### Intégration géométrique et dépendances
+- **Génération depuis des objets géométriques** : Un dataset peut dépendre directement d'un groupe de points du canevas, des sommets d'un polygone, des échantillons d'un lieu géométrique ou de curseurs de la timeline.
+- **Objets dépendants de données** : Des points peuvent être dérivés d'un dataset (par exemple le point moyen $(\bar{x}, \bar{y})$ ou un point d'indice donné), ainsi que la droite de régression linéaire qui se met à jour en temps réel dès qu'un point parent est déplacé.
+
 ## Analyse et mesures
 
 Le dock Analyse numérique propose dérivée en un point, intégrale sur un intervalle, racines, extrema et intersections. Choisissez les bornes, la tolérance et le nombre d'échantillons. Les domaines invalides et discontinuités produisent un message dans le panneau.

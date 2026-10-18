@@ -1,0 +1,226 @@
+{
+  "document": {
+    "metadata": {},
+    "name": "Exemple Statistiques et Modélisation",
+    "objects": [
+      {
+        "dependencies": [],
+        "id": "7eff58da-7feb-4cd3-b58a-8af59ec89247",
+        "kind": "point",
+        "locked": false,
+        "name": "P1",
+        "params": {
+          "x": -3.0,
+          "y": -2.0
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "46c9d100-b87b-4979-9bcc-3db2c4dd01c3",
+        "kind": "point",
+        "locked": false,
+        "name": "P2",
+        "params": {
+          "x": -1.0,
+          "y": 0.5
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "53c5aec6-b2fe-4f0a-9bd6-4d43377c21c8",
+        "kind": "point",
+        "locked": false,
+        "name": "P3",
+        "params": {
+          "x": 1.0,
+          "y": 1.8
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "72cf71d2-7190-44af-b0ad-ecfa82dd8b63",
+        "kind": "point",
+        "locked": false,
+        "name": "P4",
+        "params": {
+          "x": 2.5,
+          "y": 3.5
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "6664c5a8-a698-4422-99f1-8322adfe968c",
+        "kind": "point",
+        "locked": false,
+        "name": "P5",
+        "params": {
+          "x": 4.0,
+          "y": 5.2
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "7eff58da-7feb-4cd3-b58a-8af59ec89247",
+          "46c9d100-b87b-4979-9bcc-3db2c4dd01c3",
+          "53c5aec6-b2fe-4f0a-9bd6-4d43377c21c8",
+          "72cf71d2-7190-44af-b0ad-ecfa82dd8b63",
+          "6664c5a8-a698-4422-99f1-8322adfe968c"
+        ],
+        "id": "cbae955d-c588-4c5f-92cd-42a52ffcb66f",
+        "kind": "dataset",
+        "locked": false,
+        "name": "NuageMobile",
+        "params": {
+          "headers": [
+            "x",
+            "y"
+          ],
+          "plot_kind": "scatter"
+        },
+        "style": {
+          "color": "#2563eb",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 6.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "cbae955d-c588-4c5f-92cd-42a52ffcb66f"
+        ],
+        "id": "2b50c96c-1fcf-4cd7-9977-3ce3f7093def",
+        "kind": "point",
+        "locked": false,
+        "name": "G_moyen",
+        "params": {
+          "mode": "mean"
+        },
+        "style": {
+          "color": "#dc2626",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 7.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [
+          "cbae955d-c588-4c5f-92cd-42a52ffcb66f"
+        ],
+        "id": "543a7cb0-1cd5-42ee-9dfe-f77cd9fd5674",
+        "kind": "line",
+        "locked": false,
+        "name": "Droite_OLS",
+        "params": {},
+        "style": {
+          "color": "#16a34a",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      },
+      {
+        "dependencies": [],
+        "id": "8fa667d9-7a1d-4e87-92f3-12ada4446942",
+        "kind": "dataset",
+        "locked": false,
+        "name": "MesuresParabole",
+        "params": {
+          "column_names": [
+            "x",
+            "y"
+          ],
+          "metadata": {},
+          "plot_kind": "scatter",
+          "rows": [
+            [
+              -4.0,
+              16.0
+            ],
+            [
+              -2.0,
+              4.0
+            ],
+            [
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              4.0
+            ],
+            [
+              4.0,
+              16.0
+            ]
+          ]
+        },
+        "style": {
+          "color": "#9333ea",
+          "fill_opacity": 0.12,
+          "line_style": "solid",
+          "point_size": 5.0,
+          "show_label": true,
+          "width": 2.0
+        },
+        "visible": true
+      }
+    ],
+    "scene": {}
+  },
+  "format": "pygeolab",
+  "version": 1
+}
