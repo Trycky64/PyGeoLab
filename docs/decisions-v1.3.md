@@ -142,6 +142,33 @@ La manipulation manuelle ou tabulaire des jeux de données requiert une interfac
    - Propagation des modifications par émission de `ChangeParametersCommand` vers l'historique d'actions de l'application.
    - Dockable dans `MainWindow` au bas de l'écran, tabifié aux côtés de la Timeline et de la Table de valeurs.
 
+---
+
+## ADR-049 : Moteur d'ajustements et de régressions (Curve Fitting Engine)
+
+### Contexte
+La modélisation de séries bivariées nécessite d'ajuster des modèles mathématiques continus au-delà de la droite linéaire OLS :
+- Régressions polynomiales de degré $n \in [1, 5]$
+- Régressions exponentielles $y = a \cdot e^{b \cdot x}$
+- Régressions logarithmiques $y = a + b \cdot \ln(x)$
+- Régressions puissances $y = a \cdot x^b$
+
+Le moteur de calcul doit être indépendant de Qt, ne dépendre d'aucune bibliothèque externe (pur Python standard), valider rigoureusement les domaines de définition, calculer les métriques de qualité ($R^2$, résidus), et permettre de créer des objets de fonction mathématique (`FunctionObject`) injectables dans l'environnement géométrique sans aucun `eval()` / `exec()`.
+
+### Décisions d'architecture
+1. **Module `pygeolab.data.fitting`** :
+   - `FitResult` : conteneur immuable (`dataclass(frozen=True)`) regroupant le type de modèle, les paramètres numériques ajustés, l'expression formelle sûre (compatible avec le parseur AST de PyGeoLab), le coefficient $R^2$, les résidus d'observation et la taille de l'échantillon.
+   - Méthode `predict(x)` pour évaluer ponctuellement le modèle avec validation stricte de finitude et de domaine.
+   - Méthode `to_function(name)` instanciant un `FunctionObject` prêt à être tracé ou référencé dans les expressions du document.
+2. **Algorithmes de résolution numériques purs** :
+   - `_solve_linear_system(matrix, vector)` : résolution matricielle $A \cdot x = b$ par élimination de Gauss-Jordan avec pivot partiel pour prévenir l'amplification d'erreurs d'arrondi sur les puissances élevées des équations normales.
+   - `fit_polynomial(x, y, degree)` : formulation des équations normales $\left(X^T X\right) c = X^T y$ jusqu'au degré 5 avec validation $N > \text{degree}$.
+   - `fit_exponential(x, y)` : linéarisation par transformation logarithmique $\ln(y) = \ln(a) + b \cdot x$ avec validation stricte $y_i > 0$.
+   - `fit_logarithmic(x, y)` : ajustement linéaire sur la variable transformée $u = \ln(x)$ avec validation stricte $x_i > 0$.
+3. **Intégration métier et UI** :
+   - Méthodes directes sur `DatasetObject` : `fit_polynomial(degree)`, `fit_exponential()`, `fit_logarithmic()`.
+   - Affichage synthétique du modèle quadratique et de son $R^2$ dans `PropertiesPanel` lorsque le dataset comporte au moins 3 points d'observation distincts.
+
 
 
 

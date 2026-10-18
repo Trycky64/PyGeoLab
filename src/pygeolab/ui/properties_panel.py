@@ -531,6 +531,10 @@ class PropertiesPanel(QWidget):
                         inter_str = format_number(abs(reg.intercept))
                         eq = f"y = {slope_str}·x {sign} {inter_str}"
                         add_row(self.tr("Régression"), eq)
+                        if geom.row_count >= 3:
+                            poly = geom.fit_polynomial(degree=2, col_x=0, col_y=1)
+                            add_row(self.tr("Modèle quadratique"), poly.expression)
+                            add_row(self.tr("R² (poly)"), format_number(poly.r_squared))
                     except Exception:
                         pass
 

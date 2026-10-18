@@ -125,4 +125,3 @@ def test_data_table_panel_empty_dataset(qtbot) -> None:
     panel.refresh()
     assert panel._active_object_id is None
     assert panel._model.rowCount() == 0
-

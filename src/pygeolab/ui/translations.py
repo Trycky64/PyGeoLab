@@ -437,6 +437,8 @@ ENGLISH: dict[str, str] = {
     "Erreur d'exportation": "Export error",
     "Fichiers CSV (*.csv)": "CSV files (*.csv)",
     "Fichiers CSV (*.csv);;Tous les fichiers (*.*)": "CSV files (*.csv);;All files (*.*)",
+    "Modèle quadratique": "Quadratic model",
+    "R² (poly)": "R² (poly)",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {

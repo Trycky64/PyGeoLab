@@ -159,6 +159,24 @@ class DatasetObject:
 
         return linear_regression(self.column(col_x), self.column(col_y))
 
+    def fit_polynomial(self, degree: int = 2, col_x: int | str = 0, col_y: int | str = 1) -> Any:
+        """Fit a polynomial of given degree between two columns."""
+        from pygeolab.data.fitting import fit_polynomial
+
+        return fit_polynomial(self.column(col_x), self.column(col_y), degree=degree)
+
+    def fit_exponential(self, col_x: int | str = 0, col_y: int | str = 1) -> Any:
+        """Fit an exponential model y = a * exp(b * x) between two columns."""
+        from pygeolab.data.fitting import fit_exponential
+
+        return fit_exponential(self.column(col_x), self.column(col_y))
+
+    def fit_logarithmic(self, col_x: int | str = 0, col_y: int | str = 1) -> Any:
+        """Fit a logarithmic model y = a + b * ln(x) between two columns."""
+        from pygeolab.data.fitting import fit_logarithmic
+
+        return fit_logarithmic(self.column(col_x), self.column(col_y))
+
     def with_rows(self, new_rows: Sequence[Sequence[float]]) -> DatasetObject:
         """Return a copy with updated rows, keeping name, columns, and metadata."""
         return DatasetObject(

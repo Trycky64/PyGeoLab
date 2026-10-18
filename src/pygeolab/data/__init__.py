@@ -8,6 +8,12 @@ from pygeolab.data.bivariate import (
 )
 from pygeolab.data.csv_io import read_csv, write_csv
 from pygeolab.data.dataset import DatasetObject
+from pygeolab.data.fitting import (
+    FitResult,
+    fit_exponential,
+    fit_logarithmic,
+    fit_polynomial,
+)
 from pygeolab.data.statistics import (
     DescriptiveStats,
     compute_descriptive_stats,
@@ -19,10 +25,14 @@ from pygeolab.data.statistics import (
 __all__ = [
     "DatasetObject",
     "DescriptiveStats",
+    "FitResult",
     "LinearRegressionResult",
     "compute_descriptive_stats",
     "covariance",
     "detect_outliers",
+    "fit_exponential",
+    "fit_logarithmic",
+    "fit_polynomial",
     "linear_regression",
     "pearson_correlation",
     "percentile",
