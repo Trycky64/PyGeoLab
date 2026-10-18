@@ -10,7 +10,6 @@ import contextlib
 import ctypes
 import json
 import logging
-import msvcrt
 import os
 import secrets
 import socket
@@ -20,6 +19,11 @@ import time
 import typing
 from pathlib import Path
 from typing import Any, BinaryIO
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    msvcrt = None  # type: ignore[assignment]
 
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -130,10 +134,11 @@ class DebugBridgeServer:
                 self.info_file_path.unlink()
 
         if sys.platform == "win32":
-            if self.endpoint_address:
+            windll = getattr(ctypes, "windll", None)
+            if self.endpoint_address and windll is not None:
                 # Open quick dummy connection to unblock pending ConnectNamedPipe
                 with contextlib.suppress(Exception):
-                    h_dummy = ctypes.windll.kernel32.CreateFileW(
+                    h_dummy = windll.kernel32.CreateFileW(
                         self.endpoint_address,
                         0xC0000000,
                         0,
@@ -143,10 +148,10 @@ class DebugBridgeServer:
                         None,
                     )
                     if h_dummy and h_dummy != -1:
-                        ctypes.windll.kernel32.CloseHandle(h_dummy)
-            if self._pipe_handle is not None:
+                        windll.kernel32.CloseHandle(h_dummy)
+            if self._pipe_handle is not None and windll is not None:
                 with contextlib.suppress(Exception):
-                    ctypes.windll.kernel32.CloseHandle(self._pipe_handle)
+                    windll.kernel32.CloseHandle(self._pipe_handle)
                 self._pipe_handle = None
         else:  # pragma: no cover
             if self._unix_socket is not None:
@@ -167,8 +172,12 @@ class DebugBridgeServer:
             self._run_unix_socket()
 
     def _run_windows_named_pipe(self) -> None:
-        kernel32 = ctypes.windll.kernel32
-        advapi32 = ctypes.windll.advapi32
+        windll = getattr(ctypes, "windll", None)
+        if windll is None or msvcrt is None:
+            return
+
+        kernel32 = windll.kernel32
+        advapi32 = windll.advapi32
 
         # Create security descriptor restricted to the current user (Owner Only)
         class SECURITY_ATTRIBUTES(ctypes.Structure):
@@ -192,6 +201,10 @@ class DebugBridgeServer:
         PIPE_ACCESS_DUPLEX = 3
         PIPE_TYPE_BYTE = 0
         PIPE_WAIT = 0
+
+        open_osfhandle = getattr(msvcrt, "open_osfhandle", None)
+        if open_osfhandle is None:
+            return
 
         while self.running:
             h_pipe = kernel32.CreateNamedPipeW(
@@ -217,7 +230,7 @@ class DebugBridgeServer:
                 continue
 
             try:
-                fd = msvcrt.open_osfhandle(h_pipe, 0)
+                fd = open_osfhandle(h_pipe, 0)
                 with open(fd, "r+b", buffering=0) as stream:
                     self._handle_client_stream(stream)
             except Exception as exc:
