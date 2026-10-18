@@ -6,6 +6,7 @@ the document turns both cases into recoverable invalid object states.
 
 import math
 
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry import (
     Circle2D,
     Ellipse2D,
@@ -215,6 +216,8 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
             )
         # Fallback: create Locus2D with empty segments if context document not provided yet
         return Locus2D((), target_parent.id, driver_parent.id, start, sweep_end, samples=samples)
+    if kind == "dataset":
+        return DatasetObject.from_dict(params, name=obj.name)
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

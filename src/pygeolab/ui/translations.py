@@ -394,6 +394,14 @@ ENGLISH: dict[str, str] = {
     "Le pas doit être strictement positif": "Step must be strictly positive",
     "Début doit être inférieur ou égal à Fin": "Start must be less than or equal to End",
     "Nombre de points limité à 50 000": "Points count limited to 50,000",
+    "Jeux de données": "Datasets",
+    "Jeu de données": "Dataset",
+    "Données": "Data",
+    "colonnes": "columns",
+    "lignes": "rows",
+    "Colonnes": "Columns",
+    "Dimensions": "Dimensions",
+    "Métadonnées": "Metadata",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {
@@ -590,6 +598,7 @@ class EnglishTranslator(QTranslator):
             (r"^indéfini — (.+)$", r"undefined — \1"),
             (r"^longueur (.+)$", r"length \1"),
             (r"^lieu \((\d+) pts\)$", r"locus (\1 pts)"),
+            (r"^(\d+) cols, (\d+) lignes$", r"\1 cols, \2 rows"),
         )
         for pattern, replacement in replacements:
             if re.match(pattern, source_text):

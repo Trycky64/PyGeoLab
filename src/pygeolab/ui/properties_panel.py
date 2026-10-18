@@ -31,6 +31,7 @@ from pygeolab.commands import (
     MovePointCommand,
     RenameObjectCommand,
 )
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry import (
     EPSILON,
     Circle2D,
@@ -478,6 +479,18 @@ class PropertiesPanel(QWidget):
                         self.tr("Dépendances"),
                         ", ".join(sorted(geom.external_dependencies)),
                     )
+            elif isinstance(geom, DatasetObject):
+                dim_str = (
+                    f"{geom.col_count} "
+                    + self.tr("colonnes")
+                    + f", {geom.row_count} "
+                    + self.tr("lignes")
+                )
+                add_row(self.tr("Dimensions"), dim_str)
+                add_row(self.tr("Colonnes"), ", ".join(geom.column_names))
+                if geom.metadata:
+                    meta_str = ", ".join(f"{k}: {v}" for k, v in geom.metadata.items())
+                    add_row(self.tr("Métadonnées"), meta_str)
 
         elif len(objects) == 2:
             g1, g2 = objects[0].geometry, objects[1].geometry

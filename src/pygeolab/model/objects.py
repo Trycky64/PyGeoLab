@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from uuid import UUID, uuid4
 
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry.conics import Ellipse2D, Hyperbola2D, Parabola2D
 from pygeolab.geometry.locus import Locus2D
 from pygeolab.geometry.primitives import (
@@ -52,12 +53,14 @@ type Geometry = (
     | ParametricFunctionObject
     | PolarFunctionObject
     | Locus2D
+    | DatasetObject
     | float
 )
 
 KINDS = frozenset(
     {
         "point",
+        "dataset",
         "parametric",
         "polar",
         "segment",

@@ -29,6 +29,7 @@ from pygeolab.commands import (
     MovePointCommand,
     RenameObjectCommand,
 )
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry import (
     Circle2D,
     Ellipse2D,
@@ -382,6 +383,8 @@ class AlgebraPanel(QWidget):
             return self.tr("Courbes polaires")
         if isinstance(geometry, Locus2D):
             return self.tr("Lieux géométriques")
+        if isinstance(geometry, DatasetObject):
+            return self.tr("Jeux de données")
         return self.tr("Objets")
 
     def _format_value(self, obj: GeoObject) -> str:
@@ -414,4 +417,6 @@ class AlgebraPanel(QWidget):
             return f"r({geometry.parameter}) = {geometry.r_source}"
         if isinstance(geometry, Locus2D):
             return self.tr(f"lieu ({geometry.total_points} pts)")
+        if isinstance(geometry, DatasetObject):
+            return self.tr(f"{geometry.col_count} cols, {geometry.row_count} lignes")
         return type(geometry).__name__.removesuffix("2D")
