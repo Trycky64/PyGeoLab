@@ -1,36 +1,36 @@
-# PyGeoLab 1.2.0
+# PyGeoLab 1.3.0
 
 [Version française](RELEASE_NOTES.fr.md)
 
-PyGeoLab 1.2.0 is a major feature release introducing Euclidean conics, parametric and polar curves, direct analytical equation editing, geometric loci with transient traces, a multi-slider animation timeline, and a virtualized value table panel.
+PyGeoLab 1.3.0 is a major feature release introducing numerical datasets, descriptive and bivariate statistics, five statistical visualization modes, a lightweight spreadsheet editor, non-linear curve fitting models, and reactive integration with the geometric dependency graph.
 
 ## Highlights
 
-- **Conics**: Ellipses, parabolas, and hyperbolas with full geometric representations, directrix, asymptotes, eccentricity, and analytical property cards;
-- **Parametric curves**: $x(t), y(t)$ with safe expression parsing, adaptive sampling, discontinuity handling, and slider dependency integration;
-- **Polar curves**: $r(\theta)$ with support for radians and degrees, periodicity handling, and dedicated dialog;
-- **Analytical editing**: Real-time formula editing and analytical property inspection with direct clipboard copy;
-- **Geometric loci & Traces**: Dynamic loci evaluation using isolated subgraphs, lightweight persistence without storing sample points, and transient canvas traces;
-- **Multi-slider Timeline**: Transport bar (Play/Pause/Stop), scrubbing, duration, speed, and looping/ping-pong modes for synchronizing multiple animations;
-- **Value tables**: High-performance virtualized table panel for Cartesian, parametric, and polar functions with UTF-8 CSV export and clipboard copying;
-- **Snapping, Measurements & Transformations**: Continued support for Euclidean transformations, numerical analysis, dynamic measurements, and SVG/PNG exports.
+- **Datasets (`DatasetObject`)**: Immutable tabular domain model with strict numeric validation, 1D and 2D series, and metadata tracking;
+- **Descriptive Statistics**: Instant calculation of count, sum, mean, median, min, max, range, sample/population variance, standard deviation, quartiles, IQR, and Tukey outlier detection;
+- **Bivariate Statistics**: Covariance, Pearson correlation coefficient, ordinary least squares linear regression, $R^2$, residuals, and point predictions;
+- **Statistical Visualizations**: Scatter plots, linear regression lines, histograms, box plots, and bar charts with hit-testing, selection, and SVG/PNG exports;
+- **Lightweight Spreadsheet (`DataTablePanel`)**: Dockable table editor with row/column insertion and deletion, keyboard navigation, copy/paste from clipboard (TSV), and read-only protection for dynamically computed datasets;
+- **Curve Fitting & Regressions**: High-accuracy polynomial (degree 1 to 5), exponential, logarithmic, and power fits generating valid and safe `FunctionObject` instances without `eval()` or `exec()`;
+- **Dependency Graph Integration**: Reactively generate datasets from canvas points, polygon vertices, locus trajectories, timeline sliders, or sampled functions; derive points and regression lines dynamically;
+- **Robust CSV I/O**: Multi-line delimiter sniffing, decimal separator auto-detection, UTF-8/BOM support, Unicode paths, and configurable missing value handling (error, skip, fill);
+- **Demonstration Project**: Bundled `examples/stats_modeling.pgl` illustrating reactive statistics on moving points and curve fitting.
 
 ## Compatibility and platforms
 
-- `.pgl` projects from PyGeoLab 1.0 and 1.1 open without conversion;
+- `.pgl` projects from PyGeoLab 1.0, 1.1, and 1.2 open without conversion;
 - Python 3.12, 3.13, and 3.14 are validated with 85%+ test coverage;
 - Portable Windows x64 and Linux x64 executables built with PyInstaller.
 
 ## Quick verification
 
 1. Start PyGeoLab.
-2. Open `examples/demo.pgl`.
-3. Animate the timeline or play multi-sliders with `Space`.
-4. Check that ellipses, parametric curves, polar roses, and loci update interactively.
-5. Open the Value Table dock and export values to CSV.
-6. Try multiple selection and Undo/Redo.
-7. Export the scene to PNG and SVG.
-8. Save and reopen the project.
+2. Open `examples/stats_modeling.pgl`.
+3. Drag point `P1` or `P2` on the canvas: observe that `NuageMobile`, the centroid point `G_moyen`, and the regression line `Droite_OLS` update in real time.
+4. Select `NuageMobile` and inspect the univariate and bivariate statistics in the Properties panel.
+5. Switch the plot mode to Histogram, Box plot, or Bar chart in the Data panel.
+6. Test CSV export and import.
+7. Save and reopen the project.
 
 ## Distribution
 

@@ -4,6 +4,20 @@
 
 All notable changes to PyGeoLab are documented in this file.
 
+## 1.3.0 — 2026-10-18
+
+### Added
+
+- Immutable tabular domain model `DatasetObject` with strict numeric validation, single-series (1D) and paired (X/Y) series representations, and metadata tracking;
+- Comprehensive descriptive statistics engine (count, sum, mean, median, min, max, range, sample and population variance, standard deviation, quartiles $Q_1$/$Q_3$, interquartile range, percentiles, and Tukey outlier detection);
+- Bivariate statistics engine (covariance, Pearson correlation coefficient, ordinary least squares linear regression, $R^2$, residuals, and point predictions);
+- Statistical visualization modes integrated into the rendering engine: scatter plot, fitted regression line, histogram, box plot, and bar chart, with hit-testing, selection, and SVG/PNG exports;
+- Lightweight spreadsheet panel `DataTablePanel` tabified with Timeline and Value Table, with dynamic row/column addition and deletion, keyboard navigation, and TSV clipboard copy/paste;
+- Non-linear curve fitting engine (polynomial degrees 1 to 5 via Gaussian elimination with partial pivoting, exponential, logarithmic, and power regressions) generating valid, safe `FunctionObject` instances without `eval()` or `exec()`;
+- Full dependency graph integration: datasets reactively generated from canvas points, polygons, loci, timeline sliders, and sampled functions, with derived geometric points (mean point, row points) and regression lines;
+- Robust CSV import and export with multi-line delimiter sniffing, locale-aware decimal point detection, UTF-8-sig encoding support, Unicode path support, configurable missing value policies (error, skip, fill), and dimension limits;
+- Statistical demonstration project `examples/stats_modeling.pgl` and comprehensive user guide documentation in French and English.
+
 ## 1.2.0 — 2026-10-17
 
 ### Added

@@ -4,6 +4,20 @@
 
 Toutes les modifications notables de PyGeoLab sont documentées ici.
 
+## 1.3.0 — 2026-10-18
+
+### Ajouté
+
+- modèle métier tabulaire immuable `DatasetObject` avec validation numérique stricte, représentations 1D et bivariées (X/Y) et métadonnées ;
+- moteur de statistiques descriptives complet (effectif, somme, moyenne, médiane, min, max, étendue, variances population et échantillon, écart-type, quartiles $Q_1$/$Q_3$, intervalle interquartile, centiles et détection des valeurs aberrantes de Tukey) ;
+- moteur de statistiques bivariées (covariance, corrélation linéaire de Pearson, régression linéaire OLS, $R^2$, résidus et prédictions) ;
+- visualisations statistiques intégrées au moteur de rendu : nuage de points, droite de régression, histogramme, boîte à moustaches et diagramme en barres, avec hit-testing, sélection et export PNG/SVG ;
+- tableur léger `DataTablePanel` tabifié avec la Timeline et la Table de valeurs, supportant l'ajout/suppression dynamique de lignes/colonnes, la navigation clavier et le copier/coller TSV ;
+- moteur d'ajustement non-linéaire (polynômes de degrés 1 à 5 par élimination de Gauss à pivot partiel, régressions exponentielles, logarithmiques et puissances) produisant des instances `FunctionObject` sûres sans `eval()` ni `exec()` ;
+- intégration complète au graphe de dépendances : génération réactive de datasets depuis des points du canevas, polygones, lieux géométriques, curseurs et échantillonnage de fonctions, avec dérivation de points (barycentre, ligne) et de droites de régression ;
+- importation et exportation CSV robustes avec détection automatique multi-lignes du délimiteur et de la virgule décimale, support UTF-8 avec ou sans BOM, chemins Unicode, gestion des valeurs manquantes (rejet, exclusion, remplissage) et plafonds de taille sécurisés ;
+- projet exemple `examples/stats_modeling.pgl` et guides utilisateurs complets en français et anglais.
+
 ## 1.2.0 — 2026-10-17
 
 ### Ajouté
