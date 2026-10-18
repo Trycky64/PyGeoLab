@@ -23,7 +23,7 @@ from typing import Any, BinaryIO
 if sys.platform == "win32":
     import msvcrt
 else:
-    msvcrt = None  # type: ignore[assignment]
+    msvcrt: Any = None
 
 from PySide6.QtCore import QObject, Signal, Slot
 
