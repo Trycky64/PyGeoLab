@@ -71,6 +71,10 @@ if sys.platform == "win32":
             ("lpSecurityDescriptor", wintypes.LPVOID),
             ("bInheritHandle", wintypes.BOOL),
         ]
+else:
+
+    class SECURITY_ATTRIBUTES(ctypes.Structure):  # type: ignore[no-redef]
+        """Fallback for non-Windows platforms."""
 
     windll = getattr(ctypes, "windll", None)
     if windll is not None:
