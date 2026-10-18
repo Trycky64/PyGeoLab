@@ -39,6 +39,7 @@ from pygeolab.debug.protocol import (
     METHOD_NOT_FOUND,
     PROTOCOL_MISMATCH,
     PROTOCOL_VERSION,
+    SERVER_STOPPING,
     ProtocolError,
     RequestEnvelope,
     build_error_response,
@@ -92,6 +93,23 @@ if sys.platform == "win32":  # pragma: no cover
         ]
         advapi32.SetFileSecurityW.restype = wintypes.BOOL
 
+        advapi32.GetFileSecurityW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        advapi32.GetFileSecurityW.restype = wintypes.BOOL
+
+        advapi32.GetSecurityDescriptorDacl.argtypes = [
+            wintypes.LPVOID,
+            ctypes.POINTER(wintypes.BOOL),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.BOOL),
+        ]
+        advapi32.GetSecurityDescriptorDacl.restype = wintypes.BOOL
+
         kernel32.LocalFree.argtypes = [wintypes.HLOCAL]
         kernel32.LocalFree.restype = wintypes.HLOCAL
 
@@ -127,6 +145,15 @@ if sys.platform == "win32":  # pragma: no cover
         ]
         kernel32.CreateFileW.restype = wintypes.HANDLE
 
+        kernel32.WriteFile.argtypes = [
+            wintypes.HANDLE,
+            wintypes.LPCVOID,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
+            wintypes.LPVOID,
+        ]
+        kernel32.WriteFile.restype = wintypes.BOOL
+
         kernel32.GetLastError.argtypes = []
         kernel32.GetLastError.restype = wintypes.DWORD
 
@@ -135,6 +162,53 @@ if sys.platform == "win32":  # pragma: no cover
 
         kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
         kernel32.OpenProcess.restype = wintypes.HANDLE
+
+
+def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
+    """Verify that a Windows path exists and has an explicit, valid non-null DACL applied."""
+    if sys.platform != "win32":
+        return
+    windll_obj = getattr(ctypes, "windll", None)
+    if windll_obj is None:
+        raise PermissionError("Win32 API unavailable to verify file security DACL")
+
+    needed = wintypes.DWORD(0)
+    windll_obj.advapi32.GetFileSecurityW(
+        str(path),
+        DACL_SECURITY_INFORMATION,
+        None,
+        0,
+        ctypes.byref(needed),
+    )
+    if needed.value == 0:
+        err = windll_obj.kernel32.GetLastError()
+        raise PermissionError(f"GetFileSecurityW size query failed for {path} (error={err})")
+
+    buf = (ctypes.c_byte * needed.value)()
+    ok = windll_obj.advapi32.GetFileSecurityW(
+        str(path),
+        DACL_SECURITY_INFORMATION,
+        ctypes.byref(buf),
+        needed.value,
+        ctypes.byref(needed),
+    )
+    if not ok:
+        err = windll_obj.kernel32.GetLastError()
+        raise PermissionError(f"Failed to read security descriptor for {path} (error={err})")
+
+    dacl_present = wintypes.BOOL(0)
+    p_dacl = ctypes.c_void_p()
+    dacl_defaulted = wintypes.BOOL(0)
+    dacl_ok = windll_obj.advapi32.GetSecurityDescriptorDacl(
+        ctypes.byref(buf),
+        ctypes.byref(dacl_present),
+        ctypes.byref(p_dacl),
+        ctypes.byref(dacl_defaulted),
+    )
+    if not dacl_ok or not dacl_present.value or not p_dacl.value:
+        raise PermissionError(
+            f"Security descriptor for {path} does not have an explicit valid DACL"
+        )
 
 
 class _QtDispatcher(QObject):
@@ -174,6 +248,14 @@ class DebugBridgeServer:
         self._unix_socket: socket.socket | None = None
         self.endpoint_address: str = ""
         self.info_file_path: Path | None = None
+        self.shutdown_status: dict[str, Any] = {
+            "stopped": False,
+            "thread_alive": False,
+            "clean": False,
+            "error": None,
+        }
+        self._active_connections: set[BinaryIO] = set()
+        self._connections_lock = threading.Lock()
 
     def _get_session_dir(self) -> Path:
         """Resolve, validate, and secure the private session directory."""
@@ -204,23 +286,46 @@ class DebugBridgeServer:
         # Apply restricted DACL (Windows) or 0700 mode (Unix)
         if sys.platform == "win32":  # pragma: no cover
             windll_obj = getattr(ctypes, "windll", None)
-            if windll_obj is not None:
-                p_sd = ctypes.c_void_p()
-                sddl = "D:P(A;OICI;GA;;;OW)"  # Protected DACL: Allow Generic All to Owner only
-                if windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            if windll_obj is None:
+                raise PermissionError("Win32 API unavailable to secure session directory")
+            p_sd = ctypes.c_void_p()
+            sddl = "D:P(A;OICI;GA;;;OW)"  # Protected DACL: Allow Generic All to Owner only
+            if (
+                not windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
                     sddl, 1, ctypes.byref(p_sd), None
-                ):
-                    try:
-                        windll_obj.advapi32.SetFileSecurityW(
-                            str(session_dir),
-                            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
-                            p_sd,
-                        )
-                    finally:
-                        windll_obj.kernel32.LocalFree(p_sd)
+                )
+                or not p_sd
+            ):
+                raise PermissionError("Failed to convert security descriptor for session directory")
+            try:
+                set_ok = windll_obj.advapi32.SetFileSecurityW(
+                    str(session_dir),
+                    DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+                    p_sd,
+                )
+                if not set_ok:
+                    err = windll_obj.kernel32.GetLastError()
+                    raise PermissionError(
+                        f"SetFileSecurityW failed for session directory (error={err})"
+                    )
+            finally:
+                windll_obj.kernel32.LocalFree(p_sd)
+            _verify_windows_dacl(session_dir)
         else:
-            with contextlib.suppress(OSError):
-                os.chmod(session_dir, 0o700)
+            if hasattr(os, "getuid"):
+                st = session_dir.stat()
+                if st.st_uid != os.getuid():
+                    raise PermissionError(
+                        f"Session directory {session_dir} is not owned by current user"
+                    )
+            os.chmod(session_dir, 0o700)
+            st = session_dir.stat()
+            if hasattr(os, "getuid") and st.st_uid != os.getuid():
+                raise PermissionError(
+                    f"Session directory {session_dir} is not owned by current user"
+                )
+            if st.st_mode & 0o077 != 0:
+                raise PermissionError(f"Session directory {session_dir} has unsafe permissions")
 
         return session_dir
 
@@ -294,30 +399,105 @@ class DebugBridgeServer:
 
         temp_file = session_dir / f"session_{os.getpid()}_{secrets.token_hex(4)}.tmp"
         if sys.platform != "win32":  # pragma: no cover
-            fd = os.open(temp_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(info, f)
-        else:
-            temp_file.write_text(json.dumps(info), encoding="utf-8")
+            try:
+                fd = os.open(temp_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(info, f)
+                st = temp_file.stat()
+                if hasattr(os, "getuid") and st.st_uid != os.getuid():
+                    raise PermissionError(
+                        f"Temporary session file {temp_file} not owned by current user"
+                    )
+                if st.st_mode & 0o077 != 0:
+                    raise PermissionError(
+                        f"Temporary session file {temp_file} has unsafe permissions"
+                    )
+                temp_file.replace(self.info_file_path)
+                st_final = self.info_file_path.stat()
+                if hasattr(os, "getuid") and st_final.st_uid != os.getuid():
+                    raise PermissionError(
+                        f"Session file {self.info_file_path} not owned by current user"
+                    )
+                if st_final.st_mode & 0o077 != 0:
+                    raise PermissionError(
+                        f"Session file {self.info_file_path} has unsafe permissions"
+                    )
+            except Exception:
+                if temp_file.exists():
+                    with contextlib.suppress(Exception):
+                        temp_file.unlink()
+                if self.info_file_path.exists():
+                    with contextlib.suppress(Exception):
+                        self.info_file_path.unlink()
+                raise
+        else:  # pragma: no cover
             windll_obj = getattr(ctypes, "windll", None)
-            if windll_obj is not None:
-                p_sd = ctypes.c_void_p()
-                sddl = "D:P(A;;GA;;;OW)"
-                if windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            if windll_obj is None:
+                raise PermissionError("Win32 API unavailable to create secure session file")
+
+            p_sd = ctypes.c_void_p()
+            sddl = "D:P(A;;GA;;;OW)"  # Protected DACL: Owner Only Generic All
+            if (
+                not windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
                     sddl, 1, ctypes.byref(p_sd), None
-                ):
-                    try:
-                        windll_obj.advapi32.SetFileSecurityW(
-                            str(temp_file),
-                            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
-                            p_sd,
+                )
+                or not p_sd
+            ):
+                raise PermissionError("Failed to convert security descriptor for session file")
+
+            sa = SECURITY_ATTRIBUTES()
+            sa.nLength = ctypes.sizeof(SECURITY_ATTRIBUTES)
+            sa.lpSecurityDescriptor = p_sd
+            sa.bInheritHandle = 0
+
+            h_file = -1
+            try:
+                try:
+                    # Create file atomically with owner-only DACL BEFORE writing any secret
+                    h_file = windll_obj.kernel32.CreateFileW(
+                        str(temp_file),
+                        0x40000000 | 0x80000000,  # GENERIC_READ | GENERIC_WRITE
+                        0,  # Exclusive lock
+                        ctypes.byref(sa),
+                        1,  # CREATE_NEW
+                        0x80,  # FILE_ATTRIBUTE_NORMAL
+                        None,
+                    )
+                    if not h_file or h_file == -1:
+                        err = windll_obj.kernel32.GetLastError()
+                        raise PermissionError(
+                            f"Failed to create protected temp session file (error={err})"
                         )
-                    finally:
+
+                    raw_bytes = json.dumps(info).encode("utf-8")
+                    written = wintypes.DWORD(0)
+                    ok = windll_obj.kernel32.WriteFile(
+                        h_file, raw_bytes, len(raw_bytes), ctypes.byref(written), None
+                    )
+                    if not ok or written.value != len(raw_bytes):
+                        raise PermissionError("Failed to write session secret to temp file")
+                finally:
+                    if p_sd:
                         windll_obj.kernel32.LocalFree(p_sd)
+                    if h_file and h_file != -1:
+                        windll_obj.kernel32.CloseHandle(h_file)
 
-        temp_file.replace(self.info_file_path)
+                # Verify DACL of temp file before publication
+                _verify_windows_dacl(temp_file)
+                # Atomic rename/replace
+                temp_file.replace(self.info_file_path)
+                # Verify DACL of final published file
+                _verify_windows_dacl(self.info_file_path)
+            except Exception:
+                if temp_file.exists():
+                    with contextlib.suppress(Exception):
+                        temp_file.unlink()
+                if self.info_file_path.exists():
+                    with contextlib.suppress(Exception):
+                        self.info_file_path.unlink()
+                raise
 
-    def stop(self) -> None:
+    def stop(self, timeout: float = 3.0) -> None:
         """Stop server, unblock pending operations, close handles, and remove connection info."""
         self.running = False
         if self.info_file_path and self.info_file_path.exists():
@@ -329,8 +509,11 @@ class DebugBridgeServer:
             if windll_obj is not None:
                 h = self._pipe_handle
                 if h is not None and h != -1:
-                    with contextlib.suppress(Exception):
-                        windll_obj.kernel32.CancelIoEx(h, None)
+                    res = windll_obj.kernel32.CancelIoEx(h, None)
+                    if not res:
+                        err = windll_obj.kernel32.GetLastError()
+                        if err != 1168:  # ERROR_NOT_FOUND (no pending I/O)
+                            LOGGER.debug("CancelIoEx returned code %d", err)
 
                 if self.endpoint_address:
                     with contextlib.suppress(Exception):
@@ -354,11 +537,43 @@ class DebugBridgeServer:
                 with contextlib.suppress(Exception):
                     Path(self.endpoint_address).unlink()
 
-        if self._server_thread is not None and self._server_thread.is_alive():
-            self._server_thread.join(timeout=2.0)
-            self._server_thread = None
+        # Close all active client connections immediately after canceling pending I/O
+        with self._connections_lock:
+            for active_conn in list(self._active_connections):
+                with contextlib.suppress(Exception):
+                    active_conn.close()
+            self._active_connections.clear()
 
-        LOGGER.info("PyGeoLab debug bridge server stopped")
+        if self._server_thread is not None and self._server_thread.is_alive():
+            self._server_thread.join(timeout=timeout)
+            if self._server_thread.is_alive():
+                LOGGER.error("Server thread failed to terminate within %s seconds", timeout)
+                self.shutdown_status = {
+                    "stopped": True,
+                    "thread_alive": True,
+                    "clean": False,
+                    "error": f"Server thread failed to terminate within {timeout}s",
+                }
+            else:
+                self._server_thread = None
+                self.shutdown_status = {
+                    "stopped": True,
+                    "thread_alive": False,
+                    "clean": True,
+                    "error": None,
+                }
+        else:
+            self._server_thread = None
+            self.shutdown_status = {
+                "stopped": True,
+                "thread_alive": False,
+                "clean": True,
+                "error": None,
+            }
+
+        LOGGER.info(
+            "PyGeoLab debug bridge server stopped (clean=%s)", self.shutdown_status["clean"]
+        )
 
     def _run_server(self) -> None:
         """Main server loop accepting connections."""
@@ -460,13 +675,20 @@ class DebugBridgeServer:
         self._unix_socket = sock
         try:
             sock_path = Path(self.endpoint_address)
+            if sock_path.is_symlink():
+                raise PermissionError(f"Socket path {sock_path} is an untrusted symlink")
             if sock_path.exists():
-                # Verify safety before removing
                 if not sock_path.is_symlink() and stat.S_ISSOCK(sock_path.stat().st_mode):
                     sock_path.unlink()
+                else:
+                    raise PermissionError(f"Existing file at {sock_path} is not a valid socket")
             sock.bind(self.endpoint_address)
-            with contextlib.suppress(OSError):
-                os.chmod(self.endpoint_address, 0o600)
+            os.chmod(self.endpoint_address, 0o600)
+            st = sock_path.stat()
+            if hasattr(os, "getuid") and st.st_uid != os.getuid():
+                raise PermissionError(f"Socket {sock_path} not owned by current user")
+            if st.st_mode & 0o077 != 0:
+                raise PermissionError(f"Socket {sock_path} has unsafe permissions")
             sock.listen(1)
             sock.settimeout(1.0)
             while self.running:
@@ -496,78 +718,106 @@ class DebugBridgeServer:
         request_count = 0
         max_requests_per_conn = 1000
 
-        while self.running and request_count < max_requests_per_conn:
-            watchdog: threading.Timer | None = None
-            if cancel_cb is not None:
-                watchdog = threading.Timer(3.0, cancel_cb)
-                watchdog.daemon = True
-                watchdog.start()
+        with self._connections_lock:
+            self._active_connections.add(stream)
 
-            try:
-                raw_frame = read_bounded_frame(stream, MAX_MESSAGE_BYTES)
-            except EOFError:
-                break
-            except ProtocolError as perr:
-                with contextlib.suppress(Exception):
-                    stream.write(build_error_response(perr, None))
-                break  # Close connection on framing violation or payload excess
-            except OSError as oerr:
-                LOGGER.debug("Client stream aborted or timed out: %s", oerr)
-                break
-            finally:
-                if watchdog is not None:
-                    watchdog.cancel()
-
-            request_count += 1
-            req_id: str | int | None = None
-            try:
-                req = RequestEnvelope.from_bytes(raw_frame)
-                req_id = req.id
-                if req.method == "handshake":
-                    token = req.params.get("token")
-                    client_ver = req.params.get("version")
-                    if not isinstance(token, str) or not secrets.compare_digest(
-                        token, self.auth_token
-                    ):
-                        raise ProtocolError(AUTH_FAILED, "Invalid session auth token")
-                    if client_ver != PROTOCOL_VERSION:
-                        msg = (
-                            f"Incompatible protocol version: {client_ver} "
-                            f"(expected {PROTOCOL_VERSION})"
+        try:
+            while request_count < max_requests_per_conn:
+                if not self.running:
+                    with contextlib.suppress(Exception):
+                        stream.write(
+                            build_error_response(
+                                ProtocolError(SERVER_STOPPING, "Debug bridge is shutting down"),
+                                None,
+                            )
                         )
-                        raise ProtocolError(PROTOCOL_MISMATCH, msg)
-                    authenticated = True
-                    resp = build_response(
-                        {
-                            "status": "authenticated",
-                            "version": PROTOCOL_VERSION,
-                            "pygeolab_version": __version__,
-                            "pid": os.getpid(),
-                        },
-                        req_id,
-                    )
-                    stream.write(resp)
-                    continue
+                    break
 
-                if not authenticated:
-                    raise ProtocolError(
-                        AUTH_FAILED, "Authentication required. Perform handshake first."
-                    )
+                watchdog: threading.Timer | None = None
+                if cancel_cb is not None:
+                    watchdog = threading.Timer(3.0, cancel_cb)
+                    watchdog.daemon = True
+                    watchdog.start()
 
-                if req.method == "runtime_snapshot":
-                    snapshot = self._dispatch_collect_snapshot()
-                    resp = build_response(snapshot, req_id)
-                    stream.write(resp)
-                elif req.method == "ping":
-                    resp = build_response({"pong": True, "time": time.time()}, req_id)
-                    stream.write(resp)
-                else:
-                    raise ProtocolError(METHOD_NOT_FOUND, f"Method '{req.method}' not found")
-            except ProtocolError as perr:
-                stream.write(build_error_response(perr, req_id))
-            except Exception as gerr:
-                LOGGER.exception("Internal error in debug bridge handler: %s", gerr)
-                stream.write(build_error_response(gerr, req_id))
+                try:
+                    raw_frame = read_bounded_frame(stream, MAX_MESSAGE_BYTES)
+                except EOFError:
+                    break
+                except ProtocolError as perr:
+                    with contextlib.suppress(Exception):
+                        stream.write(build_error_response(perr, None))
+                    break  # Close connection on framing violation or payload excess
+                except OSError as oerr:
+                    LOGGER.debug("Client stream aborted or timed out: %s", oerr)
+                    break
+                finally:
+                    if watchdog is not None:
+                        watchdog.cancel()
+
+                request_count += 1
+                req_id: str | int | None = None
+                try:
+                    req = RequestEnvelope.from_bytes(raw_frame)
+                    req_id = req.id
+
+                    if not self.running:
+                        with contextlib.suppress(Exception):
+                            stream.write(
+                                build_error_response(
+                                    ProtocolError(SERVER_STOPPING, "Debug bridge is shutting down"),
+                                    req_id,
+                                )
+                            )
+                        break
+
+                    if req.method == "handshake":
+                        token = req.params.get("token")
+                        client_ver = req.params.get("version")
+                        if not isinstance(token, str) or not secrets.compare_digest(
+                            token, self.auth_token
+                        ):
+                            raise ProtocolError(AUTH_FAILED, "Invalid session auth token")
+                        if client_ver != PROTOCOL_VERSION:
+                            msg = (
+                                f"Incompatible protocol version: {client_ver} "
+                                f"(expected {PROTOCOL_VERSION})"
+                            )
+                            raise ProtocolError(PROTOCOL_MISMATCH, msg)
+                        authenticated = True
+                        resp = build_response(
+                            {
+                                "status": "authenticated",
+                                "version": PROTOCOL_VERSION,
+                                "pygeolab_version": __version__,
+                                "pid": os.getpid(),
+                            },
+                            req_id,
+                        )
+                        stream.write(resp)
+                        continue
+
+                    if not authenticated:
+                        raise ProtocolError(
+                            AUTH_FAILED, "Authentication required. Perform handshake first."
+                        )
+
+                    if req.method == "runtime_snapshot":
+                        snapshot = self._dispatch_collect_snapshot()
+                        resp = build_response(snapshot, req_id)
+                        stream.write(resp)
+                    elif req.method == "ping":
+                        resp = build_response({"pong": True, "time": time.time()}, req_id)
+                        stream.write(resp)
+                    else:
+                        raise ProtocolError(METHOD_NOT_FOUND, f"Method '{req.method}' not found")
+                except ProtocolError as perr:
+                    stream.write(build_error_response(perr, req_id))
+                except Exception as gerr:
+                    LOGGER.exception("Internal error in debug bridge handler: %s", gerr)
+                    stream.write(build_error_response(gerr, req_id))
+        finally:
+            with self._connections_lock:
+                self._active_connections.discard(stream)
 
     def _dispatch_collect_snapshot(self) -> dict[str, Any]:
         """Dispatch snapshot request to Qt main thread and await result safely."""

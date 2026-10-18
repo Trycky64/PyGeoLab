@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import os
 import socket
@@ -30,6 +31,7 @@ from pygeolab.debug.protocol import (
     PAYLOAD_TOO_LARGE,
     PROTOCOL_MISMATCH,
     PROTOCOL_VERSION,
+    SERVER_STOPPING,
     ProtocolError,
     RequestEnvelope,
     build_error_response,
@@ -520,3 +522,212 @@ def test_security_symlink_rejection(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(PermissionError, match="untrusted symlink"):
         server._get_session_dir()
+
+
+def test_windows_security_failure_handling(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that failure of any Win32 security call raises PermissionError and cleans up."""
+    if sys.platform != "win32":
+        return
+
+    import ctypes
+
+    windll_obj = getattr(ctypes, "windll", None)
+    if windll_obj is None:
+        return
+
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+    session_dir = tmp_path / "debug"
+    session_dir.mkdir()
+
+    # 1. SDDL conversion failure in _get_session_dir
+    monkeypatch.setattr(
+        windll_obj.advapi32,
+        "ConvertStringSecurityDescriptorToSecurityDescriptorW",
+        lambda *args: 0,
+    )
+    with pytest.raises(PermissionError, match="Failed to convert security descriptor"):
+        server._get_session_dir()
+
+    # 2. SetFileSecurityW failure in _get_session_dir
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "SetFileSecurityW", lambda *args: 0)
+    with pytest.raises(PermissionError, match="SetFileSecurityW failed"):
+        server._get_session_dir()
+
+    # 3. CreateFileW failure in _write_connection_file
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.kernel32, "CreateFileW", lambda *args: -1)
+    with pytest.raises(PermissionError, match="Failed to create protected temp session file"):
+        server._write_connection_file(session_dir)
+
+    # 4. WriteFile failure in _write_connection_file
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.kernel32, "WriteFile", lambda *args: 0)
+    with pytest.raises(PermissionError, match="Failed to write session secret"):
+        server._write_connection_file(session_dir)
+
+    # Ensure no leaked temp files in session_dir
+    assert list(session_dir.glob("*.tmp")) == []
+
+    # 5. Atomic replacement failure in _write_connection_file cleans up temp file
+    monkeypatch.undo()
+
+    def mock_replace(self: Path, target: Path) -> None:
+        raise OSError("Simulated disk replacement error")
+
+    monkeypatch.setattr(Path, "replace", mock_replace)
+    with pytest.raises(OSError, match="Simulated disk replacement error"):
+        server._write_connection_file(session_dir)
+
+    assert list(session_dir.glob("*.tmp")) == []
+    assert not (session_dir / f"session_{os.getpid()}.json").exists()
+
+
+def test_verify_windows_dacl_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that _verify_windows_dacl raises PermissionError if DACL check fails."""
+    if sys.platform != "win32":
+        return
+
+    import ctypes
+
+    windll_obj = getattr(ctypes, "windll", None)
+    if windll_obj is None:
+        return
+
+    from pygeolab.debug.bridge import _verify_windows_dacl
+
+    dummy_file = tmp_path / "test.txt"
+    dummy_file.write_text("hello")
+
+    # Fail GetFileSecurityW
+    monkeypatch.setattr(windll_obj.advapi32, "GetFileSecurityW", lambda *args: 0)
+    with pytest.raises(PermissionError, match="failed for"):
+        _verify_windows_dacl(dummy_file)
+
+    # Fail GetSecurityDescriptorDacl
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetSecurityDescriptorDacl", lambda *args: 0)
+    with pytest.raises(PermissionError, match="does not have an explicit valid DACL"):
+        _verify_windows_dacl(dummy_file)
+
+
+def test_server_shutdown_status_and_rejection() -> None:
+    """Verify structured shutdown status and refusal of requests when stopped."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+    server.start()
+    assert server.shutdown_status["stopped"] is False
+
+    # Simulate request handling when server is shutting down
+    server.running = False
+    fake_stream = io.BytesIO(b'{"jsonrpc": "2.0", "method": "ping", "id": 1}\n')
+    server._handle_client_stream(fake_stream)
+
+    raw = fake_stream.getvalue().strip().decode("utf-8")
+    assert raw
+    err_resp = json.loads(raw)
+    assert err_resp["error"]["code"] == SERVER_STOPPING
+
+    server.stop()
+    assert server.shutdown_status["stopped"] is True
+    assert server.shutdown_status["clean"] is True
+    assert server.shutdown_status["thread_alive"] is False
+
+
+def test_server_incomplete_frame_handling() -> None:
+    """Verify server cleanly terminates stream without crash when client sends incomplete frame."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+    server.running = True
+
+    # Incomplete frame (no newline delimiter before EOF)
+    fake_stream = io.BytesIO(b'{"jsonrpc": "2.0", "method": "ping"')
+    server._handle_client_stream(fake_stream)
+    server.running = False
+
+
+def test_server_stop_timeout_structured_status() -> None:
+    """Verify that when the server thread fails to terminate within timeout, status reflects it."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+
+    fake_thread = MagicMock()
+    fake_thread.is_alive.return_value = True
+    server._server_thread = fake_thread
+
+    server.stop(timeout=0.01)
+    assert server.shutdown_status["stopped"] is True
+    assert server.shutdown_status["clean"] is False
+    assert server.shutdown_status["thread_alive"] is True
+    assert server._server_thread is fake_thread
+
+
+def test_dispatch_collect_snapshot_error_handling() -> None:
+    """Verify that _dispatch_collect_snapshot handles timeout and exceptions."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+
+    # 1. Event wait times out
+    server.dispatcher.request_snapshot = MagicMock()
+    with pytest.raises(TimeoutError, match="Timed out waiting"):
+        server._dispatch_collect_snapshot()
+
+    # 2. Qt thread sets an error
+    def simulate_error(container: dict[str, Any]) -> None:
+        container["error"] = ValueError("Simulated Qt thread error")
+        container["event"].set()
+
+    server.dispatcher.request_snapshot.emit = simulate_error
+    with pytest.raises(ValueError, match="Simulated Qt thread error"):
+        server._dispatch_collect_snapshot()
+
+
+class _DuplexBytesIO:
+    def __init__(self, incoming: bytes) -> None:
+        self.incoming = io.BytesIO(incoming)
+        self.outgoing = io.BytesIO()
+
+    def read(self, n: int = -1) -> bytes:
+        return self.incoming.read(n)
+
+    def readline(self, size: int = -1) -> bytes:
+        return self.incoming.readline(size)
+
+    def write(self, data: bytes) -> int:
+        return self.outgoing.write(data)
+
+
+def test_server_handler_internal_error() -> None:
+    """Verify that unhandled internal exceptions in server handler return safe error response."""
+    window_mock = MagicMock()
+    server = DebugBridgeServer(window_mock)
+    server.running = True
+
+    # Mock _dispatch_collect_snapshot to raise unexpected RuntimeError
+    server._dispatch_collect_snapshot = MagicMock(side_effect=RuntimeError("Secret internal error"))
+
+    # Handshake first
+    hs_bytes = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "method": "handshake",
+                "params": {"token": server.auth_token, "version": "1.0.0"},
+                "id": 1,
+            }
+        ).encode("utf-8")
+        + b"\n"
+    )
+    snap_bytes = (
+        json.dumps({"jsonrpc": "2.0", "method": "runtime_snapshot", "id": 2}).encode("utf-8")
+        + b"\n"
+    )
+
+    stream = _DuplexBytesIO(hs_bytes + snap_bytes)
+    server._handle_client_stream(stream)  # type: ignore[arg-type]
+    server.running = False
+
+    output = stream.outgoing.getvalue().decode("utf-8")
+    assert "Secret internal error" not in output
+    assert "Internal server error" in output
