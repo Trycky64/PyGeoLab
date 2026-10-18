@@ -48,6 +48,14 @@ def main() -> int:
     apply_theme(application, preferences.theme_mode)
     window = MainWindow(offer_recovery="--smoke-test" not in sys.argv)
     window.show()
+
+    debug_bridge = None
+    if "--debug-bridge" in sys.argv:
+        from pygeolab.debug.bridge import DebugBridgeServer
+
+        debug_bridge = DebugBridgeServer(window)
+        debug_bridge.start()
+
     if "--smoke-test" in sys.argv:
         application.processEvents()
         if not window.close():
@@ -56,6 +64,12 @@ def main() -> int:
         application.processEvents()
         logging.getLogger(__name__).info("Executable smoke test passed")
         return 0
-    exit_code = application.exec()
+
+    try:
+        exit_code = application.exec()
+    finally:
+        if debug_bridge is not None:
+            debug_bridge.stop()
+
     logging.getLogger(__name__).info("PyGeoLab shutdown (code %s)", exit_code)
     return exit_code
