@@ -125,3 +125,20 @@ def test_data_table_panel_empty_dataset(qtbot) -> None:
     panel.refresh()
     assert panel._active_object_id is None
     assert panel._model.rowCount() == 0
+
+
+def test_data_table_panel_dependent_dataset(qtbot) -> None:
+    doc = Document()
+    p1 = doc.add(GeoObject(name="A", kind="point", params={"x": 1.0, "y": 2.0}))
+    p2 = doc.add(GeoObject(name="B", kind="point", params={"x": 3.0, "y": 4.0}))
+    ds = doc.add(GeoObject(name="PointsData", kind="dataset", dependencies=(p1.id, p2.id)))
+
+    panel = DataTablePanel(doc)
+    qtbot.addWidget(panel)
+    panel.refresh()
+
+    assert panel._active_object_id == ds.id
+    assert panel._model.rowCount() == 2
+    assert panel._btn_add_row.isEnabled() is False
+    assert panel._btn_del_row.isEnabled() is False
+    assert panel._btn_paste.isEnabled() is False

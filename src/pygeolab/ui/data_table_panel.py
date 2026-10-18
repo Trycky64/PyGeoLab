@@ -51,6 +51,11 @@ class DatasetTableModel(QAbstractTableModel):
         super().__init__(parent)
         self._column_names: list[str] = ["x", "y"]
         self._rows: list[list[float]] = []
+        self._read_only: bool = False
+
+    def set_read_only(self, read_only: bool) -> None:
+        """Mark table model as editable or read-only."""
+        self._read_only = read_only
 
     def set_dataset(self, dataset: DatasetObject) -> None:
         """Reset internal table contents to match the given dataset."""
@@ -83,10 +88,13 @@ class DatasetTableModel(QAbstractTableModel):
         return str(section + 1)
 
     def flags(self, index: QModelIndex | QPersistentModelIndex) -> Qt.ItemFlag:
-        """Return item flags enabling selection and in-place editing."""
+        """Return item flags enabling selection and optional in-place editing."""
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+        fl = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        if not self._read_only:
+            fl |= Qt.ItemFlag.ItemIsEditable
+        return fl
 
     def data(
         self, index: QModelIndex | QPersistentModelIndex, role: int = Qt.ItemDataRole.DisplayRole
@@ -329,11 +337,18 @@ class DataTablePanel(QWidget):
         obj = self._document.get(object_id)
         if obj is not None and isinstance(obj.geometry, DatasetObject):
             ds = obj.geometry
+            is_dependent = bool(obj.dependencies)
+            self._model.set_read_only(is_dependent)
             self._model.set_dataset(ds)
             # Update plot_kind combo
             pk_idx = self._plot_kind_combo.findData(ds.plot_kind)
             if pk_idx >= 0:
                 self._plot_kind_combo.setCurrentIndex(pk_idx)
+            self._btn_add_row.setEnabled(not is_dependent)
+            self._btn_del_row.setEnabled(not is_dependent)
+            self._btn_add_col.setEnabled(not is_dependent)
+            self._btn_del_col.setEnabled(not is_dependent)
+            self._btn_paste.setEnabled(not is_dependent)
 
     def _on_plot_kind_changed(self, index: int) -> None:
         if self._updating or not self._active_object_id or index < 0:

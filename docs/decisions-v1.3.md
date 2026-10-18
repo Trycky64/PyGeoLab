@@ -169,6 +169,31 @@ Le moteur de calcul doit être indépendant de Qt, ne dépendre d'aucune bibliot
    - Méthodes directes sur `DatasetObject` : `fit_polynomial(degree)`, `fit_exponential()`, `fit_logarithmic()`.
    - Affichage synthétique du modèle quadratique et de son $R^2$ dans `PropertiesPanel` lorsque le dataset comporte au moins 3 points d'observation distincts.
 
+---
+
+## ADR-050 : Intégration des jeux de données au graphe de dépendances géométrique
+
+### Contexte
+La géométrie dynamique implique que les jeux de données ne doivent pas être cantonnés à des valeurs statiques. Ils doivent pouvoir être alimentés de manière réactive par des objets géométriques parents (points mobiles du canevas, sommets de polygones, trajectoires de lieux géométriques, curseurs/sliders ou échantillonnage régulier de fonctions mathématiques). Réciproquement, des objets géométriques doivent pouvoir être dérivés des jeux de données (points de coordonnées, point moyen/barycentre $(\bar{x}, \bar{y})$, droite de régression linéaire dynamique).
+
+### Décisions d'architecture
+1. **Évaluation réactive bidirectionnelle (`constructions.py`)** :
+   - `kind == "dataset"` : extraction automatique des observations selon les types de parents reçus :
+     - Parents `Point2D` : chaque point fournit une ligne $(x_i, y_i)$.
+     - Parent `Polygon2D` : extraction des sommets dans l'ordre trigonométrique.
+     - Parent `Locus2D` : extraction de l'échantillonnage de la trajectoire échantillonnée.
+     - Parents scalaires/curseurs `float` : série 1D ou paires $(x_i, y_i)$ réévaluées à chaque pas de timeline/scrubbing.
+     - Parent `FunctionObject` : discrétisation régulière sur un intervalle $[x_{\min}, x_{\max}]$ paramétrable.
+   - `kind == "point"` : extraction réactive depuis un `DatasetObject` parent :
+     - Mode `row` (défaut) : sélection de la ligne $i$.
+     - Mode `mean` : calcul automatique du centre de gravité $(\bar{x}, \bar{y})$ via les statistiques descriptives du dataset.
+   - `kind == "line"` : droite d'ajustement linéaire OLS dynamique calculée automatiquement sur le dataset parent.
+2. **Propriétés de lecture seule et ergonomie UI (`data_table_panel.py`)** :
+   - Lorsqu'un `DatasetObject` possède des dépendances (`obj.dependencies` non vide), le tableur passe automatiquement en mode lecture seule (`_read_only = True`), désactivant l'édition manuelle de cellules et les boutons d'ajout/suppression de lignes/colonnes tout en maintenant la sélection, la copie TSV et l'exportation CSV.
+3. **Robustesse et invalidation fine** :
+   - Le graphe de dépendances (`DependencyGraph`) détecte et interdit strictement tout cycle orienté (`CycleDetectedError` / `ValueError`), empêchant par exemple un point de dépendre d'un dataset qui dépendrait de ce même point.
+   - Le recalcul incrémental document (`Document._commit`) n'invalide et ne réévalue que le sous-graphe des descendants directs et indirects, préservant intactes les constructions géométriques indépendantes.
+
 
 
 

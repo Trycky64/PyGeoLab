@@ -82,8 +82,18 @@ class DatasetObject:
         return len(self.rows)
 
     @property
+    def data(self) -> tuple[tuple[float, ...], ...]:
+        """Alias for rows."""
+        return self.rows
+
+    @property
     def col_count(self) -> int:
         """Total number of columns in the dataset."""
+        return len(self.column_names)
+
+    @property
+    def column_count(self) -> int:
+        """Alias for col_count."""
         return len(self.column_names)
 
     @property

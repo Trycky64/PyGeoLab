@@ -64,6 +64,29 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
     """Dispatch a documented construction; inputs are ordered parent objects."""
     kind, params = obj.kind, obj.params
     if kind == "point":
+        if len(parents) == 1 and isinstance(parents[0].geometry, DatasetObject):
+            ds = parents[0].geometry
+            mode = params.get("mode", "row")
+            if mode == "mean":
+                if ds.row_count == 0:
+                    return None
+                stats_x = ds.descriptive_stats(0)
+                stats_y = ds.descriptive_stats(1) if ds.column_count >= 2 else stats_x
+                return Point2D(stats_x.mean, stats_y.mean)
+            raw_idx = params.get("index", 0)
+            row_idx = int(raw_idx) if isinstance(raw_idx, (int, float, str)) else 0
+            if 0 <= row_idx < ds.row_count:
+                row = ds.data[row_idx]
+                x = row[0]
+                y = row[1] if len(row) >= 2 else 0.0
+                return Point2D(x, y)
+            return None
+        if (
+            len(parents) == 2
+            and isinstance(parents[0].geometry, float)
+            and isinstance(parents[1].geometry, float)
+        ):
+            return Point2D(parents[0].geometry, parents[1].geometry)
         return Point2D(number(params, "x"), number(params, "y"))
     if kind == "number":
         return number(params, "value")
@@ -217,12 +240,124 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         # Fallback: create Locus2D with empty segments if context document not provided yet
         return Locus2D((), target_parent.id, driver_parent.id, start, sweep_end, samples=samples)
     if kind == "dataset":
-        if params:
+        raw_headers = params.get("headers", params.get("column_names"))
+        if isinstance(raw_headers, (list, tuple)) and raw_headers:
+            col_names = tuple(str(c) for c in raw_headers)
+        else:
+            col_names = ("x", "y")
+        plot_kind = str(params.get("plot_kind", "scatter"))
+
+        if parents:
+            # Case A: Parents are Points (e.g. Point2D)
+            if all(isinstance(parent_item.geometry, Point2D) for parent_item in parents):
+                data_pts: list[tuple[float, ...]] = []
+                for parent_item in parents:
+                    if isinstance(parent_item.geometry, Point2D):
+                        data_pts.append((parent_item.geometry.x, parent_item.geometry.y))
+                return DatasetObject(
+                    name=obj.name, column_names=col_names, rows=tuple(data_pts), plot_kind=plot_kind
+                )
+
+            # Case B: Parent is a Polygon2D
+            if len(parents) == 1 and isinstance(parents[0].geometry, Polygon2D):
+                poly = parents[0].geometry
+                poly_pts = tuple((pt.x, pt.y) for pt in poly.vertices)
+                return DatasetObject(
+                    name=obj.name, column_names=col_names, rows=poly_pts, plot_kind=plot_kind
+                )
+
+            # Case C: Parent is a Locus2D
+            if len(parents) == 1 and isinstance(parents[0].geometry, Locus2D):
+                locus = parents[0].geometry
+                locus_pts: list[tuple[float, ...]] = []
+                for piece in locus.segments:
+                    for pt in piece:
+                        locus_pts.append((pt.x, pt.y))
+                return DatasetObject(
+                    name=obj.name,
+                    column_names=col_names,
+                    rows=tuple(locus_pts),
+                    plot_kind=plot_kind,
+                )
+
+            # Case D: Parents are Numbers / Sliders
+            if all(isinstance(parent_item.geometry, float) for parent_item in parents):
+                mode = params.get(
+                    "mode", "xy" if len(parents) % 2 == 0 and len(parents) >= 2 else "series"
+                )
+                if mode == "xy" and len(parents) % 2 == 0:
+                    xy_rows: list[tuple[float, ...]] = []
+                    for i in range(len(parents) // 2):
+                        v1 = parents[2 * i].geometry
+                        v2 = parents[2 * i + 1].geometry
+                        if isinstance(v1, float) and isinstance(v2, float):
+                            xy_rows.append((v1, v2))
+                    return DatasetObject(
+                        name=obj.name,
+                        column_names=col_names,
+                        rows=tuple(xy_rows),
+                        plot_kind=plot_kind,
+                    )
+                else:
+                    s_rows: list[tuple[float, ...]] = []
+                    for parent_item in parents:
+                        if isinstance(parent_item.geometry, float):
+                            s_rows.append((parent_item.geometry,))
+                    val_names = col_names if len(col_names) == 1 else ("val",)
+                    return DatasetObject(
+                        name=obj.name,
+                        column_names=val_names,
+                        rows=tuple(s_rows),
+                        plot_kind=plot_kind,
+                    )
+
+            # Case E: Parent is a FunctionObject
+            if len(parents) >= 1 and isinstance(parents[0].geometry, FunctionObject):
+                fn = parents[0].geometry
+                start = float(number(params, "start", 0.0))
+                x_end = float(number(params, "end", 10.0))
+                count = max(2, int(number(params, "count", 20)))
+                step = (x_end - start) / (count - 1)
+                var_dict = {
+                    parent_item.name: float(parent_item.geometry)
+                    for parent_item in parents[1:]
+                    if isinstance(parent_item.geometry, float)
+                }
+                fn_pts: list[tuple[float, ...]] = []
+                for i in range(count):
+                    xi = start + i * step
+                    try:
+                        yi = fn.evaluate(xi, var_dict)
+                        if math.isfinite(yi):
+                            fn_pts.append((xi, yi))
+                    except Exception:
+                        pass
+                fn_names = col_names if len(col_names) == 2 else ("x", "f(x)")
+                return DatasetObject(
+                    name=obj.name, column_names=fn_names, rows=tuple(fn_pts), plot_kind=plot_kind
+                )
+
+        if params and (
+            "rows" in params or "data" in params or "series" in params or "plot_kind" in params
+        ):
             return DatasetObject.from_dict(params, name=obj.name)
         if isinstance(obj.geometry, DatasetObject):
             return obj.geometry
         return DatasetObject(name=obj.name)
     if kind in {"segment", "line", "ray", "vector", "circle"}:
+        if kind == "line" and len(parents) == 1 and isinstance(parents[0].geometry, DatasetObject):
+            ds = parents[0].geometry
+            if ds.row_count < 2 or ds.column_count < 2:
+                return None
+            try:
+                biv = ds.linear_regression(0, 1)
+                slope, intercept = biv.slope, biv.intercept
+                return Line2D.from_points(
+                    Point2D(0.0, intercept),
+                    Point2D(1.0, slope + intercept),
+                )
+            except Exception:
+                return None
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":
             return Segment2D(a, b)
