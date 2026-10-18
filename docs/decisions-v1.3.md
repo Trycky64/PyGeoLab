@@ -119,5 +119,29 @@ Ces représentations graphiques doivent respecter la séparation stricte Modèle
    - Détection d'intersection rectangulaire dans `_intersects_bounds` pour le lasso/boîte de sélection.
    - Ancrage d'étiquette sur le premier point de la série dans `Renderer._label_anchor`.
 
+---
+
+## ADR-048 : Tableur de données léger et interactif (DataTablePanel)
+
+### Contexte
+La manipulation manuelle ou tabulaire des jeux de données requiert une interface de type tableur permettant l'édition directe de cellules, l'insertion et la suppression dynamique de lignes et de colonnes, le copier-coller tabulaire via le presse-papiers, l'importation et l'exportation CSV, tout en s'intégrant au système Undo/Redo et en validant la nature strictement numérique des données.
+
+### Décisions d'architecture
+1. **Modèle de données Qt `DatasetTableModel`** (`pygeolab.ui.data_table_panel`) :
+   - Sous-classe de `QAbstractTableModel` avec état de travail local modifiable.
+   - Édition directe en cellule avec conversion stricte des séparateurs décimaux (virgule convertie en point).
+   - Rejet immédiat de toute valeur non numérique ou non finie (`NaN`, $\pm\infty$).
+   - Opérations de structure dynamiques : `add_row`, `remove_rows`, `add_column`, `remove_column` émettant les signaux de layout Qt appropriés.
+   - Méthode de conversion déterministe `to_dataset(name, plot_kind)` produisant un `DatasetObject` immuable.
+2. **Composant UI `DataTablePanel`** :
+   - Sélecteur de dataset actif et sélecteur de mode de tracé statistique.
+   - `QTableView` avec `QHeaderView.Stretch`, sélection étendue et navigation au clavier (Tab, touches fléchées).
+   - Boutons de barre d'outils : ajout/suppression de lignes et colonnes, copie de plage sélectionnée vers le presse-papiers (format TSV), collage multi-lignes/colonnes avec extension automatique des dimensions de la table.
+   - Importation et exportation de fichiers CSV avec dialogues natifs et gestion robuste des erreurs d'I/O.
+3. **Intégration Document et Undo/Redo** :
+   - Propagation des modifications par émission de `ChangeParametersCommand` vers l'historique d'actions de l'application.
+   - Dockable dans `MainWindow` au bas de l'écran, tabifié aux côtés de la Timeline et de la Table de valeurs.
+
+
 
 

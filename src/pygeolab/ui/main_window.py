@@ -41,6 +41,7 @@ from pygeolab.persistence import ProjectSession, RecoveryManager
 from pygeolab.rendering.viewport import Viewport
 from pygeolab.ui.action_registry import TOOL_LABELS, ActionRegistry
 from pygeolab.ui.algebra_panel import AlgebraPanel
+from pygeolab.ui.data_table_panel import DataTablePanel
 from pygeolab.ui.dialogs.export_dialog import ExportDialog
 from pygeolab.ui.dialogs.function_dialog import FunctionDialog
 from pygeolab.ui.dialogs.locus_dialog import LocusDialog
@@ -196,7 +197,16 @@ class MainWindow(QMainWindow):
         self.value_table_dock.setAccessibleName(self.tr("Panneau Table de valeurs"))
         self.value_table_dock.setWidget(self.value_table_panel)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.value_table_dock)
+
+        self.data_table_panel = DataTablePanel(self.document, self._execute_command, self)
+        self.data_table_dock = QDockWidget(self.tr("Tableur de données"), self)
+        self.data_table_dock.setObjectName("dataTableDock")
+        self.data_table_dock.setAccessibleName(self.tr("Panneau Tableur"))
+        self.data_table_dock.setWidget(self.data_table_panel)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.data_table_dock)
+
         self.tabifyDockWidget(self.timeline_dock, self.value_table_dock)
+        self.tabifyDockWidget(self.value_table_dock, self.data_table_dock)
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu(self.tr("&Fichier"))
@@ -367,6 +377,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.numerical_dock.toggleViewAction())
         view_menu.addAction(self.timeline_dock.toggleViewAction())
         view_menu.addAction(self.value_table_dock.toggleViewAction())
+        view_menu.addAction(self.data_table_dock.toggleViewAction())
         view_menu.addSeparator()
         self.action_registry.create_action(
             "animation.toggle_play",
