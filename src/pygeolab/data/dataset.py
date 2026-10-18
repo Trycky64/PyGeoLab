@@ -13,7 +13,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-from pygeolab.data.csv_io import read_csv, write_csv
+from pygeolab.data.csv_io import read_csv, write_csv, write_csv_file
 from pygeolab.geometry import Point2D
 
 
@@ -239,6 +239,25 @@ class DatasetObject:
             include_header=include_header,
         )
 
+    def to_csv_file(
+        self,
+        path: str | Path,
+        delimiter: str = ",",
+        decimal: str = ".",
+        include_header: bool = True,
+        encoding: str = "utf-8",
+    ) -> None:
+        """Export dataset contents directly to a CSV file on disk."""
+        write_csv_file(
+            path=path,
+            column_names=self.column_names,
+            rows=self.rows,
+            delimiter=delimiter,
+            decimal=decimal,
+            include_header=include_header,
+            encoding=encoding,
+        )
+
     @classmethod
     def from_1d(
         cls,
@@ -318,7 +337,10 @@ class DatasetObject:
         delimiter: str | None = None,
         has_header: bool | None = None,
         decimal: str | None = None,
+        missing_policy: str = "error",
+        fill_value: float = 0.0,
         max_rows: int = 100_000,
+        max_cols: int = 1_000,
     ) -> DatasetObject:
         """Construct a dataset from CSV text or a file path."""
         headers, rows = read_csv(
@@ -326,6 +348,9 @@ class DatasetObject:
             delimiter=delimiter,
             has_header=has_header,
             decimal=decimal,
+            missing_policy=missing_policy,
+            fill_value=fill_value,
             max_rows=max_rows,
+            max_cols=max_cols,
         )
         return cls(name=name, column_names=headers, rows=rows)

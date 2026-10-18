@@ -6,7 +6,7 @@ from pygeolab.data.bivariate import (
     linear_regression,
     pearson_correlation,
 )
-from pygeolab.data.csv_io import read_csv, write_csv
+from pygeolab.data.csv_io import read_csv, read_csv_file, write_csv, write_csv_file
 from pygeolab.data.dataset import DatasetObject
 from pygeolab.data.fitting import (
     FitResult,
@@ -38,5 +38,7 @@ __all__ = [
     "percentile",
     "quartiles",
     "read_csv",
+    "read_csv_file",
     "write_csv",
+    "write_csv_file",
 ]

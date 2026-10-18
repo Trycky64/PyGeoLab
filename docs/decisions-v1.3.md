@@ -194,6 +194,31 @@ La géométrie dynamique implique que les jeux de données ne doivent pas être 
    - Le graphe de dépendances (`DependencyGraph`) détecte et interdit strictement tout cycle orienté (`CycleDetectedError` / `ValueError`), empêchant par exemple un point de dépendre d'un dataset qui dépendrait de ce même point.
    - Le recalcul incrémental document (`Document._commit`) n'invalide et ne réévalue que le sous-graphe des descendants directs et indirects, préservant intactes les constructions géométriques indépendantes.
 
+---
+
+## ADR-051 : Importation et exportation de données tabulaires robustes (CSV I/O Engine)
+
+### Contexte
+L'échange de données statistiques nécessite de pouvoir importer et exporter des fichiers CSV provenant d'environnements hétérogènes (Excel français avec séparateur point-virgule et virgule décimale, outils scientifiques anglo-saxons avec virgule et point décimal, TSV, fichiers avec ou sans BOM UTF-8, chemins Unicode). L'importation doit détecter automatiquement les séparateurs, valider strictement la nature numérique des données, gérer les politiques de valeurs manquantes et imposer des limites de dimensionnement sécurisées.
+
+### Décisions d'architecture
+1. **Module `pygeolab.data.csv_io`** :
+   - `detect_delimiter(sample)` : analyse de cohérence multi-lignes des fréquences d'apparition des séparateurs candidats (`;`, `\t`, `,`, ` `) avec priorisation de `;` et `\t` face aux virgules numériques.
+   - `detect_decimal_separator(sample, delimiter)` : détermination automatique du point ou de la virgule décimale selon les fréquences observées dans les jetons numériques.
+   - Décodage Unicode sécurisé avec gestion du BOM (`utf-8-sig`) et repli gracieux (`latin-1`).
+2. **Politique explicite des valeurs manquantes (`missing_policy`)** :
+   - Détection des jetons standards : `""`, `"NA"`, `"N/A"`, `"NaN"`, `"null"`, `"?"`, `"-"`, `"none"`.
+   - Trois politiques au choix :
+     - `"error"` (défaut) : rejet immédiat avec indication précise de la ligne, colonne et valeur fautive.
+     - `"skip"` : exclusion de la ligne incomplète.
+     - `"fill"` : substitution par une valeur numérique de repli (`fill_value`, défaut $0.0$).
+3. **Limites de sécurité et messages descriptifs** :
+   - Plafonds par défaut de $100\,000$ lignes et $1\,000$ colonnes configurables.
+   - Messages d'erreur explicites précisant le numéro de ligne 1-indexé, le nom de colonne et le texte non analysable.
+4. **Méthodes d'accès sur `DatasetObject`** :
+   - `DatasetObject.from_csv(source, ...)` pour l'instanciation directe depuis une chaîne ou un chemin de fichier `Path`.
+   - `DatasetObject.to_csv(...)` et `DatasetObject.to_csv_file(path, ...)` pour la sérialisation avec contrôle du délimiteur, de la virgule décimale et de l'en-tête.
+
 
 
 
