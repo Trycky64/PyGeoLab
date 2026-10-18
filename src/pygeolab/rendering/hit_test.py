@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry import (
     Circle2D,
     Ellipse2D,
@@ -40,6 +41,7 @@ class HitResult:
 
 _PRIORITY = {
     Point2D: 0,
+    DatasetObject: 1,
     Segment2D: 2,
     Circle2D: 3,
     Ellipse2D: 3,
@@ -166,6 +168,11 @@ def _distance_px(document: Document, obj: GeoObject, point: Point2D, scale: floa
     if isinstance(geometry, Locus2D):
         d_val = geometry.closest_distance_to(point)
         return None if d_val is None else d_val * scale
+    if isinstance(geometry, DatasetObject):
+        if not geometry.points:
+            return None
+        min_pt_dist = min(pt.distance_to(point) for pt in geometry.points)
+        return min_pt_dist * scale
     if isinstance(geometry, Polygon2D):
         return min(edge.closest_point(point).distance_to(point) for edge in geometry.edges) * scale
     if isinstance(geometry, Vector2D) and obj.dependencies:
@@ -251,6 +258,8 @@ def _intersects_bounds(
             for piece in geometry.segments
             for p1, p2 in zip(piece, piece[1:], strict=False)
         )
+    if isinstance(geometry, DatasetObject):
+        return any(left <= pt.x <= right and bottom <= pt.y <= top for pt in geometry.points)
     if isinstance(geometry, Polygon2D):
         return any(
             left <= vertex.x <= right and bottom <= vertex.y <= top for vertex in geometry.vertices

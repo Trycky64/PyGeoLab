@@ -8,6 +8,7 @@ from collections.abc import Iterable, Mapping
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPalette, QPen, QPolygonF
 
+from pygeolab.data.dataset import DatasetObject
 from pygeolab.geometry import (
     Circle2D,
     Ellipse2D,
@@ -313,6 +314,9 @@ class Renderer:
         if isinstance(geometry, Locus2D):
             self._draw_locus(painter, geometry, viewport)
             return
+        if isinstance(geometry, DatasetObject):
+            self._draw_dataset(painter, geometry, obj.style, viewport)
+            return
 
     @staticmethod
     def _draw_clipped_line(
@@ -583,6 +587,196 @@ class Renderer:
             painter.drawPolyline(QPolygonF([QPointF(*point) for point in screen_points]))
 
     @staticmethod
+    def _draw_dataset(
+        painter: QPainter,
+        dataset: DatasetObject,
+        style: Style,
+        viewport: Viewport,
+    ) -> None:
+        """Render statistical visualization modes for a dataset."""
+        if dataset.row_count == 0:
+            return
+
+        mode = dataset.plot_kind
+        color = QColor(style.color)
+        painter.save()
+
+        if mode == "scatter" or (mode == "regression" and dataset.row_count < 2):
+            # Render points as markers
+            size = max(3.0, style.point_size)
+            fill_color = QColor(style.color)
+            fill_color.setAlphaF(max(0.2, style.fill_opacity))
+            painter.setBrush(fill_color)
+            pen = QPen(color, max(1.0, style.width))
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+
+            for pt in dataset.points:
+                sx, sy = viewport.world_to_screen(pt)
+                painter.drawEllipse(QPointF(sx, sy), size, size)
+
+        elif mode == "regression":
+            # 1. Render scatter points
+            size = max(2.5, style.point_size * 0.8)
+            fill_color = QColor(style.color)
+            fill_color.setAlphaF(0.3)
+            painter.setBrush(fill_color)
+            pen_dots = QPen(color, 1.0)
+            pen_dots.setCosmetic(True)
+            painter.setPen(pen_dots)
+            for pt in dataset.points:
+                sx, sy = viewport.world_to_screen(pt)
+                painter.drawEllipse(QPointF(sx, sy), size, size)
+
+            # 2. Render regression line
+            try:
+                reg = dataset.linear_regression(0, 1)
+                left, _, right, _ = viewport.world_bounds
+                p1 = Point2D(left, reg.predict(left))
+                p2 = Point2D(right, reg.predict(right))
+                line_pen = QPen(color, max(1.5, style.width))
+                line_pen.setCosmetic(True)
+                painter.setPen(line_pen)
+                s1 = viewport.world_to_screen(p1)
+                s2 = viewport.world_to_screen(p2)
+                painter.drawLine(QPointF(*s1), QPointF(*s2))
+            except Exception:
+                pass
+
+        elif mode == "histogram":
+            # Histogram computed on first column
+            try:
+                vals = dataset.column(0)
+                stats = dataset.descriptive_stats(0)
+                n = len(vals)
+                bins_count = max(3, min(30, int(math.ceil(math.sqrt(n)))))
+                val_min, val_max = stats.min, stats.max
+                if val_min == val_max:
+                    val_min -= 1.0
+                    val_max += 1.0
+                bin_width = (val_max - val_min) / bins_count
+                counts = [0] * bins_count
+                for v in vals:
+                    idx = int((v - val_min) / bin_width)
+                    if idx >= bins_count:
+                        idx = bins_count - 1
+                    counts[idx] += 1
+
+                fill_col = QColor(style.color)
+                fill_col.setAlphaF(max(0.3, style.fill_opacity))
+                painter.setBrush(fill_col)
+                border_pen = QPen(color, max(1.0, style.width))
+                border_pen.setCosmetic(True)
+                painter.setPen(border_pen)
+
+                for i, cnt in enumerate(counts):
+                    if cnt == 0:
+                        continue
+                    b_left = val_min + i * bin_width
+                    b_right = b_left + bin_width
+                    # Rectangle in world coordinates: [b_left, 0] to [b_right, cnt]
+                    sx1, sy1 = viewport.world_to_screen(Point2D(b_left, 0.0))
+                    sx2, sy2 = viewport.world_to_screen(Point2D(b_right, float(cnt)))
+                    rect = QRectF(
+                        min(sx1, sx2),
+                        min(sy1, sy2),
+                        abs(sx2 - sx1),
+                        abs(sy2 - sy1),
+                    )
+                    painter.drawRect(rect)
+            except Exception:
+                pass
+
+        elif mode == "boxplot":
+            # Box plot on first column, centered at x=1.0 or custom offset
+            try:
+                stats = dataset.descriptive_stats(0)
+                cx = 0.0
+                box_width = 1.0
+                # World coordinates
+                q1, med, q3 = stats.q1, stats.median, stats.q3
+                w_min = max(stats.min, q1 - 1.5 * stats.iqr)
+                w_max = min(stats.max, q3 + 1.5 * stats.iqr)
+
+                fill_col = QColor(style.color)
+                fill_col.setAlphaF(max(0.2, style.fill_opacity))
+                painter.setBrush(fill_col)
+                pen = QPen(color, max(1.5, style.width))
+                pen.setCosmetic(True)
+                painter.setPen(pen)
+
+                # 1. Box Q1 to Q3
+                s_left, s_top = viewport.world_to_screen(Point2D(cx - box_width / 2, q3))
+                s_right, s_bot = viewport.world_to_screen(Point2D(cx + box_width / 2, q1))
+                painter.drawRect(
+                    QRectF(
+                        min(s_left, s_right),
+                        min(s_top, s_bot),
+                        abs(s_right - s_left),
+                        abs(s_bot - s_top),
+                    )
+                )
+
+                # 2. Median line
+                sm1 = viewport.world_to_screen(Point2D(cx - box_width / 2, med))
+                sm2 = viewport.world_to_screen(Point2D(cx + box_width / 2, med))
+                painter.drawLine(QPointF(*sm1), QPointF(*sm2))
+
+                # 3. Whiskers (vertical stem and caps)
+                sw_top = viewport.world_to_screen(Point2D(cx, w_max))
+                sq3 = viewport.world_to_screen(Point2D(cx, q3))
+                painter.drawLine(QPointF(*sw_top), QPointF(*sq3))
+
+                sw_bot = viewport.world_to_screen(Point2D(cx, w_min))
+                sq1 = viewport.world_to_screen(Point2D(cx, q1))
+                painter.drawLine(QPointF(*sw_bot), QPointF(*sq1))
+
+                # Caps
+                cap_w = box_width * 0.4
+                c1_top = viewport.world_to_screen(Point2D(cx - cap_w / 2, w_max))
+                c2_top = viewport.world_to_screen(Point2D(cx + cap_w / 2, w_max))
+                painter.drawLine(QPointF(*c1_top), QPointF(*c2_top))
+
+                c1_bot = viewport.world_to_screen(Point2D(cx - cap_w / 2, w_min))
+                c2_bot = viewport.world_to_screen(Point2D(cx + cap_w / 2, w_min))
+                painter.drawLine(QPointF(*c1_bot), QPointF(*c2_bot))
+
+                # 4. Outliers
+                for out_v in stats.outliers:
+                    so = viewport.world_to_screen(Point2D(cx, out_v))
+                    painter.drawEllipse(QPointF(*so), 3.0, 3.0)
+            except Exception:
+                pass
+
+        elif mode == "bar":
+            # Bar chart: x coordinate (column 0 or 1..N) and height (column 1 or column 0)
+            try:
+                xs = dataset.x_values
+                ys = dataset.y_values
+                fill_col = QColor(style.color)
+                fill_col.setAlphaF(max(0.3, style.fill_opacity))
+                painter.setBrush(fill_col)
+                border_pen = QPen(color, max(1.0, style.width))
+                border_pen.setCosmetic(True)
+                painter.setPen(border_pen)
+
+                bar_w = 0.6
+                for xi, yi in zip(xs, ys, strict=False):
+                    sx1, sy1 = viewport.world_to_screen(Point2D(xi - bar_w / 2, 0.0))
+                    sx2, sy2 = viewport.world_to_screen(Point2D(xi + bar_w / 2, yi))
+                    rect = QRectF(
+                        min(sx1, sx2),
+                        min(sy1, sy2),
+                        abs(sx2 - sx1),
+                        abs(sy2 - sy1),
+                    )
+                    painter.drawRect(rect)
+            except Exception:
+                pass
+
+        painter.restore()
+
+    @staticmethod
     def render_transient_traces(
         painter: QPainter,
         viewport: Viewport,
@@ -793,6 +987,10 @@ class Renderer:
             for piece in geometry.segments:
                 if piece:
                     return piece[len(piece) // 2]
+            return None
+        if isinstance(geometry, DatasetObject):
+            if geometry.points:
+                return geometry.points[0]
             return None
         if isinstance(geometry, Vector2D) and obj.dependencies:
             parent_geometry = document.get(obj.dependencies[0]).geometry

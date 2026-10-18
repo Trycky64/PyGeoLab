@@ -411,6 +411,12 @@ ENGLISH: dict[str, str] = {
     "Corrélation (r)": "Correlation (r)",
     "R²": "R²",
     "Régression": "Regression",
+    "Visualisation": "Visualization",
+    "Nuage de points": "Scatter plot",
+    "Droite de régression": "Regression line",
+    "Histogramme": "Histogram",
+    "Boîte à moustaches": "Box plot",
+    "Diagramme en barres": "Bar chart",
 }
 
 ERRORS_ENGLISH: dict[str, str] = {

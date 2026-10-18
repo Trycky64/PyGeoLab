@@ -88,4 +88,36 @@ La version 1.3 apporte l'analyse bivariée de séries appariées : covariance de
    - Méthodes directes sur `DatasetObject` : `covariance(col_x, col_y)`, `correlation(col_x, col_y)`, `linear_regression(col_x, col_y)`.
    - Affichage synthétique automatique de la covariance, de la corrélation, du $R^2$ et de l'équation de la droite dans `PropertiesPanel` pour les jeux de données 2D comportant au moins 2 lignes.
 
+---
+
+## ADR-047 : Rendu graphique des visualisations statistiques et hit-testing
+
+### Contexte
+Les séries statistiques et jeux de données tabulaires doivent pouvoir être représentés visuellement dans le plan de travail géométrique selon différents modes graphiques d'analyse de données :
+- Nuage de points (*Scatter plot*)
+- Droite de régression linéaire avec nuage de points
+- Histogramme par classes automatiques (règle de la racine carrée)
+- Boîte à moustaches (*Box plot* avec quartiles et barrières de Tukey pour les valeurs aberrantes)
+- Diagramme en barres (*Bar chart*)
+
+Ces représentations graphiques doivent respecter la séparation stricte Modèle / Rendu, être compatibles avec les styles (couleur, épaisseur, opacité de remplissage, taille de point), le hit-testing sous le curseur, la sélection interactive, et l'export PNG/SVG.
+
+### Décisions d'architecture
+1. **Attribut de mode de tracé `plot_kind` sur `DatasetObject`** :
+   - Valeurs supportées : `"scatter"`, `"regression"`, `"histogram"`, `"boxplot"`, `"bar"`.
+   - Sérialisation et désérialisation sans perte dans `.to_dict()` et `.from_dict()`.
+   - Méthode immuable `.with_plot_kind(mode)` pour mise à jour sans mutation d'état.
+2. **Moteur de rendu `Renderer._draw_dataset`** :
+   - Mode `scatter` : tracé de disques de rayon paramétré avec bordure et remplissage translucide.
+   - Mode `regression` : superposition des points d'observations et de la droite d'ajustement OLS découpée aux limites de la fenêtre mathématique active.
+   - Mode `histogram` : découpage automatique en intervalles $[x_i, x_{i+1}]$ avec comptage des effectifs et tracé des rectangles d'effectifs sur l'axe des abscisses.
+   - Mode `boxplot` : tracé de la boîte $[Q_1, Q_3]$, de la barre médiane, des moustaches raccordées aux extrêmes bornés par $1.5 \times \text{IQR}$, et des points d'outliers isolés.
+   - Mode `bar` : tracé de colonnes d'amplitudes $y_i$ centrées sur les abscisses $x_i$.
+3. **Hit-testing et sélection interactive (`hit_test.py`)** :
+   - Intégration de `DatasetObject` dans `_PRIORITY` (priorité 1, juste après `Point2D`).
+   - Calcul de distance minimale aux points du jeu de données dans `_distance_px`.
+   - Détection d'intersection rectangulaire dans `_intersects_bounds` pour le lasso/boîte de sélection.
+   - Ancrage d'étiquette sur le premier point de la série dans `Renderer._label_anchor`.
+
+
 

@@ -488,6 +488,14 @@ class PropertiesPanel(QWidget):
                 )
                 add_row(self.tr("Dimensions"), dim_str)
                 add_row(self.tr("Colonnes"), ", ".join(geom.column_names))
+                mode_labels = {
+                    "scatter": self.tr("Nuage de points"),
+                    "regression": self.tr("Droite de régression"),
+                    "histogram": self.tr("Histogramme"),
+                    "boxplot": self.tr("Boîte à moustaches"),
+                    "bar": self.tr("Diagramme en barres"),
+                }
+                add_row(self.tr("Visualisation"), mode_labels.get(geom.plot_kind, geom.plot_kind))
                 if geom.metadata:
                     meta_str = ", ".join(f"{k}: {v}" for k, v in geom.metadata.items())
                     add_row(self.tr("Métadonnées"), meta_str)

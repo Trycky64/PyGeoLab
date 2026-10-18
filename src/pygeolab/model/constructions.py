@@ -217,7 +217,11 @@ def evaluate(obj: GeoObject, parents: tuple[GeoObject, ...]) -> Geometry | None:
         # Fallback: create Locus2D with empty segments if context document not provided yet
         return Locus2D((), target_parent.id, driver_parent.id, start, sweep_end, samples=samples)
     if kind == "dataset":
-        return DatasetObject.from_dict(params, name=obj.name)
+        if params:
+            return DatasetObject.from_dict(params, name=obj.name)
+        if isinstance(obj.geometry, DatasetObject):
+            return obj.geometry
+        return DatasetObject(name=obj.name)
     if kind in {"segment", "line", "ray", "vector", "circle"}:
         a, b = (_point(parent) for parent in parents)
         if kind == "segment":

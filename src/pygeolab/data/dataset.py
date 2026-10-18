@@ -28,9 +28,12 @@ class DatasetObject:
     name: str = "Dataset"
     column_names: tuple[str, ...] = ("x", "y")
     rows: tuple[tuple[float, ...], ...] = ()
+    plot_kind: str = "scatter"  # "scatter", "regression", "histogram", "boxplot", "bar"
     metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def __post_init__(self) -> None:
+        if self.plot_kind not in ("scatter", "regression", "histogram", "boxplot", "bar"):
+            raise ValueError(f"Mode de tracé statistique non reconnu : {self.plot_kind!r}")
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("Le nom du dataset doit être une chaîne non vide")
 
@@ -179,8 +182,19 @@ class DatasetObject:
         return {
             "column_names": list(self.column_names),
             "rows": [list(row) for row in self.rows],
+            "plot_kind": self.plot_kind,
             "metadata": dict(self.metadata),
         }
+
+    def with_plot_kind(self, plot_kind: str) -> DatasetObject:
+        """Return a copy with updated plot_kind."""
+        return DatasetObject(
+            name=self.name,
+            column_names=self.column_names,
+            rows=self.rows,
+            plot_kind=plot_kind,
+            metadata=self.metadata,
+        )
 
     def to_csv(
         self,
@@ -203,12 +217,15 @@ class DatasetObject:
         values: Sequence[float],
         name: str = "Dataset",
         col_name: str = "y",
+        plot_kind: str = "scatter",
         metadata: Mapping[str, Any] | None = None,
     ) -> DatasetObject:
         """Construct a 1D dataset from a single series of values."""
         rows = tuple((float(v),) for v in values)
         meta = MappingProxyType(dict(metadata or {}))
-        return cls(name=name, column_names=(col_name,), rows=rows, metadata=meta)
+        return cls(
+            name=name, column_names=(col_name,), rows=rows, plot_kind=plot_kind, metadata=meta
+        )
 
     @classmethod
     def from_xy(
@@ -218,6 +235,7 @@ class DatasetObject:
         name: str = "Dataset",
         x_col: str = "x",
         y_col: str = "y",
+        plot_kind: str = "scatter",
         metadata: Mapping[str, Any] | None = None,
     ) -> DatasetObject:
         """Construct a 2D dataset from paired X and Y coordinate series."""
@@ -227,7 +245,9 @@ class DatasetObject:
             )
         rows = tuple((float(xi), float(yi)) for xi, yi in zip(x, y, strict=True))
         meta = MappingProxyType(dict(metadata or {}))
-        return cls(name=name, column_names=(x_col, y_col), rows=rows, metadata=meta)
+        return cls(
+            name=name, column_names=(x_col, y_col), rows=rows, plot_kind=plot_kind, metadata=meta
+        )
 
     @classmethod
     def from_rows(
@@ -235,6 +255,7 @@ class DatasetObject:
         column_names: Sequence[str],
         rows: Sequence[Sequence[float]],
         name: str = "Dataset",
+        plot_kind: str = "scatter",
         metadata: Mapping[str, Any] | None = None,
     ) -> DatasetObject:
         """Construct a dataset from column names and a sequence of numerical rows."""
@@ -243,6 +264,7 @@ class DatasetObject:
             name=name,
             column_names=tuple(str(c) for c in column_names),
             rows=tuple(tuple(float(v) for v in r) for r in rows),
+            plot_kind=plot_kind,
             metadata=meta,
         )
 
@@ -253,9 +275,12 @@ class DatasetObject:
         raw_rows = data.get("rows", ())
         rows = tuple(tuple(float(v) for v in r) for r in raw_rows)
         raw_meta = data.get("metadata", {})
+        plot_kind = str(data.get("plot_kind", "scatter"))
         metadata = raw_meta if isinstance(raw_meta, Mapping) else {}
         meta_proxy = MappingProxyType(dict(metadata))
-        return cls(name=name, column_names=cols, rows=rows, metadata=meta_proxy)
+        return cls(
+            name=name, column_names=cols, rows=rows, plot_kind=plot_kind, metadata=meta_proxy
+        )
 
     @classmethod
     def from_csv(
