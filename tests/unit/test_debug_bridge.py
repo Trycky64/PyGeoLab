@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import contextlib
 import json
-import msvcrt
 import os
 import socket
 import sys
 import time
 from typing import Any
 from unittest.mock import MagicMock
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    msvcrt: Any = None
 
 import pytest
 from PySide6.QtWidgets import QApplication
