@@ -71,7 +71,7 @@ class SECURITY_ATTRIBUTES(ctypes.Structure):
     ]
 
 
-if sys.platform == "win32":
+if sys.platform == "win32":  # pragma: no cover
     windll = getattr(ctypes, "windll", None)
     if windll is not None:
         advapi32 = windll.advapi32
@@ -202,7 +202,7 @@ class DebugBridgeServer:
             session_dir.mkdir(parents=True, exist_ok=True)
 
         # Apply restricted DACL (Windows) or 0700 mode (Unix)
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # pragma: no cover
             windll_obj = getattr(ctypes, "windll", None)
             if windll_obj is not None:
                 p_sd = ctypes.c_void_p()
@@ -239,7 +239,7 @@ class DebugBridgeServer:
                 continue
 
             is_alive = False
-            if sys.platform == "win32":
+            if sys.platform == "win32":  # pragma: no cover
                 windll_obj = getattr(ctypes, "windll", None)
                 if windll_obj is not None:
                     h_proc = windll_obj.kernel32.OpenProcess(
@@ -324,7 +324,7 @@ class DebugBridgeServer:
             with contextlib.suppress(Exception):
                 self.info_file_path.unlink()
 
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # pragma: no cover
             windll_obj = getattr(ctypes, "windll", None)
             if windll_obj is not None:
                 h = self._pipe_handle
@@ -367,7 +367,7 @@ class DebugBridgeServer:
         else:  # pragma: no cover
             self._run_unix_socket()
 
-    def _run_windows_named_pipe(self) -> None:
+    def _run_windows_named_pipe(self) -> None:  # pragma: no cover
         windll_obj = getattr(ctypes, "windll", None)
         if windll_obj is None or msvcrt is None:
             return
