@@ -295,7 +295,9 @@ class _ClientStreamHelper:
                 self.stream.close()
 
 
-def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
+def test_debug_bridge_server_handshake_and_snapshot(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     window = MainWindow(offer_recovery=False)
     qtbot.addWidget(window)
     server = DebugBridgeServer(window)
@@ -511,7 +513,7 @@ def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
     finally:
         helper.close()
         server.stop()
-        setattr(window, "_confirm_discard_changes", lambda: True)  # Prevent modal QMessageBox
+        monkeypatch.setattr(window, "_confirm_discard_changes", lambda: True)
         window.close()
         assert server.info_file_path is not None and not server.info_file_path.exists()
 
@@ -865,14 +867,14 @@ class _DuplexBytesIO:
         return self.outgoing.write(data)
 
 
-def test_server_handler_internal_error() -> None:
+def test_server_handler_internal_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify that unhandled internal exceptions in server handler return safe error response."""
     window_mock = MagicMock()
     server = DebugBridgeServer(window_mock)
     server.running = True
 
     # Mock _dispatch_collect_snapshot to raise unexpected RuntimeError
-    setattr(
+    monkeypatch.setattr(
         server,
         "_dispatch_collect_snapshot",
         MagicMock(side_effect=RuntimeError("Secret internal error")),
