@@ -225,6 +225,13 @@ if sys.platform == "win32":  # pragma: no cover
         advapi32.IsValidSid.argtypes = [ctypes.c_void_p]
         advapi32.IsValidSid.restype = wintypes.BOOL
 
+        advapi32.CheckTokenMembership.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.BOOL),
+        ]
+        advapi32.CheckTokenMembership.restype = wintypes.BOOL
+
         advapi32.GetAclInformation.argtypes = [
             ctypes.c_void_p,
             wintypes.LPVOID,
@@ -333,7 +340,16 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
     if not owner_ok or not p_owner_sid.value or not windll_obj.advapi32.IsValidSid(p_owner_sid):
         raise PermissionError(f"Path {path} does not have a valid Owner SID in security descriptor")
 
-    if not windll_obj.advapi32.EqualSid(p_owner_sid, p_user_sid):
+    owner_matches = windll_obj.advapi32.EqualSid(p_owner_sid, p_user_sid)
+    if not owner_matches and hasattr(windll_obj.advapi32, "CheckTokenMembership"):
+        is_member = wintypes.BOOL(0)
+        if (
+            windll_obj.advapi32.CheckTokenMembership(None, p_owner_sid, ctypes.byref(is_member))
+            and is_member.value
+        ):
+            owner_matches = True
+
+    if not owner_matches:
         p_owner_wstr = wintypes.LPWSTR()
         owner_str = ""
         if windll_obj.advapi32.ConvertSidToStringSidW(p_owner_sid, ctypes.byref(p_owner_wstr)):
@@ -399,8 +415,20 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
             )
 
         is_user = windll_obj.advapi32.EqualSid(ace_sid_ptr, p_user_sid)
+        is_owner = windll_obj.advapi32.EqualSid(ace_sid_ptr, p_owner_sid)
         is_owner_rights = ace_sid_str == "S-1-3-4"
-        if not is_user and not is_owner_rights:
+        is_member = False
+        if not (is_user or is_owner or is_owner_rights) and hasattr(
+            windll_obj.advapi32, "CheckTokenMembership"
+        ):
+            b_member = wintypes.BOOL(0)
+            if (
+                windll_obj.advapi32.CheckTokenMembership(None, ace_sid_ptr, ctypes.byref(b_member))
+                and b_member.value
+            ):
+                is_member = True
+
+        if not (is_user or is_owner or is_owner_rights or is_member):
             raise PermissionError(
                 f"DACL for {path} grants access to unauthorized principal: {ace_sid_str}"
             )
