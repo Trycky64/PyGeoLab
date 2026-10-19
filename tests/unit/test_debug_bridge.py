@@ -415,15 +415,86 @@ def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
         assert snap_data2["document"]["objects_count"] == 1
         assert snap_data2["document"]["dirty"] is True
 
-        # 7. Ping method test
-        stream.write(json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 6}).encode() + b"\n")
+        # 7. Test authentic IPC list_objects
+        req_list = (
+            json.dumps(
+                {"jsonrpc": "2.0", "method": "list_objects", "params": {"limit": 10}, "id": 6}
+            ).encode()
+            + b"\n"
+        )
+        stream.write(req_list)
+        for _ in range(50):
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+            time.sleep(0.01)
+        list_line = stream.readline()
+        list_resp = json.loads(list_line.decode())
+        assert "result" in list_resp
+        list_data = list_resp["result"]
+        assert list_data["total_count"] == 1
+        assert list_data["items"][0]["id"] == obj.id
+        assert list_data["items"][0]["name"] == "P_MUT"
+
+        # 8. Test authentic IPC inspect_object
+        req_inspect = (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "inspect_object",
+                    "params": {"object_id": obj.id},
+                    "id": 7,
+                }
+            ).encode()
+            + b"\n"
+        )
+        stream.write(req_inspect)
+        for _ in range(50):
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+            time.sleep(0.01)
+        inspect_line = stream.readline()
+        inspect_resp = json.loads(inspect_line.decode())
+        assert "result" in inspect_resp
+        inspect_data = inspect_resp["result"]
+        assert inspect_data["id"] == obj.id
+        assert inspect_data["name"] == "P_MUT"
+        assert inspect_data["computed_geometry"] == {"type": "point", "x": 10.0, "y": 20.0}
+
+        # 9. Test inspect_object on unknown object ID -> OBJECT_NOT_FOUND
+        req_not_found = (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "inspect_object",
+                    "params": {"object_id": "missing-uuid"},
+                    "id": 8,
+                }
+            ).encode()
+            + b"\n"
+        )
+        stream.write(req_not_found)
+        for _ in range(50):
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+            time.sleep(0.01)
+        nf_line = stream.readline()
+        nf_resp = json.loads(nf_line.decode())
+        from pygeolab.debug.protocol import OBJECT_NOT_FOUND
+
+        assert nf_resp["error"]["code"] == OBJECT_NOT_FOUND
+
+        # 10. Ping method test
+        stream.write(json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 9}).encode() + b"\n")
         ping_line = stream.readline()
         ping_resp = json.loads(ping_line.decode())
         assert ping_resp["result"]["pong"] is True
 
-        # 8. Unknown method rejected
+        # 11. Unknown method rejected
         stream.write(
-            json.dumps({"jsonrpc": "2.0", "method": "non_existent_method", "id": 7}).encode()
+            json.dumps({"jsonrpc": "2.0", "method": "non_existent_method", "id": 10}).encode()
             + b"\n"
         )
         unk_line = stream.readline()

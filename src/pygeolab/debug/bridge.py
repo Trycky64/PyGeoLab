@@ -417,7 +417,7 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
         is_user = windll_obj.advapi32.EqualSid(ace_sid_ptr, p_user_sid)
         is_owner = windll_obj.advapi32.EqualSid(ace_sid_ptr, p_owner_sid)
         is_owner_rights = ace_sid_str == "S-1-3-4"
-        is_member = False
+        ace_is_member = False
         if not (is_user or is_owner or is_owner_rights) and hasattr(
             windll_obj.advapi32, "CheckTokenMembership"
         ):
@@ -426,9 +426,9 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
                 windll_obj.advapi32.CheckTokenMembership(None, ace_sid_ptr, ctypes.byref(b_member))
                 and b_member.value
             ):
-                is_member = True
+                ace_is_member = True
 
-        if not (is_user or is_owner or is_owner_rights or is_member):
+        if not (is_user or is_owner or is_owner_rights or ace_is_member):
             raise PermissionError(
                 f"DACL for {path} grants access to unauthorized principal: {ace_sid_str}"
             )
@@ -438,16 +438,48 @@ class _QtDispatcher(QObject):
     """Bridge QObject to dispatch synchronous inspection requests to Qt main thread."""
 
     request_snapshot = Signal(object)
+    request_list_objects = Signal(object)
+    request_inspect_object = Signal(object)
 
     def __init__(self, inspector: RuntimeInspector) -> None:
         super().__init__()
         self.inspector = inspector
         self.request_snapshot.connect(self._handle_snapshot)
+        self.request_list_objects.connect(self._handle_list_objects)
+        self.request_inspect_object.connect(self._handle_inspect_object)
 
     @Slot(object)
     def _handle_snapshot(self, container: dict[str, Any]) -> None:
         try:
             container["result"] = self.inspector.collect_snapshot()
+        except Exception as exc:
+            container["error"] = exc
+        finally:
+            evt: threading.Event = container["event"]
+            evt.set()
+
+    @Slot(object)
+    def _handle_list_objects(self, container: dict[str, Any]) -> None:
+        try:
+            params = container.get("params", {})
+            container["result"] = self.inspector.list_objects(
+                limit=params.get("limit", 50),
+                cursor=params.get("cursor"),
+                kind=params.get("kind"),
+            )
+        except Exception as exc:
+            container["error"] = exc
+        finally:
+            evt: threading.Event = container["event"]
+            evt.set()
+
+    @Slot(object)
+    def _handle_inspect_object(self, container: dict[str, Any]) -> None:
+        try:
+            params = container.get("params", {})
+            container["result"] = self.inspector.inspect_object(
+                object_id=params.get("object_id", "")
+            )
         except Exception as exc:
             container["error"] = exc
         finally:
@@ -1056,6 +1088,14 @@ class DebugBridgeServer:
                         snapshot = self._dispatch_collect_snapshot()
                         resp = build_response(snapshot, req_id)
                         stream.write(resp)
+                    elif req.method == "list_objects":
+                        list_res = self._dispatch_list_objects(req.params)
+                        resp = build_response(list_res, req_id)
+                        stream.write(resp)
+                    elif req.method == "inspect_object":
+                        inspect_res = self._dispatch_inspect_object(req.params)
+                        resp = build_response(inspect_res, req_id)
+                        stream.write(resp)
                     elif req.method == "ping":
                         resp = build_response({"pong": True, "time": time.time()}, req_id)
                         stream.write(resp)
@@ -1077,6 +1117,30 @@ class DebugBridgeServer:
         completed = container["event"].wait(timeout=3.0)
         if not completed:
             raise TimeoutError("Timed out waiting for Qt main thread to generate runtime snapshot")
+        if "error" in container:
+            raise container["error"]
+        result: dict[str, Any] = container["result"]
+        return result
+
+    def _dispatch_list_objects(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch list_objects request to Qt main thread and await result safely."""
+        container: dict[str, Any] = {"event": threading.Event(), "params": params}
+        self.dispatcher.request_list_objects.emit(container)
+        completed = container["event"].wait(timeout=3.0)
+        if not completed:
+            raise TimeoutError("Timed out waiting for Qt main thread to list objects")
+        if "error" in container:
+            raise container["error"]
+        result: dict[str, Any] = container["result"]
+        return result
+
+    def _dispatch_inspect_object(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch inspect_object request to Qt main thread and await result safely."""
+        container: dict[str, Any] = {"event": threading.Event(), "params": params}
+        self.dispatcher.request_inspect_object.emit(container)
+        completed = container["event"].wait(timeout=3.0)
+        if not completed:
+            raise TimeoutError("Timed out waiting for Qt main thread to inspect object")
         if "error" in container:
             raise container["error"]
         result: dict[str, Any] = container["result"]
