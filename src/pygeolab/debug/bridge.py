@@ -66,6 +66,11 @@ TokenUser = 1
 AclSizeInformation = 2
 
 
+DWORD = wintypes.DWORD if wintypes is not None else ctypes.c_uint32
+BYTE = wintypes.BYTE if wintypes is not None else ctypes.c_uint8
+WORD = wintypes.WORD if wintypes is not None else ctypes.c_uint16
+
+
 class SECURITY_ATTRIBUTES(ctypes.Structure):
     """Win32 SECURITY_ATTRIBUTES structure."""
 
@@ -80,9 +85,9 @@ class ACL_SIZE_INFORMATION(ctypes.Structure):
     """Win32 ACL_SIZE_INFORMATION structure."""
 
     _fields_ = [
-        ("AceCount", wintypes.DWORD),
-        ("AclBytesInUse", wintypes.DWORD),
-        ("AclBytesFree", wintypes.DWORD),
+        ("AceCount", DWORD),
+        ("AclBytesInUse", DWORD),
+        ("AclBytesFree", DWORD),
     ]
 
 
@@ -90,9 +95,9 @@ class ACE_HEADER(ctypes.Structure):
     """Win32 ACE_HEADER structure."""
 
     _fields_ = [
-        ("AceType", wintypes.BYTE),
-        ("AceFlags", wintypes.BYTE),
-        ("AceSize", wintypes.WORD),
+        ("AceType", BYTE),
+        ("AceFlags", BYTE),
+        ("AceSize", WORD),
     ]
 
 
@@ -101,8 +106,8 @@ class ACCESS_ALLOWED_ACE(ctypes.Structure):
 
     _fields_ = [
         ("Header", ACE_HEADER),
-        ("Mask", wintypes.DWORD),
-        ("SidStart", wintypes.DWORD),
+        ("Mask", DWORD),
+        ("SidStart", DWORD),
     ]
 
 
