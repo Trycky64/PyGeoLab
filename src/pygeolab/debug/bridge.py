@@ -60,6 +60,10 @@ ERROR_PIPE_CONNECTED = 535
 DACL_SECURITY_INFORMATION = 0x00000004
 PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+OWNER_SECURITY_INFORMATION = 0x00000001
+TOKEN_QUERY = 0x0008
+TokenUser = 1
+AclSizeInformation = 2
 
 
 class SECURITY_ATTRIBUTES(ctypes.Structure):
@@ -69,6 +73,36 @@ class SECURITY_ATTRIBUTES(ctypes.Structure):
         ("nLength", ctypes.c_ulong),
         ("lpSecurityDescriptor", ctypes.c_void_p),
         ("bInheritHandle", ctypes.c_int),
+    ]
+
+
+class ACL_SIZE_INFORMATION(ctypes.Structure):
+    """Win32 ACL_SIZE_INFORMATION structure."""
+
+    _fields_ = [
+        ("AceCount", wintypes.DWORD),
+        ("AclBytesInUse", wintypes.DWORD),
+        ("AclBytesFree", wintypes.DWORD),
+    ]
+
+
+class ACE_HEADER(ctypes.Structure):
+    """Win32 ACE_HEADER structure."""
+
+    _fields_ = [
+        ("AceType", wintypes.BYTE),
+        ("AceFlags", wintypes.BYTE),
+        ("AceSize", wintypes.WORD),
+    ]
+
+
+class ACCESS_ALLOWED_ACE(ctypes.Structure):
+    """Win32 ACCESS_ALLOWED_ACE structure."""
+
+    _fields_ = [
+        ("Header", ACE_HEADER),
+        ("Mask", wintypes.DWORD),
+        ("SidStart", wintypes.DWORD),
     ]
 
 
@@ -157,6 +191,59 @@ if sys.platform == "win32":  # pragma: no cover
         kernel32.GetLastError.argtypes = []
         kernel32.GetLastError.restype = wintypes.DWORD
 
+        advapi32.OpenProcessToken.argtypes = [
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
+        advapi32.OpenProcessToken.restype = wintypes.BOOL
+
+        advapi32.GetTokenInformation.argtypes = [
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        advapi32.GetTokenInformation.restype = wintypes.BOOL
+
+        advapi32.GetSecurityDescriptorOwner.argtypes = [
+            wintypes.LPVOID,
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(wintypes.BOOL),
+        ]
+        advapi32.GetSecurityDescriptorOwner.restype = wintypes.BOOL
+
+        advapi32.EqualSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        advapi32.EqualSid.restype = wintypes.BOOL
+
+        advapi32.IsValidSid.argtypes = [ctypes.c_void_p]
+        advapi32.IsValidSid.restype = wintypes.BOOL
+
+        advapi32.GetAclInformation.argtypes = [
+            ctypes.c_void_p,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+        ]
+        advapi32.GetAclInformation.restype = wintypes.BOOL
+
+        advapi32.GetAce.argtypes = [
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(ctypes.c_void_p),
+        ]
+        advapi32.GetAce.restype = wintypes.BOOL
+
+        advapi32.ConvertSidToStringSidW.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.LPWSTR),
+        ]
+        advapi32.ConvertSidToStringSidW.restype = wintypes.BOOL
+
+        kernel32.GetCurrentProcess.argtypes = []
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+
         kernel32.CancelIoEx.argtypes = [wintypes.HANDLE, wintypes.LPVOID]
         kernel32.CancelIoEx.restype = wintypes.BOOL
 
@@ -165,17 +252,53 @@ if sys.platform == "win32":  # pragma: no cover
 
 
 def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
-    """Verify that a Windows path exists and has an explicit, valid non-null DACL applied."""
+    """Verify that a Windows path exists, is owned by user, and has owner-only DACL."""
     if sys.platform != "win32":
         return
     windll_obj = getattr(ctypes, "windll", None)
     if windll_obj is None:
         raise PermissionError("Win32 API unavailable to verify file security DACL")
 
+    # 1. Obtain current process user SID
+    h_token = wintypes.HANDLE()
+    if not windll_obj.advapi32.OpenProcessToken(
+        windll_obj.kernel32.GetCurrentProcess(), TOKEN_QUERY, ctypes.byref(h_token)
+    ):
+        err = windll_obj.kernel32.GetLastError()
+        raise PermissionError(f"OpenProcessToken failed (error={err})")
+
+    user_sid_str = ""
+    try:
+        needed_token = wintypes.DWORD(0)
+        windll_obj.advapi32.GetTokenInformation(
+            h_token, TokenUser, None, 0, ctypes.byref(needed_token)
+        )
+        if needed_token.value == 0:
+            err = windll_obj.kernel32.GetLastError()
+            raise PermissionError(f"GetTokenInformation size query failed (error={err})")
+        token_buf = (ctypes.c_byte * needed_token.value)()
+        if not windll_obj.advapi32.GetTokenInformation(
+            h_token,
+            TokenUser,
+            ctypes.byref(token_buf),
+            needed_token.value,
+            ctypes.byref(needed_token),
+        ):
+            err = windll_obj.kernel32.GetLastError()
+            raise PermissionError(f"GetTokenInformation failed (error={err})")
+        p_user_sid = ctypes.cast(token_buf, ctypes.POINTER(ctypes.c_void_p)).contents
+        p_sid_wstr = wintypes.LPWSTR()
+        if windll_obj.advapi32.ConvertSidToStringSidW(p_user_sid, ctypes.byref(p_sid_wstr)):
+            user_sid_str = p_sid_wstr.value or ""
+            windll_obj.kernel32.LocalFree(p_sid_wstr)
+    finally:
+        windll_obj.kernel32.CloseHandle(h_token)
+
+    # 2. Query Owner and DACL security descriptor
     needed = wintypes.DWORD(0)
     windll_obj.advapi32.GetFileSecurityW(
         str(path),
-        DACL_SECURITY_INFORMATION,
+        OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
         None,
         0,
         ctypes.byref(needed),
@@ -187,7 +310,7 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
     buf = (ctypes.c_byte * needed.value)()
     ok = windll_obj.advapi32.GetFileSecurityW(
         str(path),
-        DACL_SECURITY_INFORMATION,
+        OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
         ctypes.byref(buf),
         needed.value,
         ctypes.byref(needed),
@@ -196,6 +319,26 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
         err = windll_obj.kernel32.GetLastError()
         raise PermissionError(f"Failed to read security descriptor for {path} (error={err})")
 
+    # 3. Verify Owner SID
+    p_owner_sid = ctypes.c_void_p()
+    owner_defaulted = wintypes.BOOL(0)
+    owner_ok = windll_obj.advapi32.GetSecurityDescriptorOwner(
+        ctypes.byref(buf), ctypes.byref(p_owner_sid), ctypes.byref(owner_defaulted)
+    )
+    if not owner_ok or not p_owner_sid.value or not windll_obj.advapi32.IsValidSid(p_owner_sid):
+        raise PermissionError(f"Path {path} does not have a valid Owner SID in security descriptor")
+
+    if not windll_obj.advapi32.EqualSid(p_owner_sid, p_user_sid):
+        p_owner_wstr = wintypes.LPWSTR()
+        owner_str = ""
+        if windll_obj.advapi32.ConvertSidToStringSidW(p_owner_sid, ctypes.byref(p_owner_wstr)):
+            owner_str = p_owner_wstr.value or ""
+            windll_obj.kernel32.LocalFree(p_owner_wstr)
+        raise PermissionError(
+            f"Path {path} owner SID ({owner_str}) does not match current user SID ({user_sid_str})"
+        )
+
+    # 4. Verify DACL presence and non-NULL
     dacl_present = wintypes.BOOL(0)
     p_dacl = ctypes.c_void_p()
     dacl_defaulted = wintypes.BOOL(0)
@@ -206,9 +349,56 @@ def _verify_windows_dacl(path: Path | str) -> None:  # pragma: no cover
         ctypes.byref(dacl_defaulted),
     )
     if not dacl_ok or not dacl_present.value or not p_dacl.value:
-        raise PermissionError(
-            f"Security descriptor for {path} does not have an explicit valid DACL"
-        )
+        raise PermissionError(f"Security descriptor for {path} has a NULL or missing DACL")
+
+    # 5. Examine ACEs in DACL
+    acl_info = ACL_SIZE_INFORMATION()
+    if not windll_obj.advapi32.GetAclInformation(
+        p_dacl, ctypes.byref(acl_info), ctypes.sizeof(acl_info), AclSizeInformation
+    ):
+        err = windll_obj.kernel32.GetLastError()
+        raise PermissionError(f"GetAclInformation failed for {path} (error={err})")
+
+    if acl_info.AceCount == 0:
+        raise PermissionError(f"DACL for {path} has 0 ACEs")
+
+    forbidden_sids = {
+        "S-1-1-0",  # Everyone / World
+        "S-1-5-11",  # Authenticated Users
+        "S-1-5-32-545",  # Builtin Users
+        "S-1-5-7",  # Anonymous
+        "S-1-5-32-546",  # Guests
+        "S-1-5-4",  # Interactive
+        "S-1-5-2",  # Network
+    }
+
+    for i in range(acl_info.AceCount):
+        p_ace = ctypes.c_void_p()
+        if not windll_obj.advapi32.GetAce(p_dacl, i, ctypes.byref(p_ace)):
+            err = windll_obj.kernel32.GetLastError()
+            raise PermissionError(f"GetAce({i}) failed for {path} (error={err})")
+
+        ace_sid_ptr = ctypes.c_void_p((p_ace.value or 0) + 8)
+        if not windll_obj.advapi32.IsValidSid(ace_sid_ptr):
+            raise PermissionError(f"ACE {i} on {path} contains an invalid SID")
+
+        p_ace_sid_wstr = wintypes.LPWSTR()
+        ace_sid_str = ""
+        if windll_obj.advapi32.ConvertSidToStringSidW(ace_sid_ptr, ctypes.byref(p_ace_sid_wstr)):
+            ace_sid_str = p_ace_sid_wstr.value or ""
+            windll_obj.kernel32.LocalFree(p_ace_sid_wstr)
+
+        if ace_sid_str in forbidden_sids:
+            raise PermissionError(
+                f"DACL for {path} contains forbidden permissive SID: {ace_sid_str}"
+            )
+
+        is_user = windll_obj.advapi32.EqualSid(ace_sid_ptr, p_user_sid)
+        is_owner_rights = ace_sid_str == "S-1-3-4"
+        if not is_user and not is_owner_rights:
+            raise PermissionError(
+                f"DACL for {path} grants access to unauthorized principal: {ace_sid_str}"
+            )
 
 
 class _QtDispatcher(QObject):
@@ -401,14 +591,25 @@ class DebugBridgeServer:
         if sys.platform != "win32":  # pragma: no cover
             try:
                 fd = os.open(temp_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(info, f)
-                st = temp_file.stat()
+                st = os.fstat(fd)
                 if hasattr(os, "getuid") and st.st_uid != os.getuid():
+                    os.close(fd)
                     raise PermissionError(
                         f"Temporary session file {temp_file} not owned by current user"
                     )
                 if st.st_mode & 0o077 != 0:
+                    os.close(fd)
+                    raise PermissionError(
+                        f"Temporary session file {temp_file} has unsafe permissions"
+                    )
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(info, f)
+                st_temp = temp_file.stat()
+                if hasattr(os, "getuid") and st_temp.st_uid != os.getuid():
+                    raise PermissionError(
+                        f"Temporary session file {temp_file} not owned by current user"
+                    )
+                if st_temp.st_mode & 0o077 != 0:
                     raise PermissionError(
                         f"Temporary session file {temp_file} has unsafe permissions"
                     )
@@ -468,6 +669,9 @@ class DebugBridgeServer:
                         raise PermissionError(
                             f"Failed to create protected temp session file (error={err})"
                         )
+
+                    # Verify DACL and Owner policy on temporary file BEFORE writing secret
+                    _verify_windows_dacl(temp_file)
 
                     raw_bytes = json.dumps(info).encode("utf-8")
                     written = wintypes.DWORD(0)

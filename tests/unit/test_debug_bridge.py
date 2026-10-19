@@ -585,8 +585,8 @@ def test_windows_security_failure_handling(tmp_path: Path, monkeypatch: pytest.M
     assert not (session_dir / f"session_{os.getpid()}.json").exists()
 
 
-def test_verify_windows_dacl_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify that _verify_windows_dacl raises PermissionError if DACL check fails."""
+def test_verify_windows_dacl_comprehensive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that _verify_windows_dacl rejects permissive or invalid DACLs."""
     if sys.platform != "win32":
         return
 
@@ -598,18 +598,112 @@ def test_verify_windows_dacl_failures(tmp_path: Path, monkeypatch: pytest.Monkey
 
     from pygeolab.debug.bridge import _verify_windows_dacl
 
-    dummy_file = tmp_path / "test.txt"
+    dummy_file = tmp_path / "dacl_test.txt"
     dummy_file.write_text("hello")
 
-    # Fail GetFileSecurityW
-    monkeypatch.setattr(windll_obj.advapi32, "GetFileSecurityW", lambda *args: 0)
-    with pytest.raises(PermissionError, match="failed for"):
+    # 1. Valid owner-only DACL passes
+    p_sd_ok = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P(A;;GA;;;OW)", 1, ctypes.byref(p_sd_ok), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_ok)
+    windll_obj.kernel32.LocalFree(p_sd_ok)
+    _verify_windows_dacl(dummy_file)
+
+    # 2. Reject permissive DACL granting Everyone (S-1-1-0) access
+    p_sd_everyone = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P(A;;GA;;;WD)", 1, ctypes.byref(p_sd_everyone), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_everyone)
+    windll_obj.kernel32.LocalFree(p_sd_everyone)
+    with pytest.raises(PermissionError, match="forbidden permissive SID: S-1-1-0"):
         _verify_windows_dacl(dummy_file)
 
-    # Fail GetSecurityDescriptorDacl
+    # 3. Reject permissive DACL granting Authenticated Users (S-1-5-11) access
+    p_sd_au = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P(A;;GA;;;AU)", 1, ctypes.byref(p_sd_au), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_au)
+    windll_obj.kernel32.LocalFree(p_sd_au)
+    with pytest.raises(PermissionError, match="forbidden permissive SID: S-1-5-11"):
+        _verify_windows_dacl(dummy_file)
+
+    # 4. Reject empty DACL (0 ACEs)
+    p_sd_empty = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P", 1, ctypes.byref(p_sd_empty), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_empty)
+    windll_obj.kernel32.LocalFree(p_sd_empty)
+    with pytest.raises(PermissionError, match="0 ACEs"):
+        _verify_windows_dacl(dummy_file)
+
+    # Restore valid DACL for mocked failure tests
+    p_sd_valid = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P(A;;GA;;;OW)", 1, ctypes.byref(p_sd_valid), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_valid)
+    windll_obj.kernel32.LocalFree(p_sd_valid)
+
+    # 5. Fail OpenProcessToken
+    monkeypatch.setattr(windll_obj.advapi32, "OpenProcessToken", lambda *args: 0)
+    with pytest.raises(PermissionError, match="OpenProcessToken failed"):
+        _verify_windows_dacl(dummy_file)
+
+    # 6. Fail GetTokenInformation
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetTokenInformation", lambda *args: 0)
+    with pytest.raises(PermissionError, match="GetTokenInformation"):
+        _verify_windows_dacl(dummy_file)
+
+    # 7. Fail GetFileSecurityW
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetFileSecurityW", lambda *args: 0)
+    with pytest.raises(PermissionError, match="GetFileSecurityW"):
+        _verify_windows_dacl(dummy_file)
+
+    # 8. Fail GetSecurityDescriptorOwner
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetSecurityDescriptorOwner", lambda *args: 0)
+    with pytest.raises(PermissionError, match="Owner SID"):
+        _verify_windows_dacl(dummy_file)
+
+    # 9. Owner mismatch (EqualSid returns False)
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "EqualSid", lambda sid1, sid2: 0)
+    with pytest.raises(PermissionError, match="owner SID .* does not match"):
+        _verify_windows_dacl(dummy_file)
+
+    # 10. Fail GetSecurityDescriptorDacl
     monkeypatch.undo()
     monkeypatch.setattr(windll_obj.advapi32, "GetSecurityDescriptorDacl", lambda *args: 0)
-    with pytest.raises(PermissionError, match="does not have an explicit valid DACL"):
+    with pytest.raises(PermissionError, match="NULL or missing DACL"):
+        _verify_windows_dacl(dummy_file)
+
+    # 11. Fail GetAclInformation
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetAclInformation", lambda *args: 0)
+    with pytest.raises(PermissionError, match="GetAclInformation failed"):
+        _verify_windows_dacl(dummy_file)
+
+    # 12. Fail GetAce
+    monkeypatch.undo()
+    monkeypatch.setattr(windll_obj.advapi32, "GetAce", lambda *args: 0)
+    with pytest.raises(PermissionError, match="GetAce"):
+        _verify_windows_dacl(dummy_file)
+
+    # 13. Unauthorized principal in ACE (Local Service S-1-5-19)
+    monkeypatch.undo()
+    p_sd_ls = ctypes.c_void_p()
+    windll_obj.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        "D:P(A;;GA;;;LS)", 1, ctypes.byref(p_sd_ls), None
+    )
+    windll_obj.advapi32.SetFileSecurityW(str(dummy_file), 4, p_sd_ls)
+    windll_obj.kernel32.LocalFree(p_sd_ls)
+    with pytest.raises(PermissionError, match="unauthorized principal: S-1-5-19"):
         _verify_windows_dacl(dummy_file)
 
 
