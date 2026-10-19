@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import json
 import logging
 import math
 import os
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from pygeolab import __version__
 from pygeolab.model.document import Document
+from pygeolab.model.objects import KINDS
 from pygeolab.ui.main_window import MainWindow
 
 LOGGER = logging.getLogger(__name__)
 
 MAX_SELECTED_IDS_LIMIT = 50
+MAX_RECURSION_DEPTH = 5
+MAX_COLLECTION_ITEMS = 100
+MAX_STRING_LENGTH = 1000
+MAX_POLYGON_VERTICES = 100
+MAX_LOCUS_SAMPLES = 100
+MAX_DATASET_ROWS = 100
+MAX_DATASET_COLS = 50
+MAX_PARAMS_KEYS = 50
 
 
 class RuntimeInspector:
@@ -133,17 +146,39 @@ class RuntimeInspector:
 
         Parameters:
             limit: bounded integer between 1 and 100 (default 50).
-            cursor: optional opaque pagination cursor (format: 'revision:offset').
+            cursor: optional opaque pagination cursor.
             kind: optional filter on GeoObject kind.
         """
-        # 1. Parameter normalization & validation
-        if not isinstance(limit, int) or limit < 1:
-            limit = 50
-        elif limit > 100:
-            limit = 100
+        from pygeolab.debug.protocol import (
+            DOCUMENT_REVISION_MISMATCH,
+            INVALID_PARAMS,
+            ProtocolError,
+        )
+
+        # 1. Parameter validation
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 100:
+            raise ProtocolError(
+                INVALID_PARAMS,
+                f"limit must be an integer between 1 and 100, got {type(limit).__name__} ({limit})",
+            )
+
+        if kind is not None:
+            if isinstance(kind, bool) or not isinstance(kind, str) or not (1 <= len(kind) <= 64):
+                raise ProtocolError(
+                    INVALID_PARAMS, "kind must be a non-empty string <= 64 characters"
+                )
+            if kind not in KINDS:
+                raise ProtocolError(INVALID_PARAMS, f"Unknown object kind: '{kind}'")
 
         doc: Document | None = getattr(self.window, "document", None)
         if doc is None:
+            if cursor is not None:
+                _decode_cursor(cursor)
+                raise ProtocolError(
+                    DOCUMENT_REVISION_MISMATCH,
+                    "Document is no longer available",
+                    data={"current_revision": 0},
+                )
             return {
                 "schema_version": "1.0.0",
                 "document_id": "none",
@@ -157,53 +192,45 @@ class RuntimeInspector:
 
         doc_rev = getattr(doc, "revision", 0)
         doc_id = getattr(doc, "name", "document")
+        state_sig = _compute_state_signature(doc, kind)
 
         offset = 0
         if cursor is not None:
-            if not isinstance(cursor, str):
-                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
-
-                raise ProtocolError(INVALID_PARAMS, "Cursor must be a string")
-            parts = cursor.split(":")
-            if len(parts) != 2:
-                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
-
-                raise ProtocolError(INVALID_PARAMS, "Malformed cursor format")
-            try:
-                cur_rev = int(parts[0])
-                offset = int(parts[1])
-            except ValueError as exc:
-                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
-
-                raise ProtocolError(INVALID_PARAMS, "Malformed cursor format") from exc
-
-            if cur_rev != doc_rev:
-                from pygeolab.debug.protocol import DOCUMENT_REVISION_MISMATCH, ProtocolError
-
+            c_data = _decode_cursor(cursor)
+            if c_data.get("k") != kind:
                 msg = (
-                    f"Document revision changed during pagination "
-                    f"(expected {cur_rev}, current {doc_rev})"
+                    f"Cursor kind filter mismatch (cursor was '{c_data.get('k')}', "
+                    f"request is '{kind}')"
                 )
+                raise ProtocolError(INVALID_PARAMS, msg)
+            if c_data.get("dp") != id(doc) or c_data.get("dn") != doc_id:
                 raise ProtocolError(
                     DOCUMENT_REVISION_MISMATCH,
-                    msg,
+                    "Document changed during pagination",
                     data={"current_revision": doc_rev},
                 )
+            if c_data.get("sig") != state_sig:
+                raise ProtocolError(
+                    DOCUMENT_REVISION_MISMATCH,
+                    "Document state changed during pagination",
+                    data={"current_revision": doc_rev},
+                )
+            offset = c_data["off"]
 
-        if offset < 0:
-            offset = 0
-
-        # 2. Gather objects
-        all_objects = list(doc.objects.values())
-        if kind is not None:
-            all_objects = [obj for obj in all_objects if obj.kind == kind]
+        # 2. Gather objects sorted canonically by stable identifier (UUID)
+        sorted_keys = sorted(doc.objects.keys())
+        all_objects = [
+            doc.objects[oid] for oid in sorted_keys if kind is None or doc.objects[oid].kind == kind
+        ]
 
         total_count = len(all_objects)
         paged_objects = all_objects[offset : offset + limit]
         returned_count = len(paged_objects)
         next_offset = offset + returned_count
         has_more = next_offset < total_count
-        next_cursor = f"{doc_rev}:{next_offset}" if has_more else None
+        next_cursor = (
+            _encode_cursor(doc_id, id(doc), state_sig, kind, next_offset) if has_more else None
+        )
 
         # 3. Retrieve selection set for quick selected flag check
         selected_ids = self._get_selected_ids_set()
@@ -213,7 +240,7 @@ class RuntimeInspector:
             items.append(
                 {
                     "id": obj.id,
-                    "name": obj.name,
+                    "name": obj.name[:MAX_STRING_LENGTH],
                     "kind": obj.kind,
                     "valid": bool(obj.valid),
                     "visible": bool(obj.visible),
@@ -235,34 +262,45 @@ class RuntimeInspector:
     def inspect_object(self, object_id: str) -> dict[str, Any]:
         """Inspect a single geometry object in the current document.
 
-        Raises ProtocolError(OBJECT_NOT_FOUND) if object_id is unknown.
+        Raises:
+            ProtocolError(INVALID_PARAMS): if object_id is invalid.
+            ProtocolError(OBJECT_NOT_FOUND): if object_id is unknown.
         """
-        if not isinstance(object_id, str) or not object_id:
-            from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+        from pygeolab.debug.protocol import (
+            INVALID_PARAMS,
+            OBJECT_NOT_FOUND,
+            ProtocolError,
+        )
 
-            raise ProtocolError(INVALID_PARAMS, "object_id must be a non-empty string")
+        if (
+            isinstance(object_id, bool)
+            or not isinstance(object_id, str)
+            or not (1 <= len(object_id) <= 128)
+        ):
+            raise ProtocolError(
+                INVALID_PARAMS, "object_id must be a string between 1 and 128 characters"
+            )
 
         doc: Document | None = getattr(self.window, "document", None)
         if doc is None or object_id not in doc.objects:
-            from pygeolab.debug.protocol import OBJECT_NOT_FOUND, ProtocolError
-
             raise ProtocolError(OBJECT_NOT_FOUND, f"Object '{object_id}' not found")
 
         obj = doc.objects[object_id]
         selected_ids = self._get_selected_ids_set()
 
-        # Sanitize parameters
-        params = _sanitize_json_value(dict(obj.params))
-
-        # Serialize computed geometry
-        computed_geo, geo_errors = _serialize_geometry(obj.geometry)
-
-        # Validity determination
         errors: list[str] = []
         warnings: list[str] = []
+
+        # Sanitize parameters with cycle detection & bounding
+        raw_params = dict(obj.params) if hasattr(obj, "params") and obj.params is not None else {}
+        params = _sanitize_json_value(raw_params, warnings=warnings)
+
+        # Serialize computed geometry
+        computed_geo, geo_errors = _serialize_geometry(obj.geometry, errors=errors)
+
+        # Validity determination
         if obj.error_state:
-            errors.append(str(obj.error_state))
-        errors.extend(geo_errors)
+            errors.append(str(obj.error_state)[:MAX_STRING_LENGTH])
 
         validity = "valid"
         if not obj.valid or errors:
@@ -273,7 +311,7 @@ class RuntimeInspector:
         return {
             "schema_version": "1.0.0",
             "id": obj.id,
-            "name": obj.name,
+            "name": obj.name[:MAX_STRING_LENGTH],
             "kind": obj.kind,
             "parameters": params if isinstance(params, dict) else {},
             "computed_geometry": computed_geo,
@@ -296,34 +334,198 @@ class RuntimeInspector:
         return set()
 
 
-def _sanitize_float(val: float | int) -> float | None:
-    """Ensure float is finite, returning None if NaN or Infinite."""
-    f_val = float(val)
+def _compute_state_signature(doc: Document, kind: str | None) -> str:
+    """Compute a bounded, deterministic signature of the document state for list_objects."""
+    h = hashlib.sha256()
+    doc_rev = getattr(doc, "revision", 0)
+    h.update(f"{doc.name}:{doc_rev}:{id(doc)}:{kind or ''};".encode())
+    for obj_id in sorted(doc.objects.keys()):
+        obj = doc.objects[obj_id]
+        if kind is None or obj.kind == kind:
+            h.update(f"{obj.id}:{obj.revision};".encode())
+    return h.hexdigest()[:16]
+
+
+def _encode_cursor(
+    doc_name: str, doc_ptr: int, state_sig: str, kind: str | None, offset: int
+) -> str:
+    """Encode an opaque base64url cursor bound to document state and filter."""
+    payload = {
+        "v": 1,
+        "dn": doc_name,
+        "dp": doc_ptr,
+        "sig": state_sig,
+        "k": kind,
+        "off": offset,
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii")
+
+
+def _decode_cursor(cursor: str) -> dict[str, Any]:
+    """Decode and strictly validate an opaque pagination cursor."""
+    from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+
+    if isinstance(cursor, bool) or not isinstance(cursor, str):
+        raise ProtocolError(INVALID_PARAMS, "Cursor must be a string")
+    if not (1 <= len(cursor) <= 256):
+        raise ProtocolError(INVALID_PARAMS, "Cursor length must be between 1 and 256 characters")
+
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii"))
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor format") from exc
+
+    if not isinstance(payload, dict):
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor format (expected JSON object)")
+
+    if payload.get("v") != 1:
+        raise ProtocolError(INVALID_PARAMS, "Unsupported cursor version")
+
+    if not isinstance(payload.get("dn"), str) or not payload["dn"]:
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor document identifier")
+
+    if isinstance(payload.get("dp"), bool) or not isinstance(payload.get("dp"), int):
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor document pointer")
+
+    if not isinstance(payload.get("sig"), str) or not (1 <= len(payload["sig"]) <= 64):
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor signature")
+
+    k = payload.get("k")
+    if k is not None and (not isinstance(k, str) or not k):
+        raise ProtocolError(INVALID_PARAMS, "Malformed cursor kind filter")
+
+    off = payload.get("off")
+    if isinstance(off, bool) or not isinstance(off, int) or off < 0:
+        raise ProtocolError(INVALID_PARAMS, "Invalid cursor offset")
+
+    return payload
+
+
+def _sanitize_float(
+    val: Any,
+    field_name: str = "",
+    errors: list[str] | None = None,
+) -> float | None:
+    """Ensure numeric value is finite float.
+
+    Returns None and records structured notice if NaN or Infinite.
+    """
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        if errors is not None:
+            errors.append(f"Field '{field_name or 'value'}' is not a numeric value")
+        return None
+    try:
+        f_val = float(val)
+    except (ValueError, TypeError, OverflowError):
+        if errors is not None:
+            errors.append(f"Field '{field_name or 'value'}' cannot be converted to float")
+        return None
+
     if not math.isfinite(f_val):
+        if errors is not None:
+            errors.append(
+                f"Non-finite value '{val}' in '{field_name or 'numeric'}' replaced by null"
+            )
         return None
     return round(f_val, 6)
 
 
-def _sanitize_json_value(val: Any) -> Any:
-    """Recursively sanitize JSON values converting non-finite floats to None."""
-    if val is None or isinstance(val, (bool, str)):
+def _sanitize_json_value(
+    val: Any,
+    depth: int = 0,
+    max_depth: int = MAX_RECURSION_DEPTH,
+    seen: set[int] | None = None,
+    warnings: list[str] | None = None,
+) -> Any:
+    """Recursively serialize and sanitize arbitrary values with bounds and cycle detection."""
+    if val is None:
+        return None
+
+    if isinstance(val, bool):
         return val
+
     if isinstance(val, (int, float)):
         f_val = float(val)
-        return f_val if math.isfinite(f_val) else None
-    if isinstance(val, (list, tuple)):
-        return [_sanitize_json_value(x) for x in val]
-    if isinstance(val, dict):
-        return {str(k): _sanitize_json_value(v) for k, v in val.items()}
-    return None
+        if not math.isfinite(f_val):
+            if warnings is not None:
+                warnings.append(f"Non-finite numeric value '{val}' replaced by null in parameters")
+            return None
+        return val if isinstance(val, int) else round(f_val, 6)
+
+    if isinstance(val, str):
+        if len(val) > MAX_STRING_LENGTH:
+            if warnings is not None:
+                warnings.append(f"String truncated ({len(val)} > {MAX_STRING_LENGTH} chars)")
+            return val[:MAX_STRING_LENGTH] + "... [truncated]"
+        return val
+
+    if seen is None:
+        seen = set()
+
+    obj_id = id(val)
+    if obj_id in seen:
+        if warnings is not None:
+            warnings.append(f"Cyclic reference detected for object of type {type(val).__name__}")
+        return {"_cyclic_ref": True, "type": type(val).__name__}
+
+    if depth >= max_depth:
+        if warnings is not None:
+            warnings.append(f"Max serialization depth ({max_depth}) exceeded")
+        return {"_truncated": True, "reason": "max_depth_exceeded"}
+
+    new_seen = seen | {obj_id}
+
+    if isinstance(val, (list, tuple, set, frozenset)):
+        items = list(val)
+        total_items = len(items)
+        truncated = total_items > MAX_COLLECTION_ITEMS
+        bounded = items[:MAX_COLLECTION_ITEMS]
+        res_list = [
+            _sanitize_json_value(x, depth + 1, max_depth, new_seen, warnings) for x in bounded
+        ]
+        if truncated:
+            if warnings is not None:
+                warnings.append(
+                    f"Collection truncated ({total_items} > {MAX_COLLECTION_ITEMS} items)"
+                )
+            res_list.append({"_truncated": True, "total_elements": total_items})
+        return res_list
+
+    if isinstance(val, (dict, Mapping)):
+        items = list(val.items())
+        total_keys = len(items)
+        truncated = total_keys > MAX_PARAMS_KEYS
+        bounded = items[:MAX_PARAMS_KEYS]
+        res_dict: dict[str, Any] = {}
+        for k, v in bounded:
+            k_str = str(k)[:100]
+            res_dict[k_str] = _sanitize_json_value(v, depth + 1, max_depth, new_seen, warnings)
+        if truncated:
+            if warnings is not None:
+                warnings.append(
+                    f"Dictionary keys truncated ({total_keys} > {MAX_PARAMS_KEYS} keys)"
+                )
+            res_dict["_truncated"] = True
+            res_dict["_total_keys"] = total_keys
+        return res_dict
+
+    # Unknown Python object: never call repr() or str() that could leak internals
+    if warnings is not None:
+        warnings.append(f"Unserializable object of type {type(val).__name__}")
+    return {"_unserializable": True, "type": type(val).__name__}
 
 
-def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
+def _serialize_geometry(
+    geo: Any, errors: list[str] | None = None
+) -> tuple[dict[str, Any] | None, list[str]]:
     """Safely and explicitly serialize a computed geometry object by its concrete type."""
-    if geo is None:
-        return None, []
+    if errors is None:
+        errors = []
 
-    errors: list[str] = []
+    if geo is None:
+        return None, errors
 
     from pygeolab.data.dataset import DatasetObject
     from pygeolab.geometry.conics import Ellipse2D, Hyperbola2D, Parabola2D
@@ -344,18 +546,16 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
     )
 
     if isinstance(geo, Point2D):
-        x = _sanitize_float(geo.x)
-        y = _sanitize_float(geo.y)
-        if x is None or y is None:
-            errors.append("Point2D contains non-finite coordinates")
+        x = _sanitize_float(geo.x, "Point2D.x", errors)
+        y = _sanitize_float(geo.y, "Point2D.y", errors)
         return {"type": "point", "x": x, "y": y}, errors
 
     if isinstance(geo, Segment2D):
-        sx, sy = _sanitize_float(geo.start.x), _sanitize_float(geo.start.y)
-        ex, ey = _sanitize_float(geo.end.x), _sanitize_float(geo.end.y)
-        length = _sanitize_float(geo.length)
-        if any(v is None for v in (sx, sy, ex, ey, length)):
-            errors.append("Segment2D contains non-finite values")
+        sx = _sanitize_float(geo.start.x, "Segment2D.start.x", errors)
+        sy = _sanitize_float(geo.start.y, "Segment2D.start.y", errors)
+        ex = _sanitize_float(geo.end.x, "Segment2D.end.x", errors)
+        ey = _sanitize_float(geo.end.y, "Segment2D.end.y", errors)
+        length = _sanitize_float(geo.length, "Segment2D.length", errors)
         return {
             "type": "segment",
             "start": {"x": sx, "y": sy},
@@ -364,16 +564,16 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
         }, errors
 
     if isinstance(geo, Line2D):
-        a, b, c = _sanitize_float(geo.a), _sanitize_float(geo.b), _sanitize_float(geo.c)
-        if any(v is None for v in (a, b, c)):
-            errors.append("Line2D contains non-finite coefficients")
+        a = _sanitize_float(geo.a, "Line2D.a", errors)
+        b = _sanitize_float(geo.b, "Line2D.b", errors)
+        c = _sanitize_float(geo.c, "Line2D.c", errors)
         return {"type": "line", "a": a, "b": b, "c": c}, errors
 
     if isinstance(geo, Ray2D):
-        sx, sy = _sanitize_float(geo.start.x), _sanitize_float(geo.start.y)
-        tx, ty = _sanitize_float(geo.through.x), _sanitize_float(geo.through.y)
-        if any(v is None for v in (sx, sy, tx, ty)):
-            errors.append("Ray2D contains non-finite coordinates")
+        sx = _sanitize_float(geo.start.x, "Ray2D.start.x", errors)
+        sy = _sanitize_float(geo.start.y, "Ray2D.start.y", errors)
+        tx = _sanitize_float(geo.through.x, "Ray2D.through.x", errors)
+        ty = _sanitize_float(geo.through.y, "Ray2D.through.y", errors)
         return {
             "type": "ray",
             "start": {"x": sx, "y": sy},
@@ -381,44 +581,44 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
         }, errors
 
     if isinstance(geo, Circle2D):
-        cx, cy = _sanitize_float(geo.center.x), _sanitize_float(geo.center.y)
-        r = _sanitize_float(geo.radius)
-        if any(v is None for v in (cx, cy, r)):
-            errors.append("Circle2D contains non-finite center or radius")
+        cx = _sanitize_float(geo.center.x, "Circle2D.center.x", errors)
+        cy = _sanitize_float(geo.center.y, "Circle2D.center.y", errors)
+        r = _sanitize_float(geo.radius, "Circle2D.radius", errors)
         return {"type": "circle", "center": {"x": cx, "y": cy}, "radius": r}, errors
 
     if isinstance(geo, Polygon2D):
         verts: list[dict[str, Any]] = []
-        for p in geo.vertices:
-            vx, vy = _sanitize_float(p.x), _sanitize_float(p.y)
-            if vx is None or vy is None:
-                errors.append("Polygon2D contains vertex with non-finite coordinates")
+        total_verts = len(geo.vertices)
+        for pt in geo.vertices[:MAX_POLYGON_VERTICES]:
+            vx = _sanitize_float(pt.x, "Polygon2D.vertex.x", errors)
+            vy = _sanitize_float(pt.y, "Polygon2D.vertex.y", errors)
             verts.append({"x": vx, "y": vy})
-        return {
+        poly_res: dict[str, Any] = {
             "type": "polygon",
             "vertices": verts,
-            "vertex_count": len(verts),
-        }, errors
+            "vertex_count": total_verts,
+        }
+        if total_verts > MAX_POLYGON_VERTICES:
+            poly_res["_truncated"] = True
+            poly_res["_returned_vertices"] = len(verts)
+        return poly_res, errors
 
     if isinstance(geo, Vector2D):
-        vx, vy = _sanitize_float(geo.x), _sanitize_float(geo.y)
-        norm = _sanitize_float(geo.norm)
-        if any(v is None for v in (vx, vy, norm)):
-            errors.append("Vector2D contains non-finite components")
+        vx = _sanitize_float(geo.x, "Vector2D.x", errors)
+        vy = _sanitize_float(geo.y, "Vector2D.y", errors)
+        norm = _sanitize_float(geo.norm, "Vector2D.norm", errors)
         return {"type": "vector", "x": vx, "y": vy, "norm": norm}, errors
 
-    if isinstance(geo, (int, float)):
-        val = _sanitize_float(geo)
-        if val is None:
-            errors.append("Scalar value is non-finite")
+    if isinstance(geo, (int, float)) and not isinstance(geo, bool):
+        val = _sanitize_float(geo, "scalar", errors)
         return {"type": "scalar", "value": val}, errors
 
     if isinstance(geo, Ellipse2D):
-        cx, cy = _sanitize_float(geo.center.x), _sanitize_float(geo.center.y)
-        a, b = _sanitize_float(geo.a), _sanitize_float(geo.b)
-        ang = _sanitize_float(geo.angle)
-        if any(v is None for v in (cx, cy, a, b, ang)):
-            errors.append("Ellipse2D contains non-finite values")
+        cx = _sanitize_float(geo.center.x, "Ellipse2D.center.x", errors)
+        cy = _sanitize_float(geo.center.y, "Ellipse2D.center.y", errors)
+        a = _sanitize_float(geo.a, "Ellipse2D.a", errors)
+        b = _sanitize_float(geo.b, "Ellipse2D.b", errors)
+        ang = _sanitize_float(geo.angle, "Ellipse2D.angle", errors)
         return {
             "type": "ellipse",
             "center": {"x": cx, "y": cy},
@@ -428,9 +628,11 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
         }, errors
 
     if isinstance(geo, Parabola2D):
-        fx, fy = _sanitize_float(geo.focus.x), _sanitize_float(geo.focus.y)
-        vx, vy = _sanitize_float(geo.vertex.x), _sanitize_float(geo.vertex.y)
-        param_val = _sanitize_float(geo.parameter)
+        fx = _sanitize_float(geo.focus.x, "Parabola2D.focus.x", errors)
+        fy = _sanitize_float(geo.focus.y, "Parabola2D.focus.y", errors)
+        vx = _sanitize_float(geo.vertex.x, "Parabola2D.vertex.x", errors)
+        vy = _sanitize_float(geo.vertex.y, "Parabola2D.vertex.y", errors)
+        param_val = _sanitize_float(geo.parameter, "Parabola2D.parameter", errors)
         return {
             "type": "parabola",
             "focus": {"x": fx, "y": fy},
@@ -439,9 +641,11 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
         }, errors
 
     if isinstance(geo, Hyperbola2D):
-        f1x, f1y = _sanitize_float(geo.focus1.x), _sanitize_float(geo.focus1.y)
-        f2x, f2y = _sanitize_float(geo.focus2.x), _sanitize_float(geo.focus2.y)
-        a = _sanitize_float(geo.a)
+        f1x = _sanitize_float(geo.focus1.x, "Hyperbola2D.focus1.x", errors)
+        f1y = _sanitize_float(geo.focus1.y, "Hyperbola2D.focus1.y", errors)
+        f2x = _sanitize_float(geo.focus2.x, "Hyperbola2D.focus2.x", errors)
+        f2y = _sanitize_float(geo.focus2.y, "Hyperbola2D.focus2.y", errors)
+        a = _sanitize_float(geo.a, "Hyperbola2D.a", errors)
         return {
             "type": "hyperbola",
             "focus1": {"x": f1x, "y": f1y},
@@ -452,46 +656,75 @@ def _serialize_geometry(geo: Any) -> tuple[dict[str, Any] | None, list[str]]:
     if isinstance(geo, FunctionObject):
         return {
             "type": "function",
-            "name": geo.name,
-            "variable": geo.variable,
-            "domain": list(geo.domain) if geo.domain is not None else None,
+            "name": str(geo.name)[:100],
+            "variable": str(geo.variable)[:50],
+            "domain": [_sanitize_float(d, "FunctionObject.domain", errors) for d in geo.domain]
+            if geo.domain is not None
+            else None,
         }, errors
 
     if isinstance(geo, ParametricFunctionObject):
         return {
             "type": "parametric",
-            "name": geo.name,
-            "parameter": geo.parameter,
-            "t_min": _sanitize_float(geo.t_min),
-            "t_max": _sanitize_float(geo.t_max),
+            "name": str(geo.name)[:100],
+            "parameter": str(geo.parameter)[:50],
+            "t_min": _sanitize_float(geo.t_min, "ParametricFunctionObject.t_min", errors),
+            "t_max": _sanitize_float(geo.t_max, "ParametricFunctionObject.t_max", errors),
         }, errors
 
     if isinstance(geo, PolarFunctionObject):
         return {
             "type": "polar",
-            "name": geo.name,
-            "parameter": geo.parameter,
-            "theta_min": _sanitize_float(geo.theta_min),
-            "theta_max": _sanitize_float(geo.theta_max),
+            "name": str(geo.name)[:100],
+            "parameter": str(geo.parameter)[:50],
+            "theta_min": _sanitize_float(geo.theta_min, "PolarFunctionObject.theta_min", errors),
+            "theta_max": _sanitize_float(geo.theta_max, "PolarFunctionObject.theta_max", errors),
         }, errors
 
     if isinstance(geo, Locus2D):
-        return {
+        sample_points: list[list[float | None]] = []
+        total_points = geo.total_points if hasattr(geo, "total_points") else 0
+        raw_segments = getattr(geo, "segments", ()) or ()
+        for piece in raw_segments:
+            for pt in piece:
+                if len(sample_points) >= MAX_LOCUS_SAMPLES:
+                    break
+                sample_points.append(
+                    [
+                        _sanitize_float(pt.x, "Locus2D.pt.x", errors),
+                        _sanitize_float(pt.y, "Locus2D.pt.y", errors),
+                    ]
+                )
+            if len(sample_points) >= MAX_LOCUS_SAMPLES:
+                break
+        locus_res: dict[str, Any] = {
             "type": "locus",
-            "target_id": geo.target_id,
-            "driver_id": geo.driver_id,
-            "segments_count": len(geo.segments),
-            "samples": geo.samples,
-        }, errors
+            "target_id": str(geo.target_id)[:64],
+            "driver_id": str(geo.driver_id)[:64],
+            "segments_count": len(raw_segments),
+            "samples": getattr(geo, "samples", len(sample_points)),
+            "sample_points": sample_points,
+            "total_points": total_points,
+        }
+        if total_points > MAX_LOCUS_SAMPLES:
+            locus_res["_truncated"] = True
+            locus_res["_returned_points"] = len(sample_points)
+        return locus_res, errors
 
     if isinstance(geo, DatasetObject):
-        return {
+        raw_cols = getattr(geo, "column_names", []) or []
+        cols = [str(c)[:100] for c in raw_cols[:MAX_DATASET_COLS]]
+        dataset_res: dict[str, Any] = {
             "type": "dataset",
-            "name": geo.name,
-            "column_names": list(geo.column_names),
-            "row_count": len(geo.rows),
-            "plot_kind": geo.plot_kind,
-        }, errors
+            "name": str(geo.name)[:MAX_STRING_LENGTH],
+            "column_names": cols,
+            "row_count": len(getattr(geo, "rows", [])) if hasattr(geo, "rows") else 0,
+            "plot_kind": str(geo.plot_kind)[:50] if getattr(geo, "plot_kind", None) else None,
+        }
+        if len(raw_cols) > MAX_DATASET_COLS:
+            dataset_res["_truncated"] = True
+            dataset_res["_returned_columns"] = len(cols)
+        return dataset_res, errors
 
-    # Unknown or unhandled geometry type
+    # Unknown or unhandled geometry type: never call repr() or str()
     return {"type": "unknown", "class": type(geo).__name__}, errors

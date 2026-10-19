@@ -511,7 +511,7 @@ def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
     finally:
         helper.close()
         server.stop()
-        window._confirm_discard_changes = lambda: True  # Prevent modal QMessageBox
+        setattr(window, "_confirm_discard_changes", lambda: True)  # Prevent modal QMessageBox
         window.close()
         assert server.info_file_path is not None and not server.info_file_path.exists()
 
@@ -872,7 +872,11 @@ def test_server_handler_internal_error() -> None:
     server.running = True
 
     # Mock _dispatch_collect_snapshot to raise unexpected RuntimeError
-    server._dispatch_collect_snapshot = MagicMock(side_effect=RuntimeError("Secret internal error"))
+    setattr(
+        server,
+        "_dispatch_collect_snapshot",
+        MagicMock(side_effect=RuntimeError("Secret internal error")),
+    )
 
     # Handshake first
     hs_bytes = (
@@ -898,3 +902,35 @@ def test_server_handler_internal_error() -> None:
     output = stream.outgoing.getvalue().decode("utf-8")
     assert "Secret internal error" not in output
     assert "Internal server error" in output
+
+
+def test_dispatcher_handler_parameter_validation() -> None:
+    """Verify that bridge dispatcher handlers reject unknown parameters and missing fields."""
+    import threading
+
+    from pygeolab.debug.bridge import _QtDispatcher
+    from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+
+    inspector_mock = MagicMock()
+    dispatcher = _QtDispatcher(inspector_mock)
+
+    # 1. list_objects unknown parameter
+    container: dict[str, Any] = {"event": threading.Event(), "params": {"unknown_field": 123}}
+    dispatcher._handle_list_objects(container)
+    assert "error" in container
+    assert isinstance(container["error"], ProtocolError)
+    assert container["error"].code == INVALID_PARAMS
+
+    # 2. inspect_object unknown parameter
+    container = {"event": threading.Event(), "params": {"object_id": "123", "extra": "bad"}}
+    dispatcher._handle_inspect_object(container)
+    assert "error" in container
+    assert isinstance(container["error"], ProtocolError)
+    assert container["error"].code == INVALID_PARAMS
+
+    # 3. inspect_object missing object_id
+    container = {"event": threading.Event(), "params": {}}
+    dispatcher._handle_inspect_object(container)
+    assert "error" in container
+    assert isinstance(container["error"], ProtocolError)
+    assert container["error"].code == INVALID_PARAMS

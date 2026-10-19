@@ -462,6 +462,15 @@ class _QtDispatcher(QObject):
     def _handle_list_objects(self, container: dict[str, Any]) -> None:
         try:
             params = container.get("params", {})
+            allowed = {"limit", "cursor", "kind"}
+            unknown = set(params.keys()) - allowed
+            if unknown:
+                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+
+                raise ProtocolError(
+                    INVALID_PARAMS,
+                    f"Unknown parameter(s) for list_objects: {', '.join(sorted(unknown))}",
+                )
             container["result"] = self.inspector.list_objects(
                 limit=params.get("limit", 50),
                 cursor=params.get("cursor"),
@@ -477,9 +486,20 @@ class _QtDispatcher(QObject):
     def _handle_inspect_object(self, container: dict[str, Any]) -> None:
         try:
             params = container.get("params", {})
-            container["result"] = self.inspector.inspect_object(
-                object_id=params.get("object_id", "")
-            )
+            allowed = {"object_id"}
+            unknown = set(params.keys()) - allowed
+            if unknown:
+                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+
+                raise ProtocolError(
+                    INVALID_PARAMS,
+                    f"Unknown parameter(s) for inspect_object: {', '.join(sorted(unknown))}",
+                )
+            if "object_id" not in params:
+                from pygeolab.debug.protocol import INVALID_PARAMS, ProtocolError
+
+                raise ProtocolError(INVALID_PARAMS, "Missing required parameter 'object_id'")
+            container["result"] = self.inspector.inspect_object(object_id=params["object_id"])
         except Exception as exc:
             container["error"] = exc
         finally:
