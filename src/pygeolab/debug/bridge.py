@@ -254,7 +254,7 @@ class DebugBridgeServer:
             "clean": False,
             "error": None,
         }
-        self._active_connections: set[BinaryIO] = set()
+        self._active_connections: dict[BinaryIO, Callable[[], None] | None] = {}
         self._connections_lock = threading.Lock()
 
     def _get_session_dir(self) -> Path:
@@ -539,7 +539,10 @@ class DebugBridgeServer:
 
         # Close all active client connections immediately after canceling pending I/O
         with self._connections_lock:
-            for active_conn in list(self._active_connections):
+            for active_conn, cancel_cb in list(self._active_connections.items()):
+                if cancel_cb is not None:
+                    with contextlib.suppress(Exception):
+                        cancel_cb()
                 with contextlib.suppress(Exception):
                     active_conn.close()
             self._active_connections.clear()
@@ -699,7 +702,16 @@ class DebugBridgeServer:
                 with conn:
                     conn.settimeout(3.0)
                     with conn.makefile("rwb", buffering=0) as stream:
-                        self._handle_client_stream(typing.cast(BinaryIO, stream))
+
+                        def unix_cancel_cb(s: socket.socket = conn) -> None:
+                            with contextlib.suppress(Exception):
+                                s.shutdown(socket.SHUT_RDWR)
+                            with contextlib.suppress(Exception):
+                                s.close()
+
+                        self._handle_client_stream(
+                            typing.cast(BinaryIO, stream), cancel_cb=unix_cancel_cb
+                        )
         except Exception as exc:
             if self.running:
                 LOGGER.error("Unix socket server error: %s", exc)
@@ -719,7 +731,7 @@ class DebugBridgeServer:
         max_requests_per_conn = 1000
 
         with self._connections_lock:
-            self._active_connections.add(stream)
+            self._active_connections[stream] = cancel_cb
 
         try:
             while request_count < max_requests_per_conn:
@@ -817,7 +829,7 @@ class DebugBridgeServer:
                     stream.write(build_error_response(gerr, req_id))
         finally:
             with self._connections_lock:
-                self._active_connections.discard(stream)
+                self._active_connections.pop(stream, None)
 
     def _dispatch_collect_snapshot(self) -> dict[str, Any]:
         """Dispatch snapshot request to Qt main thread and await result safely."""

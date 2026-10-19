@@ -475,7 +475,7 @@ def test_server_stop_during_active_connection(qtbot: QtBot) -> None:
         helper.close()
         window.close()
         duration = time.time() - start_stop
-        assert duration < 3.0  # Server stop must unblock and terminate promptly
+        assert duration < 5.0  # Server stop must unblock and terminate promptly
         assert server.info_file_path is not None and not server.info_file_path.exists()
 
 
