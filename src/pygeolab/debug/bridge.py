@@ -758,6 +758,8 @@ class DebugBridgeServer:
                 except ProtocolError as perr:
                     with contextlib.suppress(Exception):
                         stream.write(build_error_response(perr, None))
+                        if hasattr(stream, "flush"):
+                            stream.flush()
                     break  # Close connection on framing violation or payload excess
                 except OSError as oerr:
                     LOGGER.debug("Client stream aborted or timed out: %s", oerr)

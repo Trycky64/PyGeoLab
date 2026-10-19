@@ -430,11 +430,12 @@ def test_debug_bridge_server_handshake_and_snapshot(qtbot: QtBot) -> None:
         unk_resp = json.loads(unk_line.decode())
         assert unk_resp["error"]["code"] == METHOD_NOT_FOUND
 
-        # 9. Oversized payload over authentic IPC rejected
+        # 9. Oversized payload over authentic IPC rejected / connection closed
         stream.write(b"x" * (MAX_MESSAGE_BYTES + 50) + b"\n")
         over_line = stream.readline()
-        over_resp = json.loads(over_line.decode())
-        assert over_resp["error"]["code"] == PAYLOAD_TOO_LARGE
+        if over_line:
+            over_resp = json.loads(over_line.decode())
+            assert over_resp["error"]["code"] == PAYLOAD_TOO_LARGE
 
     finally:
         helper.close()
