@@ -671,9 +671,10 @@ def test_verify_windows_dacl_comprehensive(tmp_path: Path, monkeypatch: pytest.M
     with pytest.raises(PermissionError, match="Owner SID"):
         _verify_windows_dacl(dummy_file)
 
-    # 9. Owner mismatch (EqualSid returns False)
+    # 9. Owner mismatch (EqualSid and CheckTokenMembership return False)
     monkeypatch.undo()
     monkeypatch.setattr(windll_obj.advapi32, "EqualSid", lambda sid1, sid2: 0)
+    monkeypatch.setattr(windll_obj.advapi32, "CheckTokenMembership", lambda *args: 0)
     with pytest.raises(PermissionError, match="owner SID .* does not match"):
         _verify_windows_dacl(dummy_file)
 
